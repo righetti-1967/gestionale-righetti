@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
+import {
+  getAdminUtenti,
+  prorogaDemoUtente,
+  sbloccaUtenteReale,
+  popolaDemoUtente,
+  type AdminUtenteLicenza,
+} from '../lib/api';
 import { invalidaCacheDatiAziendali } from '../lib/datiAziendali';
 import { useAuth } from '../lib/auth';
 import { getLogoUrl, uploadLogo, rimuoviLogo, esisteLogoCustom } from '../lib/logo';
@@ -90,9 +97,9 @@ function normalizzaDati(raw: unknown): DatiAziendali {
   };
 }
 
-type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto';
+type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'licenze';
 
-const TABS: { id: TabId; label: string; icon: string }[] = [
+const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'profilo', label: 'Profilo', icon: '👤' },
   { id: 'azienda', label: 'Azienda', icon: '🏢' },
   { id: 'fatturazione', label: 'Fatturazione', icon: '🧾' },
@@ -100,6 +107,8 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'privacy', label: 'Privacy', icon: '🔒' },
   { id: 'aspetto', label: 'Aspetto', icon: '🎨' },
 ];
+
+const ADMIN_EMAIL = 'righetti@righetti.club';
 
 // ============ COMPONENTI HELPER ============
 function Card({ children, title, subtitle }: { children: ReactNode; title?: string; subtitle?: string }) {
@@ -200,6 +209,11 @@ function FormSede({
 
 // ============ PAGINA PRINCIPALE ============
 export function Impostazioni() {
+  const { user } = useAuth();
+  const isAdmin = user?.email?.toLowerCase().trim() === ADMIN_EMAIL;
+  const tabs = isAdmin
+    ? [...BASE_TABS, { id: 'licenze' as TabId, label: 'Licenze', icon: '👑' }]
+    : BASE_TABS;
   const [tabAttiva, setTabAttiva] = useState<TabId>('azienda');
   const [salvaCorrente, setSalvaCorrente] = useState<(() => void) | null>(null);
   const [salvandoCorrente, setSalvandoCorrente] = useState(false);
@@ -237,7 +251,7 @@ export function Impostazioni() {
       </div>
 
       <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const attiva = tabAttiva === tab.id;
           return (
             <button
@@ -263,6 +277,7 @@ export function Impostazioni() {
         {tabAttiva === 'agenda' && <TabAgenda registraSalva={registraSalva} />}
         {tabAttiva === 'privacy' && <TabPrivacy registraSalva={registraSalva} />}
         {tabAttiva === 'aspetto' && <TabAspetto registraSalva={registraSalva} />}
+        {tabAttiva === 'licenze' && isAdmin && <TabLicenze adminEmail={user?.email || ''} />}
       </div>
     </div>
   );
@@ -1805,3 +1820,242 @@ function LogoUploader() {
     </div>
   );
 }
+
+// ============================================================================
+// TAB LICENZE & DEMO (SOLO ADMIN RIGHETTI)
+// ============================================================================
+function TabLicenze({ adminEmail }: { adminEmail: string }) {
+  const [utenti, setUtenti] = useState<AdminUtenteLicenza[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [azioneInCorso, setAzioneInCorso] = useState<string | null>(null);
+  const [messaggio, setMessaggio] = useState<{ tipo: 'ok' | 'err'; testo: string } | null>(null);
+  const [filtro, setFiltro] = useState<'tutti' | 'demo' | 'reale'>('tutti');
+
+  async function carica() {
+    setLoading(true);
+    try {
+      const lista = await getAdminUtenti(adminEmail);
+      setUtenti(lista);
+    } catch (e: any) {
+      setMessaggio({ tipo: 'err', testo: e.message || 'Errore caricamento utenti' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    carica();
+  }, [adminEmail]);
+
+  async function handleProroga(userId: string, giorni: number) {
+    setAzioneInCorso(userId);
+    setMessaggio(null);
+    try {
+      await prorogaDemoUtente(adminEmail, { userId, giorni });
+      setMessaggio({ tipo: 'ok', testo: `Demo prorogata di ${giorni} giorni!` });
+      await carica();
+    } catch (e: any) {
+      setMessaggio({ tipo: 'err', testo: e.message || 'Errore proroga' });
+    } finally {
+      setAzioneInCorso(null);
+    }
+  }
+
+  async function handleSbloccaReale(u: AdminUtenteLicenza) {
+    const conferma = window.confirm(
+      `ATTENZIONE: Stai per attivare la licenza REALE a vita per:\n${u.email} (${u.azienda || 'Salone'})\n\nTutti i suoi dati di prova demo (clienti, prodotti, fatture, appuntamenti) verranno AZZERATI.\n\nConfermi?`
+    );
+    if (!conferma) return;
+
+    setAzioneInCorso(u.id);
+    setMessaggio(null);
+    try {
+      await sbloccaUtenteReale(adminEmail, { userId: u.id, azzeraDatiDemo: true });
+      setMessaggio({ tipo: 'ok', testo: `Licenza reale attivata e dati azzerati per ${u.email}!` });
+      await carica();
+    } catch (e: any) {
+      setMessaggio({ tipo: 'err', testo: e.message || 'Errore attivazione' });
+    } finally {
+      setAzioneInCorso(null);
+    }
+  }
+
+  async function handlePopolaDemo(u: AdminUtenteLicenza) {
+    const conferma = window.confirm(
+      `Popolare l'utente ${u.email} con dati demo?\n\nVerranno creati: logo, 3 clienti, 4 servizi, 5 prodotti, 2 percorsi, 4 appuntamenti.\n\nI dati esistenti dell'utente verranno CANCELLATI.`
+    );
+    if (!conferma) return;
+
+    setAzioneInCorso(u.id);
+    setMessaggio(null);
+    try {
+      const res = await popolaDemoUtente(adminEmail, u.id);
+      const r = res.riepilogo;
+      setMessaggio({
+        tipo: 'ok',
+        testo: `Popolato! ${r.clienti} clienti, ${r.servizi} servizi, ${r.prodotti} prodotti, ${r.percorsi} percorsi, ${r.appuntamenti} appuntamenti.`,
+      });
+      await carica();
+    } catch (e: any) {
+      setMessaggio({ tipo: 'err', testo: e.message || 'Errore popolamento' });
+    } finally {
+      setAzioneInCorso(null);
+    }
+  }
+
+  const utentiFiltrati = utenti.filter((u) => {
+    if (filtro === 'demo') return u.ruolo === 'demo';
+    if (filtro === 'reale') return u.ruolo === 'reale' || u.ruolo === 'admin';
+    return true;
+  });
+
+  return (
+    <div className="space-y-4">
+      <Card
+        title="👑 Gestione Licenze & Utenti DEMO"
+        subtitle="Pannello riservato all'amministratore. Monitora utenti in prova, proroga scadenze, popola dati demo, attiva licenze reali."
+      >
+        {/* Notifica */}
+        {messaggio && (
+          <div className={`mb-4 px-4 py-3 rounded-apple text-sm flex items-center justify-between ${
+            messaggio.tipo === 'ok'
+              ? 'bg-green-50 text-green-700 border border-green-200'
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            <span>{messaggio.tipo === 'ok' ? '✅' : '⚠️'} {messaggio.testo}</span>
+            <button onClick={() => setMessaggio(null)} className="ml-2 font-bold opacity-60 hover:opacity-100">✕</button>
+          </div>
+        )}
+
+        {/* Filtri */}
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {(['tutti', 'demo', 'reale'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFiltro(f)}
+              className={`px-3 py-1.5 rounded-apple text-xs font-medium transition-colors ${
+                filtro === f
+                  ? 'bg-apple-blue text-white shadow-apple'
+                  : 'bg-gray-100 text-apple-darkgray hover:bg-gray-200'
+              }`}
+            >
+              {f === 'tutti' ? `Tutti (${utenti.length})` : f === 'demo' ? `Demo (${utenti.filter((x) => x.ruolo === 'demo').length})` : `Reali (${utenti.filter((x) => x.ruolo !== 'demo').length})`}
+            </button>
+          ))}
+          <button
+            onClick={carica}
+            disabled={loading}
+            className="ml-auto px-3 py-1.5 rounded-apple bg-gray-100 text-apple-darkgray text-xs font-medium hover:bg-gray-200 transition-colors flex items-center gap-1.5"
+          >
+            🔄 Aggiorna
+          </button>
+        </div>
+
+        {/* Lista utenti */}
+        {loading ? (
+          <div className="py-12 text-center text-apple-gray text-sm">
+            <span className="text-2xl animate-spin inline-block mb-2">⏳</span>
+            <p>Caricamento utenti...</p>
+          </div>
+        ) : utentiFiltrati.length === 0 ? (
+          <div className="py-10 text-center text-apple-gray text-sm">
+            Nessun utente trovato con questo filtro.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {utentiFiltrati.map((u) => {
+              const busy = azioneInCorso === u.id;
+              return (
+                <div
+                  key={u.id}
+                  className={`p-4 rounded-apple border transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
+                    u.is_admin
+                      ? 'bg-purple-50/40 border-purple-200/60'
+                      : u.ruolo === 'reale'
+                      ? 'bg-green-50/30 border-green-200/60'
+                      : u.is_scaduto
+                      ? 'bg-red-50/30 border-red-200/60'
+                      : 'bg-white border-gray-200/80'
+                  }`}
+                >
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-apple-darkgray truncate">{u.email}</span>
+                      {u.is_admin ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 border border-purple-200">
+                          👑 Admin
+                        </span>
+                      ) : u.ruolo === 'reale' ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
+                          ✅ Licenza Reale
+                        </span>
+                      ) : u.is_scaduto ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">
+                          🔒 Demo Scaduta
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-apple-blue border border-blue-200">
+                          ⏳ Demo: {u.giorni_rimasti} {u.giorni_rimasti === 1 ? 'giorno' : 'giorni'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-apple-gray flex-wrap">
+                      {u.azienda && <span>🏢 <strong>{u.azienda}</strong></span>}
+                      {u.full_name && u.full_name !== u.azienda && <span>👤 {u.full_name}</span>}
+                      {u.demo_scadenza && u.ruolo === 'demo' && (
+                        <span>📅 {new Date(u.demo_scadenza).toLocaleDateString('it-IT')}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {!u.is_admin && (
+                    <div className="flex items-center gap-2 flex-wrap shrink-0">
+                      {u.ruolo === 'demo' && (
+                        <>
+                          <button
+                            onClick={() => handleProroga(u.id, 7)}
+                            disabled={busy}
+                            className="px-2.5 py-1.5 rounded-apple bg-gray-100 text-apple-darkgray hover:bg-gray-200 text-xs font-medium transition-colors disabled:opacity-50"
+                          >
+                            +7 gg
+                          </button>
+                          <button
+                            onClick={() => handleProroga(u.id, 15)}
+                            disabled={busy}
+                            className="px-2.5 py-1.5 rounded-apple bg-blue-50 text-apple-blue hover:bg-blue-100 text-xs font-semibold transition-colors disabled:opacity-50"
+                          >
+                            +15 gg
+                          </button>
+                          <button
+                            onClick={() => handlePopolaDemo(u)}
+                            disabled={busy}
+                            className="px-2.5 py-1.5 rounded-apple bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs font-semibold transition-colors disabled:opacity-50"
+                          >
+                            🧪 Popola DEMO
+                          </button>
+                        </>
+                      )}
+
+                      {u.ruolo !== 'reale' ? (
+                        <button
+                          onClick={() => handleSbloccaReale(u)}
+                          disabled={busy}
+                          className="px-3.5 py-1.5 rounded-apple bg-green-600 text-white hover:bg-green-700 text-xs font-semibold transition-colors shadow-apple disabled:opacity-50 flex items-center gap-1.5"
+                        >
+                          <span>🔓</span> Attiva Reale (Reset)
+                        </button>
+                      ) : (
+                        <span className="text-xs text-apple-gray italic">Licenza attiva</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
