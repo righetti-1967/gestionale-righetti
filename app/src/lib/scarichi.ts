@@ -49,9 +49,13 @@ export type NuovoScarico = Omit<
 export async function getScarichiFattura(
   fatturaId: number
 ): Promise<ScaricoSeduta[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('scarichi_seduta')
     .select('*')
+    .eq('user_id', user.id)
     .eq('fattura_madre_id', fatturaId)
     .order('data_seduta', { ascending: false });
 
@@ -66,9 +70,13 @@ export async function getScarichiFattura(
 export async function getScarichiCliente(
   clienteId: number
 ): Promise<ScaricoSeduta[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('scarichi_seduta')
     .select('*')
+    .eq('user_id', user.id)
     .eq('cliente_id', clienteId)
     .order('data_seduta', { ascending: false });
 
@@ -81,9 +89,13 @@ export async function getScarichiCliente(
 }
 
 export async function getProssimoNumeroDDT(): Promise<number> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('scarichi_seduta')
     .select('numero_ddt')
+    .eq('user_id', user.id)
     .order('numero_ddt', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -95,6 +107,9 @@ export async function getProssimoNumeroDDT(): Promise<number> {
 export async function creaScarico(
   scarico: NuovoScarico
 ): Promise<ScaricoSeduta> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const prossimoNumero = await getProssimoNumeroDDT();
 
   const { data, error } = await supabase
@@ -102,6 +117,7 @@ export async function creaScarico(
     .insert({
       ...scarico,
       numero_ddt: prossimoNumero,
+      user_id: user.id,
     })
     .select()
     .single();
@@ -118,6 +134,9 @@ export async function salvaFirmaScarico(
   id: number,
   firmaBase64: string
 ): Promise<ScaricoSeduta> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('scarichi_seduta')
     .update({
@@ -126,6 +145,7 @@ export async function salvaFirmaScarico(
       data_firma: new Date().toISOString(),
     })
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -138,10 +158,14 @@ export async function salvaFirmaScarico(
 }
 
 export async function eliminaScarico(id: number): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { error } = await supabase
     .from('scarichi_seduta')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) {
     console.error('❌ Errore nell\'eliminazione scarico:', error);
@@ -159,10 +183,14 @@ export interface SessioneFirmaDdt {
 }
 
 export async function getScarico(id: number): Promise<ScaricoSeduta | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('scarichi_seduta')
     .select('*')
     .eq('id', id)
+    .eq('user_id', user.id)
     .single();
 
   if (error) {
@@ -176,11 +204,14 @@ export async function getScarico(id: number): Promise<ScaricoSeduta | null> {
 export async function creaSessioneFirmaDdt(
   scaricoId: number
 ): Promise<SessioneFirmaDdt> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const token = generaToken();
 
   const { data, error } = await supabase
     .from('sessioni_firma_ddt')
-    .insert({ scarico_id: scaricoId, token })
+    .insert({ scarico_id: scaricoId, token, user_id: user.id })
     .select()
     .single();
 
@@ -235,6 +266,9 @@ export async function isSessioneDdtCompletata(token: string): Promise<boolean> {
 }
 
 export async function rimuoviFirmaScarico(id: number): Promise<ScaricoSeduta> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('scarichi_seduta')
     .update({
@@ -243,6 +277,7 @@ export async function rimuoviFirmaScarico(id: number): Promise<ScaricoSeduta> {
       data_firma: null,
     })
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -268,11 +303,15 @@ export interface ScaricoConCliente extends ScaricoSeduta {
 }
 
 export async function getTuttiScarichi(): Promise<ScaricoConCliente[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('scarichi_seduta')
     .select(
       '*, cliente:clienti(id, nome_cognome, codice_fiscale, partita_iva, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza)'
     )
+    .eq('user_id', user.id)
     .order('data_seduta', { ascending: false });
 
   if (error) {
@@ -299,9 +338,13 @@ export async function segnaReportCommercialistaInviato(
 ): Promise<void> {
   if (ids.length === 0) return;
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { error } = await supabase
     .from('scarichi_seduta')
     .update({ report_commercialista_inviato_at: new Date().toISOString() })
+    .eq('user_id', user.id)
     .in('id', ids);
 
   if (error) {

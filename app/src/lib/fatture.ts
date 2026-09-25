@@ -67,9 +67,13 @@ export interface FatturaConCliente extends Fattura {
 const IVA = 0.22;
 
 export async function getFatture(): Promise<FatturaConCliente[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('fatture')
     .select('*, cliente:clienti(id, nome_cognome, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)')
+    .eq('user_id', user.id)
     .order('data_incasso', { ascending: false, nullsFirst: false });
 
   if (error) {
@@ -84,9 +88,13 @@ export async function cercaFatture(query: string): Promise<FatturaConCliente[]> 
   const q = query.trim();
   if (!q) return getFatture();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data: clientiMatch, error: errClienti } = await supabase
     .from('clienti')
     .select('id')
+    .eq('user_id', user.id)
     .ilike('nome_cognome', `%${q}%`);
 
   if (errClienti) {
@@ -100,6 +108,7 @@ export async function cercaFatture(query: string): Promise<FatturaConCliente[]> 
     supabase
       .from('fatture')
       .select('*, cliente:clienti(id, nome_cognome, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)')
+      .eq('user_id', user.id)
       .ilike('numero_fattura', `%${q}%`),
   ];
 
@@ -108,6 +117,7 @@ export async function cercaFatture(query: string): Promise<FatturaConCliente[]> 
       supabase
         .from('fatture')
         .select('*, cliente:clienti(id, nome_cognome, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)')
+        .eq('user_id', user.id)
         .in('cliente_id', clienteIds)
     );
   }
@@ -133,10 +143,14 @@ export async function cercaFatture(query: string): Promise<FatturaConCliente[]> 
 }
 
 export async function getFattura(id: number): Promise<FatturaConCliente | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('fatture')
     .select('*, cliente:clienti(id, nome_cognome, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)')
     .eq('id', id)
+    .eq('user_id', user.id)
     .single();
 
   if (error) {
@@ -148,9 +162,13 @@ export async function getFattura(id: number): Promise<FatturaConCliente | null> 
 }
 
 export async function getFattureCliente(clienteId: number): Promise<Fattura[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('fatture')
     .select('*')
+    .eq('user_id', user.id)
     .eq('cliente_id', clienteId)
     .order('data_incasso', { ascending: false, nullsFirst: false });
 
@@ -169,9 +187,13 @@ export async function getProssimoNumeroFattura(): Promise<{
 }> {
   const annoCorrente = new Date().getFullYear();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('fatture')
     .select('numero_progressivo')
+    .eq('user_id', user.id)
     .eq('anno', annoCorrente)
     .order('numero_progressivo', { ascending: false })
     .limit(1)
@@ -193,9 +215,12 @@ export async function getProssimoNumeroFattura(): Promise<{
 }
 
 export async function creaFattura(fattura: NuovaFattura): Promise<Fattura> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('fatture')
-    .insert(fattura)
+    .insert({ ...fattura, user_id: user.id })
     .select()
     .single();
 
@@ -211,10 +236,14 @@ export async function aggiornaFattura(
   id: number,
   fattura: Partial<NuovaFattura>
 ): Promise<Fattura> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('fatture')
     .update(fattura)
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -233,10 +262,14 @@ export async function aggiornaFattura(
  * 3) Elimina la fattura dal database
  */
 export async function eliminaFattura(id: number): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   // 1. Scollega i percorsi associati
   const { error: errPercorsi } = await supabase
     .from('percorsi')
     .update({ fattura_id: null })
+    .eq('user_id', user.id)
     .eq('fattura_id', id);
 
   if (errPercorsi) {
@@ -247,6 +280,7 @@ export async function eliminaFattura(id: number): Promise<void> {
   const { error: errSessioni } = await supabase
     .from('sessioni_firma_fattura')
     .delete()
+    .eq('user_id', user.id)
     .eq('fattura_id', id);
 
   if (errSessioni) {
@@ -257,7 +291,8 @@ export async function eliminaFattura(id: number): Promise<void> {
   const { error } = await supabase
     .from('fatture')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) {
     console.error('❌ Errore nell\'eliminazione fattura:', error);
@@ -341,6 +376,9 @@ export async function salvaFirmaFattura(
   id: number,
   firmaBase64: string
 ): Promise<FatturaConCliente> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('fatture')
     .update({
@@ -349,6 +387,7 @@ export async function salvaFirmaFattura(
       data_firma: new Date().toISOString(),
     })
     .eq('id', id)
+    .eq('user_id', user.id)
     .select(
       '*, cliente:clienti(id, nome_cognome, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)'
     )
@@ -363,6 +402,9 @@ export async function salvaFirmaFattura(
 }
 
 export async function rimuoviFirmaFattura(id: number): Promise<Fattura> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('fatture')
     .update({
@@ -371,6 +413,7 @@ export async function rimuoviFirmaFattura(id: number): Promise<Fattura> {
       data_firma: null,
     })
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -385,11 +428,14 @@ export async function rimuoviFirmaFattura(id: number): Promise<Fattura> {
 export async function creaSessioneFirmaFattura(
   fatturaId: number
 ): Promise<SessioneFirmaFattura> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const token = generaToken();
 
   const { data, error } = await supabase
     .from('sessioni_firma_fattura')
-    .insert({ fattura_id: fatturaId, token })
+    .insert({ fattura_id: fatturaId, token, user_id: user.id })
     .select()
     .single();
 

@@ -73,10 +73,13 @@ export async function caricaPrivacy(): Promise<ConfigPrivacy> {
 
   promessaInCorso = (async () => {
     try {
-      await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non autenticato');
+
       const { data, error } = await supabase
         .from('impostazioni')
         .select('valore')
+        .eq('user_id', user.id)
         .eq('chiave', 'privacy')
         .maybeSingle();
       if (error) throw error;
@@ -103,15 +106,19 @@ export function invalidaCachePrivacy(): void {
 }
 
 export async function salvaPrivacy(config: ConfigPrivacy): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { error } = await supabase
     .from('impostazioni')
     .upsert(
       {
+        user_id: user.id,
         chiave: 'privacy',
         valore: config,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: 'chiave' }
+      { onConflict: 'user_id,chiave' }
     );
   if (error) throw error;
   cache = config;

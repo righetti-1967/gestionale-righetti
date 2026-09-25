@@ -46,11 +46,13 @@ export async function caricaDatiAziendali(): Promise<DatiAziendali> {
 
   promessaInCorso = (async () => {
     try {
-      await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non autenticato');
 
       const { data, error } = await supabase
         .from('impostazioni')
         .select('valore')
+        .eq('user_id', user.id)
         .eq('chiave', 'dati_aziendali')
         .maybeSingle();
 

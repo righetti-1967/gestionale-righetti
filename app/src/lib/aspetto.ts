@@ -54,10 +54,13 @@ export async function caricaAspetto(): Promise<ConfigAspetto> {
 
   promessaInCorso = (async () => {
     try {
-      await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non autenticato');
+
       const { data, error } = await supabase
         .from('impostazioni')
         .select('valore')
+        .eq('user_id', user.id)
         .eq('chiave', 'aspetto')
         .maybeSingle();
       if (error) throw error;
@@ -84,15 +87,19 @@ export function invalidaCacheAspetto(): void {
 }
 
 export async function salvaAspetto(config: ConfigAspetto): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { error } = await supabase
     .from('impostazioni')
     .upsert(
       {
+        user_id: user.id,
         chiave: 'aspetto',
         valore: config,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: 'chiave' }
+      { onConflict: 'user_id,chiave' }
     );
   if (error) throw error;
   cache = config;

@@ -278,9 +278,13 @@ function TabAzienda({ registraSalva }: { registraSalva?: (fn: () => void, salvan
   useEffect(() => {
     async function carica() {
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Non autenticato');
+
         const { data, error } = await supabase
           .from('impostazioni')
           .select('valore')
+          .eq('user_id', user.id)
           .eq('chiave', 'dati_aziendali')
           .maybeSingle();
 
@@ -300,15 +304,19 @@ function TabAzienda({ registraSalva }: { registraSalva?: (fn: () => void, salvan
     setSalvando(true);
     setMessaggio(null);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non autenticato');
+
       const { error } = await supabase
         .from('impostazioni')
         .upsert(
           {
+            user_id: user.id,
             chiave: 'dati_aziendali',
             valore: dati,
             updated_at: new Date().toISOString(),
           },
-          { onConflict: 'chiave' }
+          { onConflict: 'user_id,chiave' }
         );
 
       if (error) throw error;

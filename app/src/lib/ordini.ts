@@ -71,9 +71,13 @@ export async function getProssimoNumeroOrdine(): Promise<{
 }> {
   const annoCorrente = new Date().getFullYear();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data } = await supabase
     .from('ordini_fornitore')
     .select('numero_ordine')
+    .eq('user_id', user.id)
     .ilike('numero_ordine', `%/R`)
     .order('id', { ascending: false })
     .limit(100);
@@ -129,12 +133,15 @@ export function calcolaTotaliOrdine(righe: NuovaRigaOrdine[]): {
  * Crea un nuovo ordine con righe (transazione manuale)
  */
 export async function creaOrdine(ordine: NuovoOrdine): Promise<OrdineFornitore> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { righe, ...intestazione } = ordine;
 
   // 1) Inserisci intestazione
   const { data: ordineCreato, error: errOrdine } = await supabase
     .from('ordini_fornitore')
-    .insert(intestazione)
+    .insert({ ...intestazione, user_id: user.id })
     .select()
     .single();
 
@@ -144,7 +151,11 @@ export async function creaOrdine(ordine: NuovoOrdine): Promise<OrdineFornitore> 
   }
 
   // 2) Inserisci righe
-  const righeConOrdine = righe.map((r) => ({ ...r, ordine_id: ordineCreato.id }));
+  const righeConOrdine = righe.map((r) => ({
+    ...r,
+    ordine_id: ordineCreato.id,
+    user_id: user.id,
+  }));
 
   const { error: errRighe } = await supabase
     .from('righe_ordine_fornitore')
@@ -153,7 +164,11 @@ export async function creaOrdine(ordine: NuovoOrdine): Promise<OrdineFornitore> 
   if (errRighe) {
     console.error('❌ Errore creazione righe ordine:', errRighe);
     // Rollback: elimina l'ordine appena creato
-    await supabase.from('ordini_fornitore').delete().eq('id', ordineCreato.id);
+    await supabase
+      .from('ordini_fornitore')
+      .delete()
+      .eq('id', ordineCreato.id)
+      .eq('user_id', user.id);
     throw errRighe;
   }
 
@@ -164,6 +179,9 @@ export async function creaOrdine(ordine: NuovoOrdine): Promise<OrdineFornitore> 
  * Recupera tutti gli ordini con fornitore e righe
  */
 export async function getOrdini(): Promise<OrdineConFornitore[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('ordini_fornitore')
     .select(`
@@ -171,6 +189,7 @@ export async function getOrdini(): Promise<OrdineConFornitore[]> {
       fornitore:fornitori(*),
       righe:righe_ordine_fornitore(*)
     `)
+    .eq('user_id', user.id)
     .order('data_ordine', { ascending: false })
     .order('id', { ascending: false });
 
@@ -185,6 +204,9 @@ export async function getOrdini(): Promise<OrdineConFornitore[]> {
  * Recupera un singolo ordine con dettagli
  */
 export async function getOrdine(id: number): Promise<OrdineConFornitore | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('ordini_fornitore')
     .select(`
@@ -193,6 +215,7 @@ export async function getOrdine(id: number): Promise<OrdineConFornitore | null> 
       righe:righe_ordine_fornitore(*)
     `)
     .eq('id', id)
+    .eq('user_id', user.id)
     .single();
 
   if (error) return null;
@@ -207,10 +230,14 @@ export async function aggiornaStatoOrdine(
   stato: 'bozza' | 'inviato' | 'ricevuto' | 'annullato',
   extra?: Partial<OrdineFornitore>
 ): Promise<OrdineFornitore> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('ordini_fornitore')
     .update({ stato, ...extra })
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -225,7 +252,14 @@ export async function aggiornaStatoOrdine(
  * Elimina un ordine (le righe vengono eliminate in cascata)
  */
 export async function eliminaOrdine(id: number): Promise<void> {
-  const { error } = await supabase.from('ordini_fornitore').delete().eq('id', id);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const { error } = await supabase
+    .from('ordini_fornitore')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) {
     console.error('❌ Errore eliminazione ordine:', error);

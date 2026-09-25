@@ -28,9 +28,13 @@ export type NuovoMovimento = Omit<MovimentoMagazzino, 'id' | 'created_at'>;
  * Recupera tutti i movimenti con dati prodotto
  */
 export async function getMovimenti(): Promise<MovimentoConProdotto[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('movimenti_magazzino')
     .select('*, prodotto:prodotti(id, nome, codice_fornitore, giacenza)')
+    .eq('user_id', user.id)
     .order('data_movimento', { ascending: false })
     .order('created_at', { ascending: false });
 
@@ -48,9 +52,13 @@ export async function getMovimenti(): Promise<MovimentoConProdotto[]> {
 export async function getMovimentiProdotto(
   prodottoId: number
 ): Promise<MovimentoMagazzino[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('movimenti_magazzino')
     .select('*')
+    .eq('user_id', user.id)
     .eq('prodotto_id', prodottoId)
     .order('data_movimento', { ascending: false })
     .order('created_at', { ascending: false });
@@ -70,9 +78,12 @@ export async function getMovimentiProdotto(
 export async function creaMovimento(
   movimento: NuovoMovimento
 ): Promise<MovimentoMagazzino> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('movimenti_magazzino')
-    .insert(movimento)
+    .insert({ ...movimento, user_id: user.id })
     .select()
     .single();
 
@@ -89,10 +100,14 @@ export async function creaMovimento(
  * Il trigger SQL annulla automaticamente l'effetto sulla giacenza.
  */
 export async function eliminaMovimento(id: number): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { error } = await supabase
     .from('movimenti_magazzino')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) {
     console.error('❌ Errore nell\'eliminazione movimento:', error);

@@ -142,10 +142,13 @@ export async function caricaAgendaConfig(): Promise<ConfigAgenda> {
 
   promessaInCorso = (async () => {
     try {
-      await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non autenticato');
+
       const { data, error } = await supabase
         .from('impostazioni')
         .select('valore')
+        .eq('user_id', user.id)
         .eq('chiave', 'agenda')
         .maybeSingle();
       if (error) throw error;
@@ -171,15 +174,19 @@ export function invalidaCacheAgendaConfig(): void {
 }
 
 export async function salvaAgendaConfig(config: ConfigAgenda): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { error } = await supabase
     .from('impostazioni')
     .upsert(
       {
+        user_id: user.id,
         chiave: 'agenda',
         valore: config,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: 'chiave' }
+      { onConflict: 'user_id,chiave' }
     );
   if (error) throw error;
   cache = config;

@@ -10,18 +10,59 @@
 import { supabase } from './supabase';
 
 const BUCKET = 'azienda';
-const FILE_PATH = 'logo.png';
 const LOGO_DEFAULT = '/logo.png';
+const RIGHETTI_EMAIL = 'righetti@righetti.club';
+
+// Path del logo corrente (cache).
+// - Righetti: 'logo.png' (fisso)
+// - Altri utenti loggati: '{user_id}/logo.png'
+// - Non loggato: 'logo.png' (fallback)
+let _logoPathCache: string = 'logo.png';
+
+/**
+ * Ritorna il path corretto per l'utente corrente.
+ * Deve essere chiamato al login/logout per aggiornare la cache.
+ */
+function calcolaLogoPath(user: { id: string; email?: string | null } | null): string {
+  if (!user) return 'logo.png';
+  if (user.email?.toLowerCase().trim() === RIGHETTI_EMAIL) return 'logo.png';
+  return `${user.id}/logo.png`;
+}
+
+/**
+ * Inizializza il path del logo per l'utente loggato.
+ * Chiamalo dopo il login (SIGNED_IN) o all'avvio con sessione attiva.
+ */
+export async function initLogoPath(): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    _logoPathCache = calcolaLogoPath(user);
+  } catch {
+    _logoPathCache = 'logo.png';
+  }
+}
+
+/**
+ * Reset del path (al logout).
+ */
+export function resetLogoPath(): void {
+  _logoPathCache = 'logo.png';
+}
+
+/**
+ * Ritorna il path corrente del logo (per debug/test).
+ */
+export function getCurrentLogoPath(): string {
+  return _logoPathCache;
+}
 
 /**
  * Restituisce l'URL pubblico del logo aziendale.
  */
 export function getLogoUrl(cacheBuster = false): string {
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(FILE_PATH);
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(_logoPathCache);
   if (!data?.publicUrl) return LOGO_DEFAULT;
   const baseUrl = data.publicUrl;
-  // SEMPRE cache-buster per evitare che il browser mostri la versione vecchia
-  // (il parametro cacheBuster è mantenuto per compatibilità, ma ora è sempre attivo)
   void cacheBuster;
   return `${baseUrl}?v=${Date.now()}`;
 }
@@ -31,11 +72,16 @@ export function getLogoUrl(cacheBuster = false): string {
  */
 export async function esisteLogoCustom(): Promise<boolean> {
   try {
-    const { data, error } = await supabase.storage.from(BUCKET).list('', {
-      search: FILE_PATH,
+    // Estrai cartella e nome file dal path corrente
+    const parts = _logoPathCache.split('/');
+    const fileName = parts.pop() || 'logo.png';
+    const folder = parts.join('/');
+
+    const { data, error } = await supabase.storage.from(BUCKET).list(folder, {
+      search: fileName,
     });
     if (error) return false;
-    return (data || []).some((f) => f.name === FILE_PATH);
+    return (data || []).some((f) => f.name === fileName);
   } catch {
     return false;
   }
@@ -128,10 +174,10 @@ export async function uploadLogo(file: File): Promise<{ url: string | null; erro
     // 1. Processa il PNG: rimuovi sfondo bianco
     const fileProcessato = await rimuoviSfondoBianco(file);
 
-    // 2. Carica su Supabase
+    // 2. Carica su Supabase (nel path corretto per l'utente)
     const { error } = await supabase.storage
       .from(BUCKET)
-      .upload(FILE_PATH, fileProcessato, {
+      .upload(_logoPathCache, fileProcessato, {
         cacheControl: '3600',
         upsert: true,
         contentType: 'image/png',
@@ -151,7 +197,7 @@ export async function uploadLogo(file: File): Promise<{ url: string | null; erro
  */
 export async function rimuoviLogo(): Promise<{ error: string | null }> {
   try {
-    const { error } = await supabase.storage.from(BUCKET).remove([FILE_PATH]);
+    const { error } = await supabase.storage.from(BUCKET).remove([_logoPathCache]);
     if (error) throw error;
     return { error: null };
   } catch (err) {

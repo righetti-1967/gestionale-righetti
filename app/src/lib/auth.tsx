@@ -10,6 +10,7 @@ import { supabase } from './supabase';
 import { caricaDatiAziendali, invalidaCacheDatiAziendali } from './datiAziendali';
 import { caricaAgendaConfig, invalidaCacheAgendaConfig } from './agenda-config';
 import { aggiornaCostantiAgenda } from './appuntamenti';
+import { initLogoPath, resetLogoPath } from './logo';
 
 interface AuthContextType {
   user: User | null;
@@ -49,11 +50,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             aggiornaCostantiAgenda(config);
           });
           caricaDatiAziendali();
+          // Inizializza path logo multi-tenant
+          initLogoPath();
         }
       }
       if (event === 'SIGNED_OUT') {
         invalidaCacheDatiAziendali();
         invalidaCacheAgendaConfig();
+        resetLogoPath();
       }
     });
 
