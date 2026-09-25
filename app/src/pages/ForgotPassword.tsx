@@ -22,7 +22,9 @@ export function ForgotPassword() {
       if (error) throw error;
       setSuccesso(true);
     } catch (e: any) {
-      setErrore(e.message || 'Errore durante l\'invio del link di recupero');
+      const msg = String(e?.message || e || '').trim();
+      setErrore(msg || 'Errore durante l\'invio del link di recupero. Riprova.');
+      console.error('ForgotPassword errore:', e);
     } finally {
       setLoading(false);
     }
