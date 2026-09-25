@@ -45,19 +45,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         if (session?.user) {
-          invalidaCacheAgendaConfig();
-          caricaAgendaConfig().then((config) => {
-            aggiornaCostantiAgenda(config);
-          });
-          caricaDatiAziendali();
-          // Inizializza path logo multi-tenant
-          initLogoPath();
+          // Ogni chiamata wrappata in try/catch: se una fallisce, NON blocca il login
+          try {
+            invalidaCacheAgendaConfig();
+            caricaAgendaConfig()
+              .then((config) => {
+                try { aggiornaCostantiAgenda(config); } catch (e) { console.error('aggiornaCostantiAgenda:', e); }
+              })
+              .catch((e) => console.error('caricaAgendaConfig:', e));
+          } catch (e) {
+            console.error('cache agenda:', e);
+          }
+
+          try {
+            caricaDatiAziendali().catch((e) => console.error('caricaDatiAziendali:', e));
+          } catch (e) {
+            console.error('caricaDatiAziendali sync:', e);
+          }
+
+          try {
+            initLogoPath().catch((e) => console.error('initLogoPath:', e));
+          } catch (e) {
+            console.error('initLogoPath sync:', e);
+          }
         }
       }
       if (event === 'SIGNED_OUT') {
-        invalidaCacheDatiAziendali();
-        invalidaCacheAgendaConfig();
-        resetLogoPath();
+        try { invalidaCacheDatiAziendali(); } catch (e) { console.error(e); }
+        try { invalidaCacheAgendaConfig(); } catch (e) { console.error(e); }
+        try { resetLogoPath(); } catch (e) { console.error(e); }
       }
     });
 
