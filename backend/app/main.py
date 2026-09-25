@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.routers import licenze
 
 logging.basicConfig(level=settings.log_level)
 logger = logging.getLogger(__name__)
@@ -14,6 +15,8 @@ app = FastAPI(
     version="0.1.0",
     description="Backend per gestione licenze DEMO, invio email/WhatsApp e sync con TricoAI",
 )
+
+app.include_router(licenze.router)
 
 app.add_middleware(
     CORSMiddleware,
