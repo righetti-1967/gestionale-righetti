@@ -57,9 +57,13 @@ export interface SessioneFirma {
  * Recupera tutti i clienti
  */
 export async function getClienti(): Promise<Cliente[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('clienti')
     .select('*')
+    .eq('user_id', user.id)
     .order('nome_cognome', { ascending: true });
 
   if (error) {
@@ -74,10 +78,14 @@ export async function getClienti(): Promise<Cliente[]> {
  * Recupera un singolo cliente per ID
  */
 export async function getCliente(id: number): Promise<Cliente | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('clienti')
     .select('*')
     .eq('id', id)
+    .eq('user_id', user.id)
     .single();
 
   if (error) {
@@ -94,9 +102,13 @@ export async function getCliente(id: number): Promise<Cliente | null> {
 export async function cercaClienti(query: string): Promise<Cliente[]> {
   if (!query.trim()) return getClienti();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('clienti')
     .select('*')
+    .eq('user_id', user.id)
     .or(`nome_cognome.ilike.%${query}%,email.ilike.%${query}%,cellulare.ilike.%${query}%`)
     .order('nome_cognome', { ascending: true });
 
@@ -112,9 +124,12 @@ export async function cercaClienti(query: string): Promise<Cliente[]> {
  * Crea un nuovo cliente
  */
 export async function creaCliente(cliente: NuovoCliente): Promise<Cliente> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('clienti')
-    .insert(cliente)
+    .insert({ ...cliente, user_id: user.id })
     .select()
     .single();
 
@@ -133,10 +148,14 @@ export async function aggiornaCliente(
   id: number,
   cliente: Partial<NuovoCliente>
 ): Promise<Cliente> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('clienti')
     .update(cliente)
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -152,7 +171,14 @@ export async function aggiornaCliente(
  * Elimina un cliente
  */
 export async function eliminaCliente(id: number): Promise<void> {
-  const { error } = await supabase.from('clienti').delete().eq('id', id);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const { error } = await supabase
+    .from('clienti')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) {
     console.error('❌ Errore nell\'eliminazione:', error);
@@ -167,6 +193,9 @@ export async function salvaFirmaPrivacy(
   id: number,
   firmaBase64: string
 ): Promise<Cliente> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('clienti')
     .update({
@@ -175,6 +204,7 @@ export async function salvaFirmaPrivacy(
       privacy_data_firma: new Date().toISOString(),
     })
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -190,6 +220,9 @@ export async function salvaFirmaPrivacy(
  * Rimuove la firma privacy di un cliente
  */
 export async function rimuoviFirmaPrivacy(id: number): Promise<Cliente> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('clienti')
     .update({
@@ -198,6 +231,7 @@ export async function rimuoviFirmaPrivacy(id: number): Promise<Cliente> {
       privacy_data_firma: null,
     })
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -214,12 +248,15 @@ export async function rimuoviFirmaPrivacy(id: number): Promise<Cliente> {
  * Ritorna il token univoco che verrà usato nel QR code.
  */
 export async function creaSessioneFirma(clienteId: number): Promise<SessioneFirma> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   // Genera token univoco (32 caratteri casuali)
   const token = generaToken();
 
   const { data, error } = await supabase
     .from('sessioni_firma')
-    .insert({ cliente_id: clienteId, token })
+    .insert({ cliente_id: clienteId, token, user_id: user.id })
     .select()
     .single();
 

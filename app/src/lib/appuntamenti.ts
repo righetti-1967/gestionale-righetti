@@ -154,9 +154,13 @@ export function getColoreServizio(servizioId: number | null | undefined): string
 // ============================================================
 
 export async function getAppuntamenti(dataInizio: string, dataFine: string): Promise<AppuntamentoConCliente[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('appuntamenti')
     .select('*, cliente:clienti(id, nome_cognome, cellulare, email)')
+    .eq('user_id', user.id)
     .gte('data', dataInizio)
     .lte('data', dataFine)
     .order('data', { ascending: true })
@@ -174,9 +178,13 @@ export async function getAppuntamentiGiorno(data: string): Promise<AppuntamentoC
 }
 
 export async function getAppuntamentiCliente(clienteId: number): Promise<Appuntamento[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('appuntamenti')
     .select('*')
+    .eq('user_id', user.id)
     .eq('cliente_id', clienteId)
     .order('data', { ascending: false })
     .order('ora_inizio', { ascending: false });
@@ -189,10 +197,14 @@ export async function getAppuntamentiCliente(clienteId: number): Promise<Appunta
 }
 
 export async function getAppuntamento(id: number): Promise<AppuntamentoConCliente | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('appuntamenti')
     .select('*, cliente:clienti(id, nome_cognome, cellulare, email)')
     .eq('id', id)
+    .eq('user_id', user.id)
     .single();
 
   if (error) return null;
@@ -200,9 +212,12 @@ export async function getAppuntamento(id: number): Promise<AppuntamentoConClient
 }
 
 export async function creaAppuntamento(appuntamento: NuovoAppuntamento): Promise<Appuntamento> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('appuntamenti')
-    .insert(appuntamento)
+    .insert({ ...appuntamento, user_id: user.id })
     .select()
     .single();
 
@@ -250,10 +265,14 @@ export async function aggiornaAppuntamento(
   id: number,
   appuntamento: Partial<NuovoAppuntamento>
 ): Promise<Appuntamento> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('appuntamenti')
     .update(appuntamento)
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -273,7 +292,14 @@ export async function cambiaStatoAppuntamento(id: number, stato: StatoAppuntamen
 }
 
 export async function eliminaAppuntamento(id: number): Promise<void> {
-  const { error } = await supabase.from('appuntamenti').delete().eq('id', id);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const { error } = await supabase
+    .from('appuntamenti')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
   if (error) {
     console.error('❌ Errore nell\'eliminazione appuntamento:', error);
     throw error;
@@ -383,9 +409,13 @@ export async function aggiornaAppuntamentiCompletati(): Promise<void> {
  * I record restano nello storico (stato: cancellato, motivo: rebooking).
  */
 export async function chiudiRebookingCliente(clienteId: number): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { error } = await supabase
     .from('appuntamenti')
     .update({ rebooking_fissato: true })
+    .eq('user_id', user.id)
     .eq('cliente_id', clienteId)
     .eq('stato', 'cancellato')
     .eq('motivo_cancellazione', 'rebooking')

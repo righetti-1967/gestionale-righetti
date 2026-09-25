@@ -13,9 +13,13 @@ export interface Servizio {
  * Recupera tutti i servizi
  */
 export async function getServizi(): Promise<Servizio[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('servizi')
     .select('*')
+    .eq('user_id', user.id)
     .order('nome', { ascending: true });
 
   if (error) {
@@ -30,10 +34,14 @@ export async function getServizi(): Promise<Servizio[]> {
  * Recupera un servizio per ID
  */
 export async function getServizio(id: number): Promise<Servizio | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('servizi')
     .select('*')
     .eq('id', id)
+    .eq('user_id', user.id)
     .single();
 
   if (error) return null;
@@ -46,9 +54,12 @@ export type NuovoServizio = Omit<Servizio, 'id' | 'created_at'>;
  * Crea un nuovo servizio
  */
 export async function creaServizio(servizio: NuovoServizio): Promise<Servizio> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('servizi')
-    .insert(servizio)
+    .insert({ ...servizio, user_id: user.id })
     .select()
     .single();
 
@@ -67,10 +78,14 @@ export async function aggiornaServizio(
   id: number,
   servizio: Partial<NuovoServizio>
 ): Promise<Servizio> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('servizi')
     .update(servizio)
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -86,10 +101,14 @@ export async function aggiornaServizio(
  * Elimina un servizio
  */
 export async function eliminaServizio(id: number): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('servizi')
     .delete()
     .eq('id', id)
+    .eq('user_id', user.id)
     .select();
 
   if (error) {

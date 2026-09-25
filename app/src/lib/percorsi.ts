@@ -36,9 +36,13 @@ export type NuovoPercorso = Omit<Percorso, 'id' | 'created_at'>;
  * Recupera tutti i percorsi di un cliente
  */
 export async function getPercorsiCliente(clienteId: number): Promise<Percorso[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('percorsi')
     .select('*')
+    .eq('user_id', user.id)
     .eq('cliente_id', clienteId)
     .order('data_inizio', { ascending: false });
 
@@ -54,10 +58,14 @@ export async function getPercorsiCliente(clienteId: number): Promise<Percorso[]>
  * Recupera un singolo percorso
  */
 export async function getPercorso(id: number): Promise<Percorso | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('percorsi')
     .select('*')
     .eq('id', id)
+    .eq('user_id', user.id)
     .single();
 
   if (error) return null;
@@ -68,9 +76,12 @@ export async function getPercorso(id: number): Promise<Percorso | null> {
  * Crea un nuovo percorso
  */
 export async function creaPercorso(percorso: NuovoPercorso): Promise<Percorso> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('percorsi')
-    .insert(percorso)
+    .insert({ ...percorso, user_id: user.id })
     .select()
     .single();
 
@@ -89,10 +100,14 @@ export async function aggiornaPercorso(
   id: number,
   percorso: Partial<NuovoPercorso>
 ): Promise<Percorso> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('percorsi')
     .update(percorso)
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -108,7 +123,14 @@ export async function aggiornaPercorso(
  * Elimina un percorso
  */
 export async function eliminaPercorso(id: number): Promise<void> {
-  const { error } = await supabase.from('percorsi').delete().eq('id', id);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const { error } = await supabase
+    .from('percorsi')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) {
     console.error('❌ Errore nell\'eliminazione percorso:', error);
@@ -175,9 +197,13 @@ export async function prorogaPercorso(
  * Recupera tutti i percorsi (per admin)
  */
 export async function getTuttiPercorsi(): Promise<Percorso[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('percorsi')
     .select('*')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
   if (error) {

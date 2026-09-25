@@ -21,9 +21,13 @@ export interface Prodotto {
  * Recupera tutti i prodotti
  */
 export async function getProdotti(): Promise<Prodotto[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('prodotti')
     .select('*')
+    .eq('user_id', user.id)
     .order('nome', { ascending: true });
 
   if (error) {
@@ -38,10 +42,14 @@ export async function getProdotti(): Promise<Prodotto[]> {
  * Recupera un prodotto per ID
  */
 export async function getProdotto(id: number): Promise<Prodotto | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('prodotti')
     .select('*')
     .eq('id', id)
+    .eq('user_id', user.id)
     .single();
 
   if (error) return null;
@@ -54,9 +62,12 @@ export type NuovoProdotto = Omit<Prodotto, 'id' | 'created_at'>;
  * Crea un nuovo prodotto
  */
 export async function creaProdotto(prodotto: NuovoProdotto): Promise<Prodotto> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('prodotti')
-    .insert(prodotto)
+    .insert({ ...prodotto, user_id: user.id })
     .select()
     .single();
 
@@ -75,10 +86,14 @@ export async function aggiornaProdotto(
   id: number,
   prodotto: Partial<NuovoProdotto>
 ): Promise<Prodotto> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('prodotti')
     .update(prodotto)
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -94,10 +109,14 @@ export async function aggiornaProdotto(
  * Elimina un prodotto
  */
 export async function eliminaProdotto(id: number): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
   const { data, error } = await supabase
     .from('prodotti')
     .delete()
     .eq('id', id)
+    .eq('user_id', user.id)
     .select();
 
   if (error) {
