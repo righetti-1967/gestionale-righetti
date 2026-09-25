@@ -27,6 +27,10 @@ class SbloccaRealeRequest(BaseModel):
     azzera_dati_demo: bool = True
 
 
+class PopolaDemoRequest(BaseModel):
+    user_id: str
+
+
 def _verifica_admin(admin_email: Optional[str]):
     if not admin_email or admin_email.lower().strip() != ADMIN_EMAIL.lower():
         raise HTTPException(status_code=403, detail="Accesso riservato all'amministratore")
@@ -178,3 +182,34 @@ async def sblocca_reale(req: SbloccaRealeRequest, admin_email: str = Query(...))
     except Exception as e:
         logger.exception("Errore sblocco reale")
         raise HTTPException(status_code=500, detail=f"Errore sblocco reale: {e}")
+
+@router.post("/popola-demo")
+async def popola_demo(req: PopolaDemoRequest, admin_email: str = Query(...)):
+    """Popola un utente DEMO con dati di esempio.
+    Solo per admin Righetti.
+    """
+    _verifica_admin(admin_email)
+
+    try:
+        supabase = get_supabase()
+        u = supabase.auth.admin.get_user_by_id(req.user_id)
+        u_dict = u.user if hasattr(u, "user") else u
+        user_email = getattr(u_dict, "email", "") or ""
+
+        if user_email.lower() == ADMIN_EMAIL.lower():
+            raise HTTPException(status_code=400, detail="Non popolare l'account admin")
+
+        from app.services.demo_seed import popola_demo_utente
+        risultato = popola_demo_utente(req.user_id)
+
+        return {
+            "success": True,
+            "user_id": req.user_id,
+            "riepilogo": risultato,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Errore popolamento demo")
+        raise HTTPException(status_code=500, detail=f"Errore popolamento: {e}")
+
