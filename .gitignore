@@ -1,42 +1,27 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
+# === Node ===
+node_modules/
+dist/
+.env.local
+.env
 *.local
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-.env.local
+# === Python ===
+__pycache__/
+*.pyc
+.venv/
+venv/
+backend/.env
+backend/.secrets/
 
-# Backup patch (auto-generati)
+# === Sistema ===
+.DS_Store
+.vscode/
+.idea/
+
+# === Backup ===
+*.bak
 *.bak_*
 *.PRE_*
 *.pre-*
-
-# Env (contiene chiavi)
-.env.local
-.env
-
-# Build
-dist/
-node_modules/
-
-# Sistema
-.DS_Store
-*.bak
+backup*.zip
+backups/
