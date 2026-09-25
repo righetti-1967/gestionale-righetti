@@ -1,16 +1,25 @@
-import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 
 export function Login() {
-  const { signIn } = useAuth();
+  const { user, signIn } = useAuth();
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errore, setErrore] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [mostraPassword, setMostraPassword] = useState(false);
+
+  // SE L'UTENTE È GIÀ LOGGATO (anche via Google), REDIRECT IMMEDIATO ALLA DASHBOARD!
+  useEffect(() => {
+    if (user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
 
   async function handleGoogleLogin() {
     setErrore(null);
@@ -49,13 +58,16 @@ export function Login() {
       else if (error.includes('Too many requests')) msg = 'Troppi tentativi. Riprova tra qualche minuto.';
       setErrore(msg);
       setLoading(false);
+    } else {
+      // LOGIN RIUSCITO! REDIRECT IMMEDIATO SENZA LOOP!
+      navigate('/', { replace: true });
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-apple-lightgray px-4 py-8">
       <div className="w-full max-w-md">
-        {/* Header fuori dalla card: nome + payoff */}
+        {/* Header fuori dalla card */}
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-apple-darkgray tracking-tight">
             Gestionale Studio
@@ -65,7 +77,6 @@ export function Login() {
 
         {/* Card bianca */}
         <div className="bg-white rounded-apple shadow-apple-lg p-8 sm:p-10 border border-gray-200/60">
-          {/* Titolo card */}
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-apple-darkgray tracking-tight">Accedi</h2>
             <p className="text-sm text-apple-gray mt-1">
@@ -216,7 +227,6 @@ export function Login() {
           </div>
         </div>
 
-        {/* Footer sotto la card */}
         <p className="text-center text-xs text-apple-gray mt-6">
           Per assistenza contatta amministrazione@righetti.club
         </p>
