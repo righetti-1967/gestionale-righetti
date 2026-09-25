@@ -100,7 +100,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('signOut error:', e);
+    }
+    // Pulisci esplicitamente TUTTO lo storage auth (fix loop login multi-utente)
+    try {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('sb-') || key.includes('supabase')) {
+          localStorage.removeItem(key);
+        }
+      });
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith('sb-') || key.includes('supabase')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    } catch (e) {
+      console.error('storage cleanup error:', e);
+    }
   }
 
   /**
