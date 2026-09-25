@@ -18,6 +18,8 @@ const RIGHETTI_EMAIL = 'righetti@righetti.club';
 // - Altri utenti loggati: '{user_id}/logo.png'
 // - Non loggato: 'logo.png' (fallback)
 let _logoPathCache: string = 'logo.png';
+// Timestamp cache-buster fisso (evita loop di re-render)
+let _cacheBuster: number = Date.now();
 
 /**
  * Ritorna il path corretto per l'utente corrente.
@@ -63,8 +65,16 @@ export function getLogoUrl(cacheBuster = false): string {
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(_logoPathCache);
   if (!data?.publicUrl) return LOGO_DEFAULT;
   const baseUrl = data.publicUrl;
-  void cacheBuster;
-  return `${baseUrl}?v=${Date.now()}`;
+  // Se richiesto esplicitamente un nuovo cache-buster (dopo upload), aggiorna
+  if (cacheBuster) _cacheBuster = Date.now();
+  return `${baseUrl}?v=${_cacheBuster}`;
+}
+
+/**
+ * Forza un nuovo cache-buster (chiamare dopo upload/rimozione logo).
+ */
+export function refreshLogoCacheBuster(): void {
+  _cacheBuster = Date.now();
 }
 
 /**
@@ -185,7 +195,8 @@ export async function uploadLogo(file: File): Promise<{ url: string | null; erro
 
     if (error) throw error;
 
-    return { url: getLogoUrl(true), error: null };
+    refreshLogoCacheBuster();
+    return { url: getLogoUrl(), error: null };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Errore durante il caricamento.';
     return { url: null, error: msg };
