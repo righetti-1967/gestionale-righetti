@@ -55,16 +55,22 @@ export function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-apple-lightgray px-4 py-8">
       <div className="w-full max-w-md">
-        {/* Card Login */}
+        {/* Header fuori dalla card: nome + payoff */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-apple-darkgray tracking-tight">
+            Gestionale Studio
+          </h1>
+          <p className="text-base text-apple-gray mt-2">Software di gestione Aziendale</p>
+        </div>
+
+        {/* Card bianca */}
         <div className="bg-white rounded-apple shadow-apple-lg p-8 sm:p-10 border border-gray-200/60">
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-20 h-20 rounded-apple bg-gradient-to-br from-apple-blue to-blue-600 flex items-center justify-center text-4xl text-white mb-4 shadow-apple">
-              🏢
-            </div>
-            <h1 className="text-2xl font-semibold text-apple-darkgray tracking-tight">
-              Gestionale Studio
-            </h1>
-            <p className="text-sm text-apple-gray mt-1">Software di gestione Aziendale</p>
+          {/* Titolo card */}
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-apple-darkgray tracking-tight">Accedi</h2>
+            <p className="text-sm text-apple-gray mt-1">
+              Inserisci le tue credenziali per continuare
+            </p>
           </div>
 
           {/* Pulsante Google Login */}
@@ -72,7 +78,7 @@ export function Login() {
             type="button"
             onClick={handleGoogleLogin}
             disabled={loading || loadingGoogle}
-            className="w-full py-2.5 px-4 rounded-apple border border-gray-200/80 bg-white hover:bg-gray-50 text-apple-darkgray text-sm font-medium transition-colors flex items-center justify-center gap-3 shadow-sm disabled:opacity-50 mb-6"
+            className="w-full py-3 px-4 rounded-apple border border-gray-200/80 bg-white hover:bg-gray-50 text-apple-darkgray text-base font-medium transition-colors flex items-center justify-center gap-3 shadow-sm disabled:opacity-50 mb-6"
           >
             {loadingGoogle ? (
               <>
@@ -81,7 +87,7 @@ export function Login() {
               </>
             ) : (
               <>
-                <svg width="18" height="18" viewBox="0 0 24 24">
+                <svg width="20" height="20" viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
                     d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.66-5.17 3.66-9.12z"
@@ -115,7 +121,7 @@ export function Login() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-apple-darkgray mb-1.5"
+                className="block text-xs font-medium text-apple-gray uppercase tracking-wider mb-2"
               >
                 Email
               </label>
@@ -126,16 +132,16 @@ export function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                placeholder="nome@azienda.it"
+                placeholder="nome@righetti.club"
                 disabled={loading || loadingGoogle}
-                className="w-full px-3.5 py-2.5 rounded-apple bg-apple-lightgray border border-transparent text-apple-darkgray placeholder:text-apple-gray text-sm focus:outline-none focus:bg-white focus:border-apple-blue transition-all"
+                className="w-full px-4 py-3 rounded-apple bg-apple-lightgray border border-transparent text-apple-darkgray placeholder:text-apple-gray text-base focus:outline-none focus:bg-white focus:border-apple-blue transition-all"
               />
             </div>
 
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-apple-darkgray mb-1.5"
+                className="block text-xs font-medium text-apple-gray uppercase tracking-wider mb-2"
               >
                 Password
               </label>
@@ -149,7 +155,7 @@ export function Login() {
                   autoComplete="current-password"
                   placeholder="••••••••"
                   disabled={loading || loadingGoogle}
-                  className="w-full px-3.5 py-2.5 pr-10 rounded-apple bg-apple-lightgray border border-transparent text-apple-darkgray placeholder:text-apple-gray text-sm focus:outline-none focus:bg-white focus:border-apple-blue transition-all"
+                  className="w-full px-4 py-3 pr-10 rounded-apple bg-apple-lightgray border border-transparent text-apple-darkgray placeholder:text-apple-gray text-base focus:outline-none focus:bg-white focus:border-apple-blue transition-all"
                 />
                 <button
                   type="button"
@@ -167,7 +173,7 @@ export function Login() {
             <div className="text-right -mt-1">
               <Link
                 to="/forgot-password"
-                className="text-xs text-apple-blue hover:underline font-medium"
+                className="text-sm text-apple-blue hover:underline font-medium"
               >
                 Password dimenticata?
               </Link>
@@ -183,7 +189,7 @@ export function Login() {
             <button
               type="submit"
               disabled={loading || loadingGoogle || !email.trim() || !password.trim()}
-              className="w-full py-2.5 px-4 rounded-apple bg-apple-blue text-white font-medium text-sm hover:bg-apple-blue/90 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-apple flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 rounded-apple bg-apple-blue text-white font-semibold text-base hover:bg-apple-blue/90 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-apple flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -198,25 +204,23 @@ export function Login() {
 
           {/* Link Registrazione */}
           <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-            <p className="text-xs text-apple-gray">
+            <p className="text-sm text-apple-gray">
               Non hai ancora un account?{' '}
               <Link to="/registrati" className="text-apple-blue hover:underline font-medium">
                 Registrati gratis
               </Link>
             </p>
-            <p className="text-[10px] text-apple-gray mt-1.5">
-              Prova 15 giorni gratis · Nessuna carta di credito richiesta
-            </p>
-            <p className="text-[10px] text-apple-gray mt-2">
-              Per assistenza contatta{' '}
-              <a href="mailto:amministrazione@righetti.club" className="text-apple-blue hover:underline">
-                amministrazione@righetti.club
-              </a>
+            <p className="text-xs text-apple-gray mt-2">
+              Prova 15 giorni gratis · Nessuna carta di credito
             </p>
           </div>
         </div>
 
+        {/* Footer sotto la card */}
         <p className="text-center text-xs text-apple-gray mt-6">
+          Per assistenza contatta amministrazione@righetti.club
+        </p>
+        <p className="text-center text-xs text-apple-gray mt-2">
           Powered by @Righetti Since 1967
         </p>
       </div>
