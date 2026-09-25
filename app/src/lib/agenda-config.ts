@@ -48,14 +48,14 @@ export interface ConfigAgenda {
 }
 
 export const OPERATORI_DEFAULT: OperatoreConfig[] = [
-  { id: 'luca', label: 'Luca Righetti', ruolo: 'Consulente Tricologo', colore: 'blue' },
-  { id: 'lorenzo', label: 'Lorenzo Righetti', ruolo: 'Tecnico Tricologo', colore: 'green' },
+  { id: 'op1', label: 'Operatore 1', ruolo: 'Titolare', colore: 'blue' },
+  { id: 'op2', label: 'Operatore 2', ruolo: 'Collaboratore', colore: 'green' },
 ];
 
 export const AGENDA_DEFAULT: ConfigAgenda = {
-  oraApertura: '08:30',
-  oraChiusura: '19:00',
-  giorniLavorativi: [4, 5, 6],       // Gio, Ven, Sab (attuale)
+  oraApertura: '09:00',
+  oraChiusura: '18:00',
+  giorniLavorativi: [2, 3, 4, 5, 6],  // Mar, Mer, Gio, Ven, Sab
   granularitaMinuti: 15,
   operatori: OPERATORI_DEFAULT,
   operatoriVisibili: ['luca', 'lorenzo'],
