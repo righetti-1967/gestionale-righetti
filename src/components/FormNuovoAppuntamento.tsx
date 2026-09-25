@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getClienti, type Cliente } from '../lib/clienti';
 import { getServizi, type Servizio } from '../lib/servizi';
 import { getPercorsiCliente, type Percorso } from '../lib/percorsi';
@@ -20,6 +20,7 @@ import {
 } from '../lib/appuntamenti';
 import { formatEuro } from '../lib/fatture';
 import { getScarichiFattura } from '../lib/scarichi';
+import { getOperatoriVisibili } from '../lib/appuntamenti';
 import { calcolaResiduo, type ResiduoPercorso } from '../lib/percorsi-helper';
 import type { VoceSelezionata } from '../lib/appuntamenti';
 import { FormNuovoClienteRapido } from './FormNuovoClienteRapido';
@@ -104,9 +105,11 @@ export function FormNuovoAppuntamento({
   );
   const [servizioCheckupId, setServizioCheckupId] = useState<number | null>(null);
   const [showPickerServizi, setShowPickerServizi] = useState(false);
+  const percorsoSelectRef = useRef<HTMLSelectElement>(null);
   const [ricercaPickerServizi, setRicercaPickerServizi] = useState('');
   const [selezionatiPicker, setSelezionatiPicker] = useState<Set<number>>(new Set());
   const [appuntamentiGiorno, setAppuntamentiGiorno] = useState<AppuntamentoConCliente[]>([]);
+  const operatoriVisibili = useMemo(() => getOperatoriVisibili(), []);
 
   useEffect(() => {
     async function carica() {
@@ -144,6 +147,18 @@ export function FormNuovoAppuntamento({
         const tutti = await getPercorsiCliente(clienteId);
         const attivi = tutti.filter((p) => !p.terminato && !p.bloccato);
         setPercorsiCliente(attivi);
+
+        // Auto-seleziona tab in base ai percorsi attivi
+        // (solo se non stiamo modificando un appuntamento esistente)
+        if (!modifica) {
+          if (attivi.length > 0) {
+            setTipo('percorso');
+          } else {
+            // Nessun percorso attivo → torna a Generico
+            setTipo('generico');
+            setPercorsoId(null);
+          }
+        }
       } catch (err) {
         console.error('Errore caricamento percorsi:', err);
       }
@@ -226,6 +241,18 @@ export function FormNuovoAppuntamento({
     carica();
   }, [data]);
 
+  // Auto-focus sul dropdown percorso quando si attiva il tab "Percorso"
+  // e il percorso non è ancora stato selezionato
+  useEffect(() => {
+    if (tipo === 'percorso' && !percorsoId && percorsoSelectRef.current) {
+      // Delay per assicurarsi che il DOM sia renderizzato
+      const timer = setTimeout(() => {
+        percorsoSelectRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [tipo, percorsoId]);
+
   useEffect(() => {
     if (tipo === 'percorso' && percorsoId) {
       const p = percorsiCliente.find((x) => x.id === percorsoId);
@@ -241,9 +268,34 @@ export function FormNuovoAppuntamento({
   }, [tipo, percorsoId, percorsiCliente, servizi]);
 
   const clienteSelezionato = clienti.find((c) => c.id === clienteId);
-  const clientiFiltrati = clienti.filter((c) =>
-    c.nome_cognome.toLowerCase().includes(ricercaCliente.toLowerCase())
-  );
+
+  // Normalizza accenti e minuscole per ricerca
+  function normalizza(s: string): string {
+    return s
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  const clientiFiltrati = useMemo(() => {
+    const q = normalizza(ricercaCliente);
+    if (!q) return clienti;
+
+    const parole = q.split(/\s+/);
+
+    return clienti.filter((c) => {
+      const nome = normalizza(c.nome_cognome || '');
+      const cell = (c.cellulare || '').toLowerCase().replace(/\s/g, '');
+      const email = (c.email || '').toLowerCase();
+
+      const matchNome = parole.every((p) => nome.includes(p));
+      const matchCell = cell.includes(q.replace(/\s/g, ''));
+      const matchEmail = email.includes(q);
+
+      return matchNome || matchCell || matchEmail;
+    });
+  }, [clienti, ricercaCliente]);
 
   const durataVoci = vociSelezionate.reduce((sum, v) => sum + (v.durata_minuti || 0), 0);
   const durataNum = durataVoci > 0 ? durataVoci : parseInt(durata, 10) || 60;
@@ -502,12 +554,17 @@ export function FormNuovoAppuntamento({
             </label>
             {clienteSelezionato ? (
               <div className="flex items-center justify-between px-4 py-3 bg-blue-50 border border-blue-200 rounded-apple">
-                <div className="min-w-0">
+                <div className="min-w-0 flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-semibold text-apple-darkgray truncate">
                     {clienteSelezionato.nome_cognome}
                   </p>
+                  {percorsiCliente.length > 0 && (
+                    <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-apple-blue border border-blue-200">
+                      🎯 Percorso
+                    </span>
+                  )}
                   {clienteSelezionato.cellulare && (
-                    <p className="text-xs text-apple-gray">
+                    <p className="text-xs text-apple-gray w-full">
                       {clienteSelezionato.cellulare}
                     </p>
                   )}
@@ -530,7 +587,7 @@ export function FormNuovoAppuntamento({
                     setShowListaClienti(true);
                   }}
                   onFocus={() => setShowListaClienti(true)}
-                  placeholder="Cerca cliente per nome..."
+                  placeholder="Cerca per nome, cellulare, email..."
                   className="w-full px-4 py-3 bg-white border border-gray-200 rounded-apple text-sm text-apple-darkgray placeholder:text-apple-gray/60 focus:outline-none focus:ring-2 focus:ring-apple-blue/30 focus:border-apple-blue transition-all"
                 />
                 {showListaClienti && (
@@ -553,7 +610,7 @@ export function FormNuovoAppuntamento({
                         )}
                       </div>
                     ) : (
-                      clientiFiltrati.slice(0, 50).map((c) => (
+                      clientiFiltrati.slice(0, 100).map((c) => (
                         <button
                           key={c.id}
                           type="button"
@@ -584,7 +641,7 @@ export function FormNuovoAppuntamento({
               Operatore <span className="text-red-500">*</span>
             </label>
             <div className="grid grid-cols-2 gap-3">
-              {(Object.keys(OPERATORI) as Operatore[]).map((op) => (
+              {operatoriVisibili.map((op) => (
                 <button
                   key={op}
                   type="button"
@@ -671,7 +728,9 @@ export function FormNuovoAppuntamento({
                     ⚠️ Il cliente non ha percorsi attivi
                   </p>
                 ) : (
-                  <select
+                  <>
+                    <select
+                      ref={percorsoSelectRef}
                     value={percorsoId || ''}
                     onChange={(e) => {
                       setPercorsoId(Number(e.target.value) || null);
@@ -681,15 +740,27 @@ export function FormNuovoAppuntamento({
                       );
                       if (p) setTitolo(p.nome);
                     }}
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-apple text-sm text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/30 focus:border-apple-blue"
+                    className={`w-full px-4 py-3 bg-white border rounded-apple text-sm text-apple-darkgray focus:outline-none transition-all ${
+                      percorsoId === null
+                        ? 'border-red-500 ring-2 ring-red-300/60 animate-pulse shadow-md'
+                        : 'border-gray-200 focus:ring-2 focus:ring-apple-blue/30 focus:border-apple-blue'
+                    }`}
                   >
-                    <option value="">— Seleziona percorso —</option>
+                    <option value="">
+                      {percorsoId === null ? '👆 Seleziona un percorso...' : '— Seleziona percorso —'}
+                    </option>
                     {percorsiCliente.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.nome} — {formatEuro(p.totale_finale)}
                       </option>
                     ))}
-                  </select>
+                    </select>
+                    {percorsoId === null && (
+                      <p className="text-[11px] text-amber-700 mt-1.5 font-medium">
+                        ⚠️ Seleziona un percorso per procedere
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
 

@@ -13,6 +13,7 @@ import { AgendaGiornaliera } from '../components/AgendaGiornaliera';
 import { AgendaSettimanale } from '../components/AgendaSettimanale';
 import { AgendaMensile } from '../components/AgendaMensile';
 import { FormNuovoAppuntamento } from '../components/FormNuovoAppuntamento';
+import { RicercaClienteAgenda } from '../components/RicercaClienteAgenda';
 import { FormNuovoBlocco } from '../components/FormNuovoBlocco';
 import { DettaglioAppuntamento } from '../components/DettaglioAppuntamento';
 import { FormScaricoSeduta } from '../components/FormScaricoSeduta';
@@ -86,6 +87,7 @@ export function Agenda() {
     appuntamento?: AppuntamentoConCliente | null;
   }>({});
   const [dettaglio, setDettaglio] = useState<AppuntamentoConCliente | null>(null);
+  const [highlightAppuntamentoId, setHighlightAppuntamentoId] = useState<number | null>(null);
 
   const [scaricoDaApp, setScaricoDaApp] = useState<{
     percorso: Percorso;
@@ -179,6 +181,13 @@ export function Agenda() {
   function apriNuovoGenerico() {
     setFormPrecompilato({});
     setShowForm(true);
+  }
+
+  function handleVaiAAppuntamento(data: string, appuntamentoId: number) {
+    setDataCorrente(data);
+    setVista('giornaliera');
+    setHighlightAppuntamentoId(appuntamentoId);
+    setTimeout(() => setHighlightAppuntamentoId(null), 2500);
   }
 
   function clickSlotGiornaliera(operatore: Operatore, ora: string) {
@@ -402,68 +411,73 @@ export function Agenda() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-apple-darkgray mb-1">
-            Agenda
-          </h1>
-          <p className="text-sm text-apple-gray capitalize">{titoloData()}</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowFormBlocco(true)}
-            className="px-4 py-2.5 bg-gray-700 text-white rounded-apple font-medium text-sm shadow-apple hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
-          >
-            <span>🚫</span>
-            <span>Nuovo Blocco</span>
-          </button>
-          <button
-            onClick={apriNuovoGenerico}
-            className="px-4 py-2.5 bg-apple-blue text-white rounded-apple font-medium text-sm shadow-apple hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
-          >
-            <span>+</span>
-            <span>Nuovo Appuntamento</span>
-          </button>
-        </div>
+    <div>
+      <div className="mb-3">
+        <h1 className="text-xl sm:text-2xl font-bold text-apple-darkgray mb-0.5">
+          Agenda
+        </h1>
+        <p className="text-xs text-apple-gray capitalize">{titoloData()}</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="flex gap-2">
-          <button
-            onClick={() => vai(-1)}
-            className="w-10 h-10 rounded-apple bg-white shadow-apple hover:bg-gray-50 flex items-center justify-center text-apple-darkgray"
-            aria-label="Precedente"
-          >
-            ←
-          </button>
-          <button
-            onClick={vaiAOggi}
-            className="px-4 py-2.5 bg-white shadow-apple rounded-apple font-medium text-sm text-apple-darkgray hover:bg-gray-50"
-          >
-            Oggi
-          </button>
-          <button
-            onClick={() => vai(1)}
-            className="w-10 h-10 rounded-apple bg-white shadow-apple hover:bg-gray-50 flex items-center justify-center text-apple-darkgray"
-            aria-label="Successivo"
-          >
-            →
-          </button>
-          <input
-            type="date"
-            value={dataCorrente}
-            onChange={(e) => {
-              const d = new Date(e.target.value + 'T00:00:00');
-              while (!isGiornoLavorativo(d)) {
-                d.setDate(d.getDate() + 1);
-              }
-              setDataCorrente(dataToLocaleISO(d));
-            }}
-            className="px-3 py-2.5 bg-white shadow-apple rounded-apple text-sm text-apple-darkgray font-medium focus:outline-none focus:ring-2 focus:ring-apple-blue/30 cursor-pointer"
-          />
-        </div>
+      {/* Riga unica: azioni + navigazione + viste */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {/* Azioni */}
+        <RicercaClienteAgenda onVaiAAppuntamento={handleVaiAAppuntamento} />
+        <button
+          onClick={() => setShowFormBlocco(true)}
+          className="px-3 py-2.5 bg-gray-700 text-white rounded-apple font-medium text-sm shadow-apple hover:bg-gray-800 transition-colors flex items-center justify-center gap-1.5"
+          title="Nuovo Blocco"
+        >
+          <span>🚫</span>
+          <span className="hidden sm:inline">Blocco</span>
+        </button>
+        <button
+          onClick={apriNuovoGenerico}
+          className="px-3 py-2.5 bg-apple-blue text-white rounded-apple font-medium text-sm shadow-apple hover:bg-blue-600 transition-colors flex items-center justify-center gap-1.5"
+          title="Nuovo Appuntamento"
+        >
+          <span>+</span>
+          <span className="hidden sm:inline">Nuovo</span>
+        </button>
 
+        {/* Separatore */}
+        <div className="hidden sm:block w-px h-8 bg-gray-200 mx-1" />
+
+        {/* Navigazione data */}
+        <button
+          onClick={() => vai(-1)}
+          className="w-10 h-10 rounded-apple bg-white shadow-apple hover:bg-gray-50 flex items-center justify-center text-apple-darkgray shrink-0"
+          aria-label="Precedente"
+        >
+          ←
+        </button>
+        <button
+          onClick={vaiAOggi}
+          className="px-3 py-2.5 bg-white shadow-apple rounded-apple font-medium text-sm text-apple-darkgray hover:bg-gray-50 shrink-0"
+        >
+          Oggi
+        </button>
+        <button
+          onClick={() => vai(1)}
+          className="w-10 h-10 rounded-apple bg-white shadow-apple hover:bg-gray-50 flex items-center justify-center text-apple-darkgray shrink-0"
+          aria-label="Successivo"
+        >
+          →
+        </button>
+        <input
+          type="date"
+          value={dataCorrente}
+          onChange={(e) => {
+            const d = new Date(e.target.value + 'T00:00:00');
+            while (!isGiornoLavorativo(d)) {
+              d.setDate(d.getDate() + 1);
+            }
+            setDataCorrente(dataToLocaleISO(d));
+          }}
+          className="px-3 py-2.5 bg-white shadow-apple rounded-apple text-sm text-apple-darkgray font-medium focus:outline-none focus:ring-2 focus:ring-apple-blue/30 cursor-pointer shrink-0"
+        />
+
+        {/* Viste a destra */}
         <div className="flex gap-1 bg-white rounded-apple shadow-apple p-1 sm:ml-auto">
           {(
             [
@@ -508,6 +522,7 @@ export function Agenda() {
               onClickAppuntamento={clickAppuntamento}
               onClickSlot={clickSlotGiornaliera}
               onUpdateAppuntamento={handleUpdateAppuntamento}
+              highlightAppuntamentoId={highlightAppuntamentoId}
             />
           )}
           {vista === 'settimanale' && (

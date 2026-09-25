@@ -60,9 +60,7 @@ function AppGestionale() {
                 <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </button>
-            <span className="hidden lg:inline text-xs font-semibold text-apple-gray uppercase tracking-wider">
-              Gestionale Studio & Salone
-            </span>
+
           </div>
 
           {/* Badge Demo con conto alla rovescia (solo per utenti in prova 15gg) */}
@@ -85,7 +83,7 @@ function AppGestionale() {
           )}
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-3 lg:p-4">
           {currentPage === 'dashboard' && <Dashboard onNavigate={setCurrentPage} />}
           {currentPage === 'agenda' && <Agenda />}
           {currentPage === 'clienti' && <Clienti onNavigate={setCurrentPage} />}

@@ -1,5 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { creaBlocco, OPERATORI, type Operatore } from '../lib/appuntamenti';
+import {
+  creaBlocco,
+  OPERATORI,
+  getOperatoriVisibili,
+  type Operatore,
+} from '../lib/appuntamenti';
 
 interface FormNuovoBloccoProps {
   dataIniziale?: string;
@@ -19,6 +24,8 @@ export function FormNuovoBlocco({
   onSuccess,
 }: FormNuovoBloccoProps) {
   const oggi = new Date().toISOString().split('T')[0];
+
+  const operatoriVisibili = getOperatoriVisibili();
 
   const [titolo, setTitolo] = useState('');
   const [note, setNote] = useState('');
@@ -122,7 +129,7 @@ export function FormNuovoBlocco({
               Operatore <span className="text-red-500">*</span>
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {(Object.keys(OPERATORI) as Operatore[]).map((op) => (
+              {operatoriVisibili.map((op) => (
                 <button
                   key={op}
                   type="button"

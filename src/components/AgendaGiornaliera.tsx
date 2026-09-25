@@ -27,6 +27,7 @@ interface AgendaGiornalieraProps {
       voci_selezionate?: VoceSelezionata[];
     }
   ) => void;
+  highlightAppuntamentoId?: number | null;
 }
 
 const LARGHEZZA_COLONNA_ORA = 55;
@@ -59,6 +60,7 @@ export function AgendaGiornaliera({
   onClickAppuntamento,
   onClickSlot,
   onUpdateAppuntamento,
+  highlightAppuntamentoId,
 }: AgendaGiornalieraProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const colRef = useRef<HTMLDivElement>(null);
@@ -484,6 +486,7 @@ export function AgendaGiornaliera({
                     handleDragStop(b.app, b.voceIndex, b.top, deltaY, deltaX)
                   }
                   onResizeStop={(h) => handleResizeStop(b.app, b.voceIndex, h)}
+                  isHighlighted={highlightAppuntamentoId === b.app.id}
                 />
               ))}
             </div>
@@ -534,6 +537,7 @@ interface BloccoRndProps {
   onClick: () => void;
   onDragStop: (deltaY: number, deltaX: number) => void;
   onResizeStop: (height: number) => void;
+  isHighlighted?: boolean;
 }
 
 function BloccoRnd({
@@ -546,6 +550,7 @@ function BloccoRnd({
   onClick,
   onDragStop,
   onResizeStop,
+  isHighlighted,
 }: BloccoRndProps) {
   const { config: agendaConfig } = useAgendaConfig();
 
@@ -650,7 +655,9 @@ function BloccoRnd({
         }}
         className={`${classeBase} ${
           app.stato === 'completato' ? 'opacity-60' : ''
-        } ${isLive ? 'ring-2 ring-blue-500 shadow-lg' : 'hover:shadow-md'} transition-shadow`}
+        } ${isLive ? 'ring-2 ring-blue-500 shadow-lg' : 'hover:shadow-md'} ${
+          isHighlighted ? 'ring-4 ring-yellow-400 ring-offset-2 shadow-xl animate-pulse' : ''
+        } transition-shadow`}
         style={{ touchAction: 'manipulation' }}
         title={hasNote ? app.note || '' : undefined}
       >
