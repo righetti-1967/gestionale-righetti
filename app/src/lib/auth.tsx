@@ -105,21 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.error('signOut error:', e);
     }
-    // Pulisci esplicitamente TUTTO lo storage auth (fix loop login multi-utente)
-    try {
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('sb-') || key.includes('supabase')) {
-          localStorage.removeItem(key);
-        }
-      });
-      Object.keys(sessionStorage).forEach((key) => {
-        if (key.startsWith('sb-') || key.includes('supabase')) {
-          sessionStorage.removeItem(key);
-        }
-      });
-    } catch (e) {
-      console.error('storage cleanup error:', e);
-    }
+    // NB: NON cancellare localStorage/sessionStorage manualmente.
+    // Supabase gestisce già la pulizia internamente.
+    // Cancellare le chiavi sb-* rompe il flusso di login successivo.
   }
 
   /**
