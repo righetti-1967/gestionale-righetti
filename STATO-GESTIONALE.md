@@ -1,6 +1,6 @@
 # STATO PROGETTO — GESTIONALE RIGHETTI 1967
 
-Ultimo aggiornamento: **25/09/2026 — Multi-tenant in corso, backend live, dominio attivo**
+Ultimo aggiornamento: **25/09/2026 — Multi-tenant completo (DB + frontend + logo), backend live, dominio attivo**
 
 ---
 
@@ -86,55 +86,66 @@ Aggiunto `user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE` a:
 - `sessioni_firma`, `sessioni_firma_ddt`, `sessioni_firma_fattura`
 
 **Indici** aggiunti su `user_id` per performance.
+**Constraint `impostazioni`**: UNIQUE composta `(user_id, chiave)`.
 
-### FASE B — Frontend `src/lib/*.ts` 🟡 IN CORSO
+### FASE B — Frontend `src/lib/*.ts` ✅ COMPLETATA
+
+Tutti i file che fanno query a Supabase sono stati aggiornati con `user_id`:
 
 | File | Stato |
 |------|-------|
-| `clienti.ts` | ✅ Aggiornato |
-| `prodotti.ts` | ✅ Aggiornato |
-| `servizi.ts` | ✅ Aggiornato |
-| `appuntamenti.ts` | ✅ Aggiornato |
-| `percorsi.ts` | 🟡 In corso (patch pronta, da testare) |
-| `scarichi.ts` | ⏳ Da fare |
-| `fatture.ts` | ⏳ Da fare |
-| `fornitori.ts` | ⏳ Da fare |
-| `ordini.ts` | ⏳ Da fare |
-| `magazzino.ts` | ⏳ Da fare |
-| `datiAziendali.ts` | ⏳ Da fare |
-| `agenda-config.ts` | ⏳ Da fare |
-| `aspetto.ts` | ⏳ Da fare |
-| `fatturazione.ts` | ⏳ Da fare |
-| `privacy.ts` | ⏳ Da fare |
+| `clienti.ts` | ✅ |
+| `prodotti.ts` | ✅ |
+| `servizi.ts` | ✅ |
+| `appuntamenti.ts` | ✅ |
+| `percorsi.ts` | ✅ |
+| `scarichi.ts` | ✅ |
+| `fatture.ts` | ✅ |
+| `fornitori.ts` | ✅ |
+| `ordini.ts` | ✅ |
+| `magazzino.ts` | ✅ |
+| `datiAziendali.ts` | ✅ |
+| `agenda-config.ts` | ✅ |
+| `aspetto.ts` | ✅ |
+| `fatturazione.ts` | ✅ |
+| `privacy.ts` | ✅ |
+| `Impostazioni.tsx` | ✅ |
 
-**Pattern applicato**:
-```typescript
-const { data: { user } } = await supabase.auth.getUser();
-if (!user) throw new Error('Non autenticato');
+**Eccezioni (pubbliche via token, no user_id)**: `getSessioneFirma`, `completaSessioneFirma`, `isSessioneCompletata`, `getSessioneFirmaDdt`, `completaSessioneFirmaDdt`, `isSessioneDdtCompletata`, `getSessioneFirmaFattura`, `completaSessioneFirmaFattura`.
 
-// SELECT
-.eq('user_id', user.id)
+### FASE B-bis — Logo multi-tenant ✅ COMPLETATA
 
-// INSERT
-.insert({ ...dati, user_id: user.id })
+- **Righetti** (`righetti@righetti.club`): logo fisso in `azienda/logo.png` (comportamento invariato)
+- **Altri utenti**: logo personale in `azienda/{user_id}/logo.png`
+- **Non loggato**: fallback `/logo.png` (Login, Registrati, Reset Password)
+- **`logo.ts`**: refactor con cache globale + `initLogoPath()` / `resetLogoPath()`
+- **`auth.tsx`**: chiama `initLogoPath()` su SIGNED_IN e `resetLogoPath()` su SIGNED_OUT
+- **`Impostazioni.tsx`**: nessuna modifica (usa già `uploadLogo`/`rimuoviLogo`)
 
-// UPDATE / DELETE
-.eq('user_id', user.id)
-⚠️ Eccezioni: sessioni_firma* — getSessioneFirma, completaSessioneFirma, isSessioneCompletata restano pubbliche (usate da iPad non loggato via token).
+⚠️ **RLS sul bucket `azienda`**: da configurare in FASE C per impedire scrittura cross-utente.
 
-FASE C — RLS policies ⏳ DA FARE
+### FASE C — RLS policies ⏳ DA FARE
+
 Su Supabase, attivare Row Level Security su tutte le tabelle:
-
-sql
+```sql
 CREATE POLICY "solo i propri dati"
 ON clienti FOR ALL
 USING (auth.uid() = user_id);
-FASE D — Backend demo_seed.py ⏳ DA FARE
-Creare seed per popolare utente DEMO con:
+E policy sul bucket azienda (Storage):
+
+sql
+CREATE POLICY "solo il proprio logo"
+ON storage.objects FOR ALL
+USING (bucket_id = 'azienda' AND (storage.foldername(name))[1] = auth.uid()::text);
+FASE D — Backend demo_seed.py multi-tenant + Pannello Admin ⏳ DA FARE
+D1 — backend/app/services/demo_seed.py
+Popola utente DEMO con:
+
+Logo demo → copia public/logo.png in azienda/{user_id}/logo.png
 
 3 clienti (Mario Rossi, Laura Bianchi, Giuseppe Verdi)
 
-4 servizi
+4 servizi (Check-up, Seduta Base, Seduta Avanzata, Controllo)
 
 5 prodotti
 
@@ -142,25 +153,41 @@ Creare seed per popolare utente DEMO con:
 
 4 appuntamenti (2 passati, 2 futuri)
 
-1-2 fatture
+Dati aziendali (ragione sociale "Studio Demo")
 
-2-3 DDT
+Config agenda di default
 
-Endpoint: POST /api/licenze/popola-demo
+Aspetto, fatturazione, privacy → default
 
-FASE E — Pannello Admin "👑 Licenze" ⏳ DA FARE
-Nuova tab in Impostazioni (solo righetti@righetti.club):
+Il seed cancella prima tutti i dati dell'utente (evita duplicati).
+
+D2 — Endpoint POST /api/licenze/popola-demo
+Chiama demo_seed.popola_demo_utente(user_id).
+
+D3 — Frontend src/lib/api.ts (nuovo)
+Funzioni:
+
+getAdminUtenti(adminEmail)
+
+prorogaDemoUtente(adminEmail, params)
+
+sbloccaUtenteReale(adminEmail, params)
+
+popolaDemoUtente(adminEmail, userId)
+
+D4 — Tab "👑 Licenze" in Impostazioni
+Solo visibile a righetti@righetti.club:
 
 Lista utenti con stato
 
 Azioni: +7gg, +15gg, 🧪 Popola DEMO, 🔓 Attiva Reale (Reset)
 
-FASE F — Sidebar conditional ⏳ DA FARE
+D5 — Sidebar conditional TricoAI
 Nascondere "🧬 TricoAI" agli utenti DEMO (mostrare solo a reali/admin).
 
 🎯 Roadmap (dal ROADMAP.md)
 🔴 Priorità Alta
-Completare Multi-tenant (FASE B-F)
+Completare Multi-tenant (FASI C-D-E)
 
 #4 Firma accettazione + invio WhatsApp (Whatsender)
 
@@ -198,29 +225,25 @@ git commit -m "messaggio"
 git push
 → Vercel + Railway fanno auto-deploy
 
-📋 Lista Cose da Fare Oggi
+📋 Lista Cose da Fare
 🔴 Priorità 1 — Chiudere multi-tenant
-percorsi.ts (patch pronta)
+✅ DB: user_id su tutte le tabelle
 
-scarichi.ts
+✅ Frontend: src/lib/*.ts multi-tenant
 
-fatture.ts
+✅ Logo multi-tenant
 
-fornitori.ts
+⏳ RLS policies su Supabase (tabelle + bucket azienda)
 
-ordini.ts
+⏳ Backend demo_seed.py multi-tenant (con logo demo)
 
-magazzino.ts
+⏳ Endpoint POST /api/licenze/popola-demo
 
-File minori (datiAziendali, agenda-config, aspetto, fatturazione, privacy)
+⏳ Frontend src/lib/api.ts (funzioni admin)
 
-RLS policies su Supabase
+⏳ Pannello "👑 Licenze" in Impostazioni
 
-Backend demo_seed.py multi-tenant
-
-Pannello "👑 Licenze" in Impostazioni
-
-Sidebar conditional TricoAI
+⏳ Sidebar conditional TricoAI (nascondi a DEMO)
 
 🟡 Priorità 2
 Card WhatsApp + Email in Impostazioni
@@ -228,3 +251,17 @@ Card WhatsApp + Email in Impostazioni
 Sync Gestionale → TricoAI
 
 Documento aggiornato il 25/09/2026.
+EOF
+
+echo "✅ STATO riscritto"
+echo ""
+echo "=== Git status ==="
+git status --short
+echo ""
+echo "=== Commit + push ==="
+git add .
+git commit -m "docs: STATO riscritto con FASE A/B/B-bis complete + roadmap aggiornata"
+git push
+echo ""
+echo "=== Log ==="
+git log --oneline -3
