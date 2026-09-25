@@ -56,11 +56,11 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center bg-apple-lightgray px-4 py-8">
       <div className="w-full max-w-md">
         {/* Header fuori dalla card: nome + payoff */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-apple-darkgray tracking-tight">
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-apple-darkgray tracking-tight">
             Gestionale Studio
           </h1>
-          <p className="text-base text-apple-gray mt-2">Software di gestione Aziendale</p>
+          <p className="text-sm text-apple-gray mt-1">Software di gestione Aziendale</p>
         </div>
 
         {/* Card bianca */}
