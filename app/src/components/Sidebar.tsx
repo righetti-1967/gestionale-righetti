@@ -68,13 +68,13 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
             <div className="w-14 h-14 shrink-0 flex items-center justify-center">
               <img
                 src={getLogoUrl()}
-                alt="Righetti 1967"
+                alt="Gestionale Studio"
                 className="w-14 h-14 object-contain mix-blend-multiply"
               />
             </div>
             <div className="min-w-0 overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
               <h1 className="text-base font-semibold text-apple-darkgray whitespace-nowrap">
-                Righetti 1967
+                Gestionale Studio
               </h1>
               <p className="text-xs text-apple-gray whitespace-nowrap">Gestionale</p>
             </div>
@@ -120,11 +120,11 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
               <button
                 onClick={() => handleNavigate('analisi')}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-apple text-sm font-medium transition-all duration-200 text-apple-blue hover:bg-white/60"
-                title="TricoAI"
+                title="Gestionale Studio"
               >
                 <span className="text-lg shrink-0 w-6 flex items-center justify-center">🧬</span>
                 <span className="flex-1 text-left whitespace-nowrap overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
-                  TricoAI
+                  Gestionale Studio
                 </span>
                 <span className="text-xs opacity-60 lg:opacity-0 lg:group-hover:opacity-60 transition-opacity duration-200">
                   ↗

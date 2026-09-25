@@ -30,7 +30,6 @@ const MOTIVO_CONFIG: Record<
   },
 };
 
-// Config badge stato appuntamento (nella lista)
 const STATO_CONFIG: Record<
   string,
   { label: string; colore: string } | null
@@ -38,8 +37,8 @@ const STATO_CONFIG: Record<
   pending: { label: '⏳ Da confermare', colore: 'bg-amber-100 text-amber-800' },
   prenotato: { label: '📌 Prenotato', colore: 'bg-gray-100 text-gray-700' },
   confermato: { label: '✓ Confermato', colore: 'bg-green-100 text-green-800' },
-  completato: null, // non mostrato
-  cancellato: null, // motivo gestito separatamente
+  completato: null,
+  cancellato: null,
 };
 
 interface ListaAppuntamentiClienteProps {
@@ -64,7 +63,7 @@ export function ListaAppuntamentiCliente({
         setLoading(true);
         setErrore(null);
         const data = await getAppuntamentiCliente(clienteId);
-        setAppuntamenti(data);
+        setAppuntamenti(data || []);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         setErrore(msg || 'Errore nel caricamento');
@@ -78,7 +77,7 @@ export function ListaAppuntamentiCliente({
   const oggi = new Date().toISOString().split('T')[0];
 
   const futuri = appuntamenti.filter(
-    (a) => a.stato !== 'cancellato' && a.stato !== 'completato' && a.data >= oggi
+    (a) => a.stato !== 'cancellato' && a.stato !== 'completato' && (a.data || '') >= oggi
   );
   const completati = appuntamenti.filter((a) => a.stato === 'completato');
   const cancellati = appuntamenti.filter((a) => a.stato === 'cancellato');
@@ -87,6 +86,7 @@ export function ListaAppuntamentiCliente({
     tab === 'futuri' ? futuri : tab === 'completati' ? completati : cancellati;
 
   function formatData(data: string): string {
+    if (!data) return '—';
     try {
       return new Date(data + 'T00:00:00').toLocaleDateString('it-IT', {
         weekday: 'short',
@@ -175,10 +175,16 @@ export function ListaAppuntamentiCliente({
           {lista.map((app) => {
             const colore = app.colore || coloreDefault(app.tipo);
             const cfg = COLORI_APPUNTAMENTO[colore] || COLORI_APPUNTAMENTO.gray;
-            const oraInizio = app.ora_inizio.slice(0, 5);
-            const oraFine = calcolaOraFine(oraInizio, app.durata_minuti);
+            const oraInizio = (app.ora_inizio || '').slice(0, 5) || '09:00';
+            const oraFine = calcolaOraFine(oraInizio, app.durata_minuti || 30);
             const voci = app.voci_selezionate || [];
             const isCliccabile = tab !== 'cancellati';
+
+            // Protezione operatore dinamico
+            const opLabel = (app.operatore && OPERATORI[app.operatore]?.label) || app.operatore || 'Operatore';
+
+            // Protezione motivo cancellazione sicuro
+            const motivoCfg = (app.motivo_cancellazione && MOTIVO_CONFIG[app.motivo_cancellazione]) || null;
 
             return (
               <button
@@ -198,7 +204,7 @@ export function ListaAppuntamentiCliente({
                       {formatData(app.data)} • {oraInizio}–{oraFine}
                     </p>
                     <p className="text-xs text-apple-gray truncate mt-0.5">
-                      {OPERATORI[app.operatore].label}
+                      {opLabel}
                       {app.titolo && ` • ${app.titolo}`}
                     </p>
                   </div>
@@ -212,7 +218,7 @@ export function ListaAppuntamentiCliente({
                       {(app.tipo as string) === 'trattamento' && '💆 Trattamento'}
                       {app.tipo === 'generico' && '📌 Generico'}
                     </span>
-                    {STATO_CONFIG[app.stato] && (
+                    {app.stato && STATO_CONFIG[app.stato] && (
                       <span
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATO_CONFIG[app.stato]!.colore}`}
                       >
@@ -222,16 +228,20 @@ export function ListaAppuntamentiCliente({
                   </div>
                 </div>
 
-                {/* Badge motivo cancellazione */}
+                {/* Badge motivo cancellazione protetto da crash */}
                 {app.stato === 'cancellato' && app.motivo_cancellazione && (
                   <div className="mt-1.5">
                     <span
-                      className={`inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${MOTIVO_CONFIG[app.motivo_cancellazione].colore}`}
+                      className={`inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        motivoCfg ? motivoCfg.colore : 'bg-gray-100 text-gray-700'
+                      }`}
                     >
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${MOTIVO_CONFIG[app.motivo_cancellazione].pallino}`}
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          motivoCfg ? motivoCfg.pallino : 'bg-gray-500'
+                        }`}
                       ></span>
-                      {MOTIVO_CONFIG[app.motivo_cancellazione].label}
+                      {motivoCfg ? motivoCfg.label : String(app.motivo_cancellazione)}
                     </span>
                   </div>
                 )}
@@ -244,7 +254,7 @@ export function ListaAppuntamentiCliente({
                         key={`${v.tipo}-${v.servizio_id || v.prodotto_id || i}`}
                         className="text-[10px] text-apple-gray truncate"
                       >
-                        {v.tipo === 'servizio' ? '🛠️' : '📦'} {v.nome}
+                        {v.tipo === 'servizio' ? '🛠️' : '📦'} {v.nome || 'Servizio'}
                         {v.durata_minuti && ` (${v.durata_minuti}m)`}
                       </p>
                     ))}
