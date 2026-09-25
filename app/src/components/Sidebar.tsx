@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { getLogoUrl } from '../lib/logo';
+import { getDemoStatus } from '../lib/demo';
 
 interface SidebarProps {
   currentPage: string;
@@ -25,6 +26,7 @@ const menuItems = [
 export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: SidebarProps) {
   const { user, signOut } = useAuth();
   const [confermaLogout, setConfermaLogout] = useState(false);
+  const demoStatus = getDemoStatus(user);
 
   function handleNavigate(page: string) {
     if (page === 'analisi') {
@@ -111,21 +113,25 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
             );
           })}
 
-          <div className="my-3 border-t border-gray-200/60" />
+          {(demoStatus.isReale || demoStatus.isRighetti) && (
+            <>
+              <div className="my-3 border-t border-gray-200/60" />
 
-          <button
-            onClick={() => handleNavigate('analisi')}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-apple text-sm font-medium transition-all duration-200 text-apple-blue hover:bg-white/60"
-            title="TricoAI"
-          >
-            <span className="text-lg shrink-0 w-6 flex items-center justify-center">🧬</span>
-            <span className="flex-1 text-left whitespace-nowrap overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
-              TricoAI
-            </span>
-            <span className="text-xs opacity-60 lg:opacity-0 lg:group-hover:opacity-60 transition-opacity duration-200">
-              ↗
-            </span>
-          </button>
+              <button
+                onClick={() => handleNavigate('analisi')}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-apple text-sm font-medium transition-all duration-200 text-apple-blue hover:bg-white/60"
+                title="TricoAI"
+              >
+                <span className="text-lg shrink-0 w-6 flex items-center justify-center">🧬</span>
+                <span className="flex-1 text-left whitespace-nowrap overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
+                  TricoAI
+                </span>
+                <span className="text-xs opacity-60 lg:opacity-0 lg:group-hover:opacity-60 transition-opacity duration-200">
+                  ↗
+                </span>
+              </button>
+            </>
+          )}
         </nav>
 
         <div className="shrink-0 px-2 pb-3 pt-2 border-t border-gray-200/60 space-y-1">
