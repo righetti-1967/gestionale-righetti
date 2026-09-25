@@ -2,7 +2,6 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
-import { getLogoUrl } from '../lib/logo';
 
 export function Login() {
   const { signIn } = useAuth();
@@ -59,17 +58,13 @@ export function Login() {
         {/* Card Login */}
         <div className="bg-white rounded-apple shadow-apple-lg p-8 sm:p-10 border border-gray-200/60">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-20 h-20 flex items-center justify-center mb-4">
-              <img
-                src={getLogoUrl()}
-                alt="Righetti Since 1967"
-                className="w-20 h-20 object-contain mix-blend-multiply"
-              />
+            <div className="w-20 h-20 rounded-apple bg-gradient-to-br from-apple-blue to-blue-600 flex items-center justify-center text-4xl text-white mb-4 shadow-apple">
+              🏢
             </div>
             <h1 className="text-2xl font-semibold text-apple-darkgray tracking-tight">
-              Righetti Since 1967
+              Gestionale Studio
             </h1>
-            <p className="text-sm text-apple-gray mt-1">Gestionale Studio & Salone</p>
+            <p className="text-sm text-apple-gray mt-1">Software di gestione Aziendale</p>
           </div>
 
           {/* Pulsante Google Login */}
@@ -212,11 +207,17 @@ export function Login() {
             <p className="text-[10px] text-apple-gray mt-1.5">
               Prova 15 giorni gratis · Nessuna carta di credito richiesta
             </p>
+            <p className="text-[10px] text-apple-gray mt-2">
+              Per assistenza contatta{' '}
+              <a href="mailto:amministrazione@righetti.club" className="text-apple-blue hover:underline">
+                amministrazione@righetti.club
+              </a>
+            </p>
           </div>
         </div>
 
         <p className="text-center text-xs text-apple-gray mt-6">
-          Studio Righetti Since 1967
+          Powered by @Righetti Since 1967
         </p>
       </div>
     </div>
