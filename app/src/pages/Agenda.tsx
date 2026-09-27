@@ -88,6 +88,7 @@ export function Agenda() {
   }>({});
   const [dettaglio, setDettaglio] = useState<AppuntamentoConCliente | null>(null);
   const [highlightAppuntamentoId, setHighlightAppuntamentoId] = useState<number | null>(null);
+  const [cardAttiva, setCardAttiva] = useState<'pending' | 'rebooking' | null>(null);
 
   const [scaricoDaApp, setScaricoDaApp] = useState<{
     percorso: Percorso;
@@ -134,6 +135,48 @@ export function Agenda() {
       fine: dataToLocaleISO(fine),
     };
   }, [vista, dataCorrente, configCaricata]);
+
+  const oggiStringa = dataToLocaleISO(new Date());
+
+  const pendingList = useMemo(
+    () =>
+      appuntamenti.filter(
+        (a) => a.stato === 'pending' && a.data >= oggiStringa && !a.is_blocco
+      ),
+    [appuntamenti, oggiStringa]
+  );
+
+  const rebookingList = useMemo(
+    () =>
+      appuntamenti.filter(
+        (a) =>
+          a.motivo_cancellazione === 'rebooking' &&
+          !a.rebooking_fissato &&
+          !a.is_blocco
+      ),
+    [appuntamenti]
+  );
+
+  function apriWhatsAppCliente(app: AppuntamentoConCliente) {
+    const cellulare = app.cliente?.cellulare;
+    if (!cellulare) {
+      setToast({ message: 'Cliente senza cellulare', tipo: 'error' });
+      return;
+    }
+    const pulito = cellulare.replace(/\D/g, '');
+    const numero = pulito.startsWith('39') ? pulito : `39${pulito}`;
+    const nomeCliente = app.cliente?.nome_cognome ?? '';
+    const dataIt = new Date(app.data + 'T00:00:00').toLocaleDateString('it-IT', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+    const ora = app.ora_inizio.slice(0, 5);
+    const messaggio = encodeURIComponent(
+      `Ciao ${nomeCliente.split(' ')[0]}, ti scrivo dallo Studio Righetti per confermare il tuo appuntamento di ${dataIt} alle ${ora}. Confermi?`
+    );
+    window.open(`https://wa.me/${numero}?text=${messaggio}`, '_blank');
+  }
 
   async function ricarica() {
     try {
@@ -500,6 +543,167 @@ export function Agenda() {
           ))}
         </div>
       </div>
+
+      {/* Barra Pending/Rebooking */}
+      {(pendingList.length > 0 || rebookingList.length > 0) && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {pendingList.length > 0 && (
+            <button
+              onClick={() => setCardAttiva(cardAttiva === 'pending' ? null : 'pending')}
+              className={`px-3 py-2 rounded-apple text-xs font-semibold transition-all shadow-apple ${
+                cardAttiva === 'pending'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100'
+              }`}
+            >
+              ⏳ Pending <strong>({pendingList.length})</strong>
+            </button>
+          )}
+          {rebookingList.length > 0 && (
+            <button
+              onClick={() =>
+                setCardAttiva(cardAttiva === 'rebooking' ? null : 'rebooking')
+              }
+              className={`px-3 py-2 rounded-apple text-xs font-semibold transition-all shadow-apple ${
+                cardAttiva === 'rebooking'
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100'
+              }`}
+            >
+              🔄 Rebooking <strong>({rebookingList.length})</strong>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Pannello Pending */}
+      {cardAttiva === 'pending' && pendingList.length > 0 && (
+        <div className="mb-3 space-y-2 p-3 bg-red-50/50 border border-red-200 rounded-apple">
+          <h3 className="text-xs font-bold text-red-900 uppercase tracking-wide">
+            ⏳ Appuntamenti da confermare
+          </h3>
+          {pendingList.map((app) => (
+            <div
+              key={app.id}
+              className="bg-white border border-red-200 rounded-apple p-3 flex flex-wrap items-center gap-3"
+            >
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-semibold text-xs shrink-0">
+                  {(app.cliente?.nome_cognome ?? '?')
+                    .split(' ')
+                    .map((n) => n[0])
+                    .slice(0, 2)
+                    .join('')
+                    .toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-apple-darkgray truncate">
+                    {app.cliente?.nome_cognome ?? '—'}
+                  </p>
+                  <p className="text-xs text-apple-gray">
+                    📅{' '}
+                    {new Date(app.data + 'T00:00:00').toLocaleDateString('it-IT', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                    {' • '}
+                    {app.ora_inizio.slice(0, 5)}
+                    {' • '}
+                    {app.titolo}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {app.cliente?.cellulare && (
+                  <button
+                    onClick={() => apriWhatsAppCliente(app)}
+                    className="w-8 h-8 rounded-apple flex items-center justify-center text-green-600 hover:bg-green-50 transition-colors"
+                    title="Invia WhatsApp"
+                  >
+                    💬
+                  </button>
+                )}
+                <button
+                  onClick={() => handleVaiAAppuntamento(app.data, app.id)}
+                  className="w-8 h-8 rounded-apple flex items-center justify-center text-apple-gray hover:bg-apple-lightgray transition-colors"
+                  title="Apri in Agenda"
+                >
+                  📅
+                </button>
+                <button
+                  onClick={() => setDettaglio(app)}
+                  className="w-8 h-8 rounded-apple flex items-center justify-center text-apple-gray hover:bg-apple-lightgray transition-colors"
+                  title="Modifica"
+                >
+                  ✏️
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pannello Rebooking */}
+      {cardAttiva === 'rebooking' && rebookingList.length > 0 && (
+        <div className="mb-3 space-y-2 p-3 bg-orange-50/50 border border-orange-200 rounded-apple">
+          <h3 className="text-xs font-bold text-orange-900 uppercase tracking-wide">
+            🔄 Clienti da riprogrammare
+          </h3>
+          {rebookingList.map((app) => (
+            <div
+              key={app.id}
+              className="bg-white border border-orange-200 rounded-apple p-3 flex flex-wrap items-center gap-3"
+            >
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-semibold text-xs shrink-0">
+                  {(app.cliente?.nome_cognome ?? '?')
+                    .split(' ')
+                    .map((n) => n[0])
+                    .slice(0, 2)
+                    .join('')
+                    .toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-apple-darkgray truncate">
+                    {app.cliente?.nome_cognome ?? '—'}
+                  </p>
+                  <p className="text-xs text-apple-gray">
+                    📅{' '}
+                    {new Date(app.data + 'T00:00:00').toLocaleDateString('it-IT', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                    {' • '}
+                    {app.ora_inizio.slice(0, 5)}
+                    {' • '}
+                    {app.titolo}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {app.cliente?.cellulare && (
+                  <button
+                    onClick={() => apriWhatsAppCliente(app)}
+                    className="w-8 h-8 rounded-apple flex items-center justify-center text-green-600 hover:bg-green-50 transition-colors"
+                    title="Invia WhatsApp"
+                  >
+                    💬
+                  </button>
+                )}
+                <button
+                  onClick={() => setDettaglio(app)}
+                  className="w-8 h-8 rounded-apple flex items-center justify-center text-apple-gray hover:bg-apple-lightgray transition-colors"
+                  title="Fissa appuntamento"
+                >
+                  📅
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {loading && (
         <div className="flex items-center justify-center py-20">
