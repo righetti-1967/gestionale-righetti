@@ -41,7 +41,11 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
     await signOut();
   }
 
-  const iniziale = user?.email?.charAt(0).toUpperCase() ?? '?';
+  // Dati profilo utente reattivi (come in TricoAI)
+  const fullName = (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? 'Utente';
+  const avatarColor = (user?.user_metadata?.avatar_color as string | undefined) ?? '#007AFF';
+  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+  const iniziale = fullName.trim().charAt(0).toUpperCase() || (user?.email?.charAt(0).toUpperCase() ?? '?');
 
   return (
     <>
@@ -63,6 +67,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
+        {/* Header Logo */}
         <div className="px-3 lg:px-2 py-6 border-b border-gray-200/60 h-[100px] flex items-center shrink-0">
           <div className="flex items-center gap-3 w-full">
             <div className="w-14 h-14 shrink-0 flex items-center justify-center">
@@ -76,11 +81,12 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
               <h1 className="text-base font-semibold text-apple-darkgray whitespace-nowrap">
                 Gestionale Studio
               </h1>
-              <p className="text-xs text-apple-gray whitespace-nowrap">Gestionale</p>
+              <p className="text-xs text-apple-gray whitespace-nowrap">Software Aziendale</p>
             </div>
           </div>
         </div>
 
+        {/* Menu di Navigazione */}
         <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto overflow-x-hidden">
           {menuItems.map((item) => {
             const attivo = currentPage === item.id;
@@ -113,6 +119,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
             );
           })}
 
+          {/* Link esterno a TricoAI (solo per utenti reali o Righetti) */}
           {(demoStatus.isReale || demoStatus.isRighetti) && (
             <>
               <div className="my-3 border-t border-gray-200/60" />
@@ -120,11 +127,11 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
               <button
                 onClick={() => handleNavigate('analisi')}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-apple text-sm font-medium transition-all duration-200 text-apple-blue hover:bg-white/60"
-                title="Gestionale Studio"
+                title="Apri TricoAI (Analisi Tricologica)"
               >
                 <span className="text-lg shrink-0 w-6 flex items-center justify-center">🧬</span>
-                <span className="flex-1 text-left whitespace-nowrap overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
-                  Gestionale Studio
+                <span className="flex-1 text-left whitespace-nowrap overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200 font-semibold">
+                  TricoAI
                 </span>
                 <span className="text-xs opacity-60 lg:opacity-0 lg:group-hover:opacity-60 transition-opacity duration-200">
                   ↗
@@ -134,6 +141,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
           )}
         </nav>
 
+        {/* Sezione Bottom: Impostazioni + Profilo Utente con Avatar */}
         <div className="shrink-0 px-2 pb-3 pt-2 border-t border-gray-200/60 space-y-1">
           <button
             onClick={() => handleNavigate('impostazioni')}
@@ -158,6 +166,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
             </span>
           </button>
 
+          {/* Profilo Utente con Avatar reale (o colore Apple) */}
           <div className="pt-1">
             {!confermaLogout ? (
               <div
@@ -167,18 +176,34 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
                   transition-all duration-200
                 `}
               >
-                <div className="w-8 h-8 shrink-0 rounded-full bg-apple-blue text-white flex items-center justify-center text-sm font-semibold shadow-apple">
-                  {iniziale}
-                </div>
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={fullName}
+                    className="w-8 h-8 shrink-0 rounded-full object-cover shadow-apple border border-gray-200/80"
+                  />
+                ) : (
+                  <div
+                    className="w-8 h-8 shrink-0 rounded-full text-white flex items-center justify-center text-sm font-semibold shadow-apple"
+                    style={{ background: avatarColor }}
+                  >
+                    {iniziale}
+                  </div>
+                )}
+
                 <div className="flex-1 min-w-0 overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
-                  <p className="text-xs text-apple-gray truncate" title={user?.email ?? ''}>
-                    {user?.email ?? 'Utente'}
+                  <p className="text-xs font-semibold text-apple-darkgray truncate" title={fullName}>
+                    {fullName}
+                  </p>
+                  <p className="text-[10px] text-apple-gray truncate" title={user?.email ?? ''}>
+                    {user?.email ?? ''}
                   </p>
                 </div>
+
                 <button
                   onClick={() => setConfermaLogout(true)}
                   className="shrink-0 w-7 h-7 rounded-apple flex items-center justify-center text-apple-gray hover:text-red-500 hover:bg-red-50 transition-colors lg:opacity-0 lg:group-hover:opacity-100"
-                  title="Esci"
+                  title="Esci dall'account"
                   aria-label="Logout"
                 >
                   <svg
