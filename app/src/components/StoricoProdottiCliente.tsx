@@ -5,7 +5,7 @@ interface StoricoProdottiProps {
   clienteId: number;
 }
 
-type TabFiltro = 'tutti' | 'prodotti' | 'servizi';
+type TabFiltro = 'tutti' | 'prodotti' | 'servizi' | 'extra';
 
 interface VoceStorico {
   id: string;
@@ -73,11 +73,15 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
     .filter((v) => v.tipo === 'servizio')
     .reduce((sum, v) => sum + v.quantita, 0);
 
+  const totaleExtra = tutteVoci.filter((v) => v.isExtra).length;
+
   // Filtra per tab e per ricerca
   const vociFiltrate = useMemo(() => {
     return tutteVoci.filter((v) => {
       if (tab === 'prodotti' && v.tipo !== 'prodotto') return false;
       if (tab === 'servizi' && v.tipo !== 'servizio') return false;
+      if (tab === 'extra' && !v.isExtra) return false;
+      if (tab !== 'extra' && v.isExtra && tab !== 'tutti') return false;
 
       if (ricerca.trim()) {
         const q = ricerca.toLowerCase();
@@ -165,6 +169,20 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
         >
           🛠️ Servizi ({totaleServizi})
         </button>
+
+        {totaleExtra > 0 && (
+          <button
+            type="button"
+            onClick={() => setTab('extra')}
+            className={`px-3 py-1 rounded-apple text-xs font-semibold transition-all ${
+              tab === 'extra'
+                ? 'bg-amber-500 text-white shadow-sm'
+                : 'text-amber-700 hover:text-amber-900'
+            }`}
+          >
+            ⭐ EXTRA ({totaleExtra})
+          </button>
+        )}
       </div>
 
       {/* Lista risultati */}
