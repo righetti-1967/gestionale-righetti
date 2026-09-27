@@ -808,15 +808,15 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
             </div>
 
             <div className="mb-6 p-4 bg-amber-50/50 border border-amber-200/80 rounded-apple space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-amber-900 uppercase tracking-wide flex items-center gap-1.5">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h3 className="text-xs font-bold text-amber-900 uppercase tracking-wide flex items-center gap-1.5 flex-1 min-w-0">
                   📝 Note Interne & Anamnesi
                 </h3>
                 <button
                   type="button"
                   onClick={handleSalvaNoteInterne}
                   disabled={salvandoNote}
-                  className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-apple text-xs font-semibold transition-colors disabled:opacity-50 shadow-sm"
+                  className="shrink-0 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-apple text-xs font-semibold transition-colors disabled:opacity-50 shadow-sm whitespace-nowrap"
                 >
                   {salvandoNote ? 'Salvo...' : '💾 Salva Note'}
                 </button>
