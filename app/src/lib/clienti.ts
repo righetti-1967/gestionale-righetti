@@ -36,6 +36,7 @@ export interface Cliente {
   privacy_inviata_email_at?: string | null;
   privacy_inviata_whatsapp_at?: string | null;
   data_nascita?: string | null;
+  dna?: string | null;
   created_at: string;
 }
 
