@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   getAdminUtenti,
@@ -653,8 +653,28 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
 }
 
 // ============ TAB PROFILO ============
+const COLORI_AVATAR = [
+  { value: '#007AFF', label: 'Blu' },
+  { value: '#34C759', label: 'Verde' },
+  { value: '#FF9500', label: 'Arancio' },
+  { value: '#FF3B30', label: 'Rosso' },
+  { value: '#AF52DE', label: 'Viola' },
+  { value: '#5856D6', label: 'Indaco' },
+  { value: '#FF2D55', label: 'Rosa' },
+  { value: '#000000', label: 'Nero' },
+];
+
 function TabProfilo() {
   const { user, cambiaPassword, esciDaTutti } = useAuth();
+  const inputFotoRef = useRef<HTMLInputElement>(null);
+
+  const [caricandoFoto, setCaricandoFoto] = useState(false);
+  const [modificaAttiva, setModificaAttiva] = useState(false);
+  const [modificaNome, setModificaNome] = useState('');
+  const [coloreAvatar, setColoreAvatar] = useState('#007AFF');
+  const [salvandoProfilo, setSalvandoProfilo] = useState(false);
+  const [messaggioProfilo, setMessaggioProfilo] = useState<{ tipo: 'ok' | 'errore'; testo: string } | null>(null);
+
   const [attuale, setAttuale] = useState('');
   const [nuova, setNuova] = useState('');
   const [conferma, setConferma] = useState('');
@@ -662,9 +682,92 @@ function TabProfilo() {
   const [salvando, setSalvando] = useState(false);
   const [messaggio, setMessaggio] = useState<{ tipo: 'ok' | 'errore'; testo: string } | null>(null);
 
+  const fullName = (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? 'Utente';
+  const avatarColor = (user?.user_metadata?.avatar_color as string | undefined) ?? '#007AFF';
+  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+  const iniziale = fullName.trim().charAt(0).toUpperCase() || (user?.email?.charAt(0).toUpperCase() ?? '?');
+
+  async function handleUploadAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setMessaggioProfilo({ tipo: 'errore', testo: 'Foto troppo grande (max 2 MB)' });
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setMessaggioProfilo({ tipo: 'errore', testo: "Il file deve essere un'immagine JPG o PNG" });
+      return;
+    }
+
+    setCaricandoFoto(true);
+    setMessaggioProfilo(null);
+    try {
+      const ext = file.name.split('.').pop() ?? 'jpg';
+      const pathStorage = `avatar-${user?.id || 'user'}-${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(pathStorage, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(pathStorage);
+      const publicUrl = urlData.publicUrl;
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl },
+      });
+      if (updateError) throw updateError;
+
+      setMessaggioProfilo({ tipo: 'ok', testo: 'Foto profilo aggiornata!' });
+      setTimeout(() => setMessaggioProfilo(null), 3000);
+    } catch (err: any) {
+      setMessaggioProfilo({ tipo: 'errore', testo: err.message || 'Errore caricamento foto' });
+    } finally {
+      setCaricandoFoto(false);
+      if (inputFotoRef.current) inputFotoRef.current.value = '';
+    }
+  }
+
+  async function handleRimuoviAvatar() {
+    if (!confirm('Rimuovere la foto profilo?')) return;
+    try {
+      const { error } = await supabase.auth.updateUser({ data: { avatar_url: null } });
+      if (error) throw error;
+      setMessaggioProfilo({ tipo: 'ok', testo: 'Foto rimossa.' });
+      setTimeout(() => setMessaggioProfilo(null), 3000);
+    } catch (err: any) {
+      setMessaggioProfilo({ tipo: 'errore', testo: err.message || 'Errore rimozione foto' });
+    }
+  }
+
+  async function handleSalvaProfilo() {
+    if (!modificaNome.trim()) return;
+    setSalvandoProfilo(true);
+    setMessaggioProfilo(null);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: modificaNome.trim(),
+          avatar_color: coloreAvatar,
+        },
+      });
+      if (error) throw error;
+      setMessaggioProfilo({ tipo: 'ok', testo: 'Profilo salvato correttamente!' });
+      setTimeout(() => {
+        setModificaAttiva(false);
+        setMessaggioProfilo(null);
+      }, 1500);
+    } catch (err: any) {
+      setMessaggioProfilo({ tipo: 'errore', testo: err.message || 'Errore salvataggio profilo' });
+    } finally {
+      setSalvandoProfilo(false);
+    }
+  }
+
   async function handleCambiaPassword() {
     setMessaggio(null);
-
     if (!attuale || !nuova || !conferma) {
       setMessaggio({ tipo: 'errore', testo: 'Compila tutti i campi.' });
       return;
@@ -728,31 +831,166 @@ function TabProfilo() {
         </div>
       )}
 
-      <Card title="Il tuo account" subtitle="Informazioni sull'utente attualmente loggato.">
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-apple-darkgray mb-1">Email</label>
-            <input
-              type="email"
-              value={user?.email ?? ''}
-              disabled
-              className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm text-apple-darkgray disabled:opacity-60 disabled:cursor-not-allowed"
-            />
-            <p className="text-[11px] text-apple-gray mt-0.5">
-              L'email non può essere modificata da qui. Contatta l'amministratore.
-            </p>
+      {/* CARD 1: ACCOUNT CON AVATAR E FOTO PROFILO */}
+      <Card title="Account & Profilo" subtitle="Personalizza la tua foto profilo, l'avatar Apple e il nome visualizzato">
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 px-4 py-3 rounded-apple bg-apple-lightgray/60 flex-wrap">
+            <div className="relative shrink-0 group">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={fullName}
+                  className="w-16 h-16 rounded-full object-cover shadow-apple border-2 border-white"
+                />
+              ) : (
+                <div
+                  className="w-16 h-16 rounded-full text-white flex items-center justify-center text-2xl font-bold shadow-apple"
+                  style={{ background: avatarColor }}
+                >
+                  {iniziale}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => inputFotoRef.current?.click()}
+                disabled={caricandoFoto}
+                className="absolute inset-0 rounded-full bg-black/40 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-medium"
+                title="Cambia foto"
+              >
+                {caricandoFoto ? '⏳' : '📷'}
+              </button>
+              <input
+                ref={inputFotoRef}
+                type="file"
+                accept="image/*"
+                onChange={handleUploadAvatar}
+                className="hidden"
+              />
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="text-base font-bold text-apple-darkgray truncate">
+                {fullName}
+              </p>
+              <p className="text-xs text-apple-gray truncate">{user?.email ?? ''}</p>
+              <p className="text-[11px] text-apple-blue font-semibold mt-0.5">
+                {user?.email === 'righetti@righetti.club' ? '👑 Amministratore / Titolare' : 'Operatore Studio'}
+              </p>
+            </div>
+
+            <div className="flex gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => inputFotoRef.current?.click()}
+                disabled={caricandoFoto}
+                className="px-3.5 py-1.5 rounded-apple bg-white border border-gray-200 text-xs font-semibold text-apple-darkgray hover:bg-apple-lightgray transition-colors disabled:opacity-50 shadow-sm"
+              >
+                {caricandoFoto ? '⏳ Caricamento...' : '📷 Foto'}
+              </button>
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={handleRimuoviAvatar}
+                  className="px-3 py-1.5 rounded-apple bg-white border border-red-200 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                  title="Rimuovi foto profilo"
+                >
+                  🗑️ Rimuovi
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setModificaNome(fullName);
+                  setColoreAvatar(avatarColor);
+                  setModificaAttiva(!modificaAttiva);
+                }}
+                className="px-3.5 py-1.5 rounded-apple bg-white border border-gray-200 text-xs font-semibold text-apple-darkgray hover:bg-apple-lightgray transition-colors shadow-sm"
+              >
+                ✏️ Modifica
+              </button>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-apple-darkgray mb-1">Ultimo accesso</label>
-            <p className="text-sm text-apple-darkgray">{ultimoAccesso}</p>
-          </div>
+          {/* Form modifica nome + colore avatar Apple */}
+          {modificaAttiva && (
+            <div className="px-4 py-3.5 rounded-apple bg-blue-50/60 border border-blue-100 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-apple-darkgray mb-1">
+                  Nome e Cognome visualizzato
+                </label>
+                <input
+                  type="text"
+                  value={modificaNome}
+                  onChange={(e) => setModificaNome(e.target.value)}
+                  placeholder="Es. Luca Righetti"
+                  className="w-full px-3 py-2 rounded-apple bg-white border border-gray-200 text-sm text-apple-darkgray focus:outline-none focus:border-apple-blue transition-all"
+                />
+              </div>
 
-          <div>
-            <label className="block text-xs font-medium text-apple-darkgray mb-1">ID utente</label>
-            <code className="block px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-xs text-apple-gray font-mono break-all">
-              {user?.id ?? '—'}
-            </code>
+              <div>
+                <label className="block text-xs font-semibold text-apple-darkgray mb-1.5">
+                  Colore Avatar (stile Apple)
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {COLORI_AVATAR.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => setColoreAvatar(c.value)}
+                      className={`w-7 h-7 rounded-full transition-all ${
+                        coloreAvatar === c.value ? 'ring-2 ring-offset-2 ring-apple-blue scale-110' : 'hover:scale-105'
+                      }`}
+                      style={{ background: c.value }}
+                      title={c.label}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setModificaAttiva(false)}
+                  className="px-3.5 py-1.5 rounded-apple bg-white border border-gray-200 text-xs font-medium text-apple-darkgray hover:bg-apple-lightgray transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSalvaProfilo}
+                  disabled={salvandoProfilo || !modificaNome.trim()}
+                  className="px-4 py-1.5 rounded-apple bg-apple-blue text-white text-xs font-semibold shadow-apple hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                >
+                  {salvandoProfilo ? 'Salvataggio...' : '💾 Salva'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {messaggioProfilo && (
+            <div
+              className={`px-4 py-2.5 rounded-apple text-xs font-medium flex items-center gap-2 ${
+                messaggioProfilo.tipo === 'ok' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'
+              }`}
+            >
+              <span>{messaggioProfilo.tipo === 'ok' ? '✅' : '⚠️'}</span>
+              <span>{messaggioProfilo.testo}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="p-3 rounded-apple bg-gray-50 border border-gray-200/60 text-xs">
+              <span className="text-apple-gray block text-[10px] uppercase font-semibold">Account creato il</span>
+              <span className="text-apple-darkgray font-medium mt-0.5 block">
+                {user?.created_at ? new Date(user.created_at).toLocaleDateString('it-IT') : '—'}
+              </span>
+            </div>
+            <div className="p-3 rounded-apple bg-gray-50 border border-gray-200/60 text-xs">
+              <span className="text-apple-gray block text-[10px] uppercase font-semibold">ID Utente</span>
+              <span className="text-apple-gray font-mono text-[10px] truncate block mt-0.5">
+                {user?.id ?? '—'}
+              </span>
+            </div>
           </div>
         </div>
       </Card>
