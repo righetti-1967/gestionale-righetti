@@ -180,8 +180,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
                   <img
                     src={avatarUrl}
                     alt={fullName}
-                    className="w-10 h-10 shrink-0 rounded-full object-cover aspect-square shadow-apple border border-gray-200/80"
-                  />
+                    className="w-10 h-10 shrink-0 rounded-full object-cover shadow-apple border border-gray-200/80" style={{ minWidth: "40px", minHeight: "40px", width: "40px", height: "40px" }}>
                 ) : (
                   <div
                     className="w-10 h-10 shrink-0 rounded-full text-white flex items-center justify-center text-sm font-semibold shadow-apple"
