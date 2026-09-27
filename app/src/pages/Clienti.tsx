@@ -67,6 +67,8 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
 
   const [noteInterneTesto, setNoteInterneTesto] = useState('');
   const [salvandoNote, setSalvandoNote] = useState(false);
+  const [dnaTesto, setDnaTesto] = useState('');
+  const [salvandoDna, setSalvandoDna] = useState(false);
 
   const [percorsiPerCliente, setPercorsiPerCliente] = useState<
     Map<number, PercorsoAttivo[]>
@@ -184,7 +186,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
 
   useEffect(() => {
     if (clienteSelezionato) {
-      setNoteInterneTesto(clienteSelezionato.note_anamnesi || '');
+      setNoteInterneTesto(clienteSelezionato.note_anamnesi || ''); setDnaTesto(clienteSelezionato.dna || '');
     }
   }, [clienteSelezionato]);
 
@@ -316,6 +318,24 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
       setToastTipo('error');
     } finally {
       setSalvandoNote(false);
+    }
+  }
+
+  async function handleSalvaDna() {
+    if (!clienteSelezionato) return;
+    try {
+      setSalvandoDna(true);
+      const codicePulito = dnaTesto.trim() || null;
+      await aggiornaCliente(clienteSelezionato.id, { dna: codicePulito });
+      setClienteSelezionato((prev) => (prev ? { ...prev, dna: codicePulito } : null));
+      caricaClienti();
+      setToastMessage('DNA aggiornato con successo!');
+      setToastTipo('success');
+    } catch (err: any) {
+      setToastMessage('Errore nel salvataggio DNA: ' + err.message);
+      setToastTipo('error');
+    } finally {
+      setSalvandoDna(false);
     }
   }
 
@@ -828,6 +848,33 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
                 rows={3}
                 className="w-full px-3 py-2 bg-white border border-amber-200 rounded-apple text-xs text-apple-darkgray placeholder:text-apple-gray/60 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
               />
+            </div>
+
+            <div className="mb-6 p-4 bg-green-50/50 border border-green-200/80 rounded-apple space-y-2">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h3 className="text-xs font-bold text-green-900 uppercase tracking-wide flex items-center gap-1.5 flex-1 min-w-0">
+                  🧬 DNA Cliente
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleSalvaDna}
+                  disabled={salvandoDna}
+                  className="shrink-0 px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-apple text-xs font-semibold transition-colors disabled:opacity-50 shadow-sm whitespace-nowrap"
+                >
+                  {salvandoDna ? 'Salvo...' : '💾 Salva DNA'}
+                </button>
+              </div>
+              <input
+                type="text"
+                value={dnaTesto}
+                onChange={(e) => setDnaTesto(e.target.value)}
+                placeholder="Codice DNA (es. 26IG000157)"
+                maxLength={20}
+                className="w-full px-3 py-2 bg-white border border-green-200 rounded-apple text-xs text-apple-darkgray placeholder:text-apple-gray/60 focus:outline-none focus:ring-2 focus:ring-green-400 font-mono"
+              />
+              <p className="text-[10px] text-green-800/70">
+                Codice identificativo del cliente (max 20 caratteri). Apparirà come badge verde accanto al nome.
+              </p>
             </div>
 
             <div
