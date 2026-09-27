@@ -250,7 +250,7 @@ export function Impostazioni() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
+      <div className="grid grid-cols-2 gap-2 mb-6 sm:flex sm:flex-wrap">
         {tabs.map((tab) => {
           const attiva = tabAttiva === tab.id;
           return (
