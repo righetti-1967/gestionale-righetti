@@ -1098,7 +1098,7 @@ export function FormNuovoAppuntamento({
       <ModaleNuovoServizioRapido
         open={showNuovoServizioRapido}
         onClose={() => setShowNuovoServizioRapido(false)}
-        onCreato={(nuovo) => {
+        onCreato={(nuovo: Servizio) => {
           setServizi((prev) => [...prev, nuovo]);
           setVociSelezionate((prev) => [
             ...prev,
@@ -1229,6 +1229,181 @@ export function FormNuovoAppuntamento({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+
+// ============================================================================
+// MODALE CREAZIONE NUOVO SERVIZIO RAPIDO AL VOLO
+// ============================================================================
+function ModaleNuovoServizioRapido({
+  open,
+  onClose,
+  onCreato,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreato: (s: Servizio) => void;
+}) {
+  const [nome, setNome] = useState('');
+  const [prezzoLordo, setPrezzoLordo] = useState('30.00');
+  const [durataMinuti, setDurataMinuti] = useState('30');
+  const [salvando, setSalvando] = useState(false);
+  const [errore, setErrore] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setNome('');
+      setPrezzoLordo('30.00');
+      setDurataMinuti('30');
+      setErrore(null);
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  async function handleSalva(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nome.trim()) {
+      setErrore('Inserisci il nome del servizio');
+      return;
+    }
+    setSalvando(true);
+    setErrore(null);
+    try {
+      const nuovo = await creaServizio({
+        nome: nome.trim(),
+        prezzo_lordo: parseFloat(prezzoLordo) || 0,
+        durata_minuti: parseInt(durataMinuti, 10) || 30,
+      });
+      onCreato(nuovo);
+      onClose();
+    } catch (err: any) {
+      setErrore(err.message || 'Errore creazione servizio');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[80]"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-apple shadow-apple-lg max-w-md w-full overflow-hidden border border-gray-200/80"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 py-4 border-b border-gray-200/60 flex items-center justify-between bg-gray-50/50">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <h3 className="text-base font-bold text-apple-darkgray">
+              Crea Nuovo Servizio al Volo
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-apple-gray transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+
+        <form onSubmit={handleSalva} className="p-5 space-y-4">
+          <p className="text-xs text-apple-gray leading-relaxed">
+            Il servizio verrà aggiunto al tuo listino e inserito immediatamente in questo appuntamento.
+          </p>
+
+          <div>
+            <label className="block text-xs font-semibold text-apple-darkgray mb-1.5">
+              Nome Servizio *
+            </label>
+            <input
+              type="text"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              required
+              autoFocus
+              placeholder="Es. Trattamento Detossinante Cutaneo"
+              disabled={salvando}
+              className="w-full px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm text-apple-darkgray placeholder:text-apple-gray focus:outline-none focus:bg-white focus:border-apple-blue transition-all"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-apple-darkgray mb-1.5">
+                Prezzo Lordo (€) *
+              </label>
+              <input
+                type="number"
+                step="0.5"
+                min="0"
+                value={prezzoLordo}
+                onChange={(e) => setPrezzoLordo(e.target.value)}
+                required
+                disabled={salvando}
+                className="w-full px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm text-apple-darkgray focus:outline-none focus:bg-white focus:border-apple-blue transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-apple-darkgray mb-1.5">
+                Durata (minuti) *
+              </label>
+              <select
+                value={durataMinuti}
+                onChange={(e) => setDurataMinuti(e.target.value)}
+                disabled={salvando}
+                className="w-full px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm text-apple-darkgray focus:outline-none focus:bg-white focus:border-apple-blue transition-all"
+              >
+                <option value="15">15 min</option>
+                <option value="20">20 min</option>
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">60 min (1h)</option>
+                <option value="75">75 min</option>
+                <option value="90">90 min (1h 30m)</option>
+                <option value="120">120 min (2h)</option>
+              </select>
+            </div>
+          </div>
+
+          {errore && (
+            <div className="p-2.5 rounded-apple bg-red-50 border border-red-200 text-xs text-red-600 flex items-center gap-2">
+              <span>⚠️</span>
+              <span>{errore}</span>
+            </div>
+          )}
+
+          <div className="pt-2 flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={salvando}
+              className="px-4 py-2 rounded-apple bg-gray-100 text-apple-darkgray text-xs font-medium hover:bg-gray-200 transition-colors"
+            >
+              Annulla
+            </button>
+            <button
+              type="submit"
+              disabled={salvando || !nome.trim()}
+              className="px-5 py-2 rounded-apple bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-apple flex items-center gap-1.5"
+            >
+              {salvando ? (
+                <>
+                  <span className="animate-spin text-xs">⏳</span>
+                  <span>Salvataggio...</span>
+                </>
+              ) : (
+                'Salva e Inserisci'
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
