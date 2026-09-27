@@ -27,6 +27,7 @@ const DATI_AZIENDALI_VUOTI: DatiAziendali = {
   iban: '',
   sitoWeb: '',
   regimeFiscale: 'ordinario',
+
 };
 
 function adatta(raw: unknown, isRighetti: boolean, nomeAziendaUser?: string): DatiAziendali {

@@ -25,6 +25,7 @@ export interface DatiAziendali {
   iban: string;
   sitoWeb: string;
   regimeFiscale: 'ordinario' | 'forfettario';
+  logo_url?: string;
 }
 
 export const DATI_AZIENDALI_DEFAULT: DatiAziendali = {
@@ -50,6 +51,7 @@ export const DATI_AZIENDALI_DEFAULT: DatiAziendali = {
   iban: '',
   sitoWeb: '',
   regimeFiscale: 'ordinario',
+  logo_url: '',
 };
 
 /** Compone "Via Roma 1, 20100 Milano (MI)" */
