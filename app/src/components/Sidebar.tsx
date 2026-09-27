@@ -63,7 +63,10 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden" onClick={onCloseMobile} />
       )}
 
-      <aside className={`fixed lg:static top-0 left-0 h-screen z-50 bg-apple-lightgray border-r border-gray-200/60 flex flex-col group transition-all duration-300 ease-out w-64 lg:w-16 lg:hover:w-64 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <aside
+        className={`fixed lg:static top-0 left-0 h-screen h-[100dvh] z-50 overflow-y-auto overflow-x-hidden overscroll-contain bg-apple-lightgray border-r border-gray-200/60 flex flex-col group transition-all duration-300 ease-out w-64 lg:w-16 lg:hover:w-64 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         <div className="px-3 lg:px-2 py-6 border-b border-gray-200/60 h-[100px] flex items-center shrink-0">
           <div className="flex items-center gap-3 w-full">
             <div className="w-14 h-14 shrink-0 flex items-center justify-center">
@@ -75,7 +78,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
           </div>
         </div>
 
-        <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+        <nav className="px-2 py-4 space-y-1 shrink-0">
           {menuItems.map((item) => (
             <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-apple text-sm font-medium transition-all ${currentPageId === item.id ? 'bg-apple-blue text-white shadow-apple' : 'text-apple-darkgray hover:bg-white/60'}`}>
               <span className="text-lg w-6 flex items-center justify-center">{item.icon}</span>
@@ -97,21 +100,21 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
 
           <div className="pt-1">
             {!confermaLogout ? (
-              <div className="flex items-center gap-3 px-3 py-2 rounded-apple lg:justify-center lg:group-hover:justify-start transition-all">
+              <div className="flex items-center px-2 py-2 rounded-apple justify-center lg:gap-0 lg:group-hover:gap-3 lg:group-hover:justify-start lg:group-hover:px-3 transition-all duration-200">
                 {avatarUrl ? (
-                  <div className="w-10 h-10 shrink-0 rounded-full overflow-hidden border border-gray-200 shadow-apple mx-auto lg:mx-0">
+                  <div className="w-10 h-10 shrink-0 rounded-full overflow-hidden border border-gray-200 shadow-apple">
                     <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <div className="w-10 h-10 shrink-0 rounded-full text-white flex items-center justify-center text-sm font-bold shadow-apple mx-auto lg:mx-0" style={{ background: avatarColor }}>
+                  <div className="w-10 h-10 shrink-0 rounded-full text-white flex items-center justify-center text-sm font-bold shadow-apple" style={{ background: avatarColor }}>
                     {iniziale}
                   </div>
                 )}
-                <div className="flex-1 min-w-0 overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                <div className="hidden lg:block lg:opacity-0 lg:group-hover:opacity-100 flex-1 min-w-0 overflow-hidden transition-opacity duration-200">
                   <p className="text-xs font-semibold text-apple-darkgray truncate">{fullName}</p>
                   <p className="text-[10px] text-apple-gray truncate">{user?.email}</p>
                 </div>
-                <button onClick={() => setConfermaLogout(true)} className="shrink-0 w-7 h-7 rounded-apple flex items-center justify-center text-apple-gray hover:text-red-500 hover:bg-red-50 transition-colors lg:opacity-0 lg:group-hover:opacity-100" title="Esci">
+                <button onClick={() => setConfermaLogout(true)} className="hidden lg:flex lg:opacity-0 lg:group-hover:opacity-100 shrink-0 w-7 h-7 rounded-apple items-center justify-center text-apple-gray hover:text-red-500 hover:bg-red-50 transition-colors" title="Esci">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
                 </button>
               </div>

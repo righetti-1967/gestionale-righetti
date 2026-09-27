@@ -12,3 +12,23 @@ body {
   background-color: #F2F2F7;
   color: #1C1C1E;
 }
+
+/* ============================================================
+   Fix iOS: input date/time non sbordano più
+   ============================================================ */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  margin-left: auto;
+  cursor: pointer;
+}
