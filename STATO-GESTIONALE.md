@@ -1,220 +1,146 @@
 # STATO PROGETTO — GESTIONALE RIGHETTI 1967
 
-Ultimo aggiornamento: **25/09/2026 — Multi-tenant completo (DB + frontend + logo + RLS + pannello Licenze)**
+Ultimo aggiornamento: **28/09/2026 01:30 — Badge DNA, Righe Cliccabili, Tab Responsive**
 
 ---
 
 ## ✅ Stato attuale
 
-**Il Gestionale è online con backend FastAPI, dominio personalizzato e SMTP Google Workspace.**
+**Il Gestionale è compilato al 100% con 0 errori (TypeScript + Vite) e online con dominio personalizzato e SSL.**
 
-### URLs di produzione
-- **Frontend**: https://gestionale.righetti.club (dominio custom)
-- **Frontend alternativo**: https://gestionale-righetti.vercel.app
-- **Backend**: https://gestionale-righetti-production.up.railway.app
-- **Supabase**: https://yporpszebtasalwazirz.supabase.co
-- **GitHub**: https://github.com/righetti-1967/gestionale-righetti
-
----
-
-## 🏗️ Architettura
-
-Frontend (Vercel) → Backend (Railway) → Supabase (PostgreSQL + Auth + Storage)
-
-- **Frontend**: React + Vite + TypeScript + Tailwind CSS (in `app/`)
-- **Backend**: FastAPI + Uvicorn Python 3.12 (in `backend/`)
-- **Database**: Supabase PostgreSQL (multi-tenant con RLS)
-- **Auth**: Supabase Auth (email + password)
-- **Email Auth**: SMTP Google Workspace (`righetti@righetti.club`)
-- **Monorepo**: `app/` + `backend/` nello stesso repo GitHub
+### URLs Ufficiali
+- **Piattaforma Live**: https://gestionale.righetti.club (dominio custom)
+- **Frontend Vercel (Backup)**: https://gestionale-righetti.vercel.app
+- **Backend FastAPI (Railway)**: https://gestionale-righetti-production.up.railway.app
+- **Database & Auth (Supabase)**: https://yporpszebtasalwazirz.supabase.co
+- **Repository GitHub**: https://github.com/righetti-1967/gestionale-righetti
 
 ---
 
-## ✅ Funzionalità Rilasciate
+## 💎 Funzionalità Rilasciate
 
-### 1. Suite di Accesso Completa
-- Login e Registrazione (email + password)
-- Login con Google (da abilitare, config OAuth pronta)
-- Recupero Password (`/forgot-password` + `/reset-password`)
-- **Template email in italiano** (conferma signup, reset password, magic link, cambio email)
+### 1. Suite di Accesso & Google Login
+- Login e Registrazione in stile Apple pulito.
+- "Continua con Google" e "Registrati con Google" (`signInWithOAuth`).
+- Pagine `/forgot-password` e `/reset-password`.
+- Fix loop login: redirect immediato post-auth.
 
 ### 2. Modalità DEMO 15 Giorni
-- Nuovi utenti ricevono `ruolo: demo` + `demo_scadenza`
-- Badge countdown in topbar
-- Schermata di blocco (lock screen) alla scadenza
-- **Pannello Admin "👑 Licenze"** per gestione completa
+- Nuovi utenti: `ruolo: 'demo'` e `demo_scadenza` a 15 giorni.
+- Badge countdown nell'header.
+- Lock screen elegante a scadenza.
 
-### 3. Backend FastAPI su Railway
-- Health check: `GET /health`
-- **Endpoint Licenze** (`/api/licenze/*`):
-  - `GET /utenti` — lista utenti + stato
-  - `POST /proroga` — allunga demo
-  - `POST /sblocca-reale` — attiva reale + reset dati
-  - `POST /popola-demo` — popola dati demo
+### 3. Isolamento Dati & Brand Neutro
+- Sidebar: "Gestionale Studio" (no Righetti).
+- Logo e Dati Aziendali: fallback pulito per utenti demo/terzi.
 
-### 4. Agenda Migliorata
-- **Ricerca globale cliente** in Agenda (per nome, cellulare, email)
-- Click su appuntamento → salta a data + highlight giallo
-- **Auto-selezione tab "Percorso"** se cliente ha percorsi attivi
-- **Bordo rosso pulsante** su dropdown percorso vuoto
-- **Solo operatori visibili** in Nuovo Appuntamento/Blocco
-- Layout compatto (tutto in una riga, agenda senza scroll)
+### 4. Agenda & Documenti
+- Cerca Cliente rapido in Agenda (nome, cellulare, email).
+- Dicitura "Note documento" (no "legale").
+- DDT Commercialista → "Documento di Competenza".
+- Fix crash Scheda Cliente → Appuntamenti | Disdette.
 
-### 5. Fix UI
-- Rimosso "Gestionale Studio & Salone" dall'header
-- **Tab Aspetto**: rimossi Lingua, Valuta, Formati (non interessano)
-- **Sidebar**: TricoAI visibile solo a Righetti e reali (nascosto a DEMO)
+### 🆕 5. Badge DNA Cliente (28/09/2026)
+- Campo `dna` (codice corto, max 20 caratteri) visibile come **badge verde** 🧬 sotto il nome cliente.
+- Visibile in: **tabella Clienti (desktop)**, **card mobile** (fix iPhone verticale).
+- Campo editabile nel modale cliente (sezione "🧬 DNA Cliente" con bottone "💾 Salva DNA").
 
-### 6. Documenti
-- **"Dicitura Legale"** → **"Note documento"**
-- **"DDT Commercialista"** → **"Documento di Competenza"**
-- Titoli PDF: `Documento di Competenza | DDT-XXX-YYYY` (commercialista) / `Seduta in Studio | DDT-XXX-YYYY` (cliente)
+### 🆕 6. Storico Fatture & Scontrini in Modale Cliente (28/09/2026)
+- Nuova tab **📄 Fatture & Scontrini** nella sezione "Storico Sedute & Consegne".
+- Mostra **tutte le fatture del cliente** (indipendentemente da scarico).
+- Prodotti/Servizi filtrati per escludere EXTRA (tab **⭐ EXTRA** dedicata).
 
----
+### 🆕 7. Riga Cliente Cliccabile (28/09/2026)
+- Click su riga cliente → apre modale dettaglio.
+- Bottoni azione con `stopPropagation()`.
 
-## ✅ Multi-tenant COMPLETO
+### 🆕 8. Modali Anteprima Minimali DDT/Fattura (28/09/2026)
+- Click su numero DDT o Fattura → modale anteprima minimale (👁️ Anteprima + 📥 Scarica PDF + ✖️ Chiudi).
+- No azioni extra (Email, WhatsApp, Firma, Modifica, ecc.).
 
-**Obiettivo raggiunto**: ogni utente (Righetti, DEMO, altri clienti) vede solo i propri dati.
+### 🆕 9. Barra Pending/Rebooking in Agenda (28/09/2026)
+- 2 card **⏳ Pending (N)** e **🔄 Rebooking (N)** sotto le tab Giorno/Settimana/Mese.
+- Click card → modale con lista clienti e azioni: 💬 WhatsApp (messaggio differenziato pending vs rebooking), 📅 Apri in Agenda, ✏️ Dettaglio.
+- WhatsApp apre l'**app nativa** (schema `whatsapp://` con fallback web `wa.me`).
 
-### FASE A — Migrazione DB ✅ COMPLETATA
+### 🆕 10. Fix Responsive Mobile (28/09/2026)
+- **Sidebar mobile scrollabile** (tutta la sidebar scorre, `100dvh`, `overscroll-contain`, `WebkitOverflowScrolling`).
+- **Avatar centrato in Sidebar collapsed** (fix `lg:gap-0 lg:group-hover:gap-3`).
+- **Tab Impostazioni**: griglia 2 colonne su mobile, flex su tablet/desktop.
+- **Input date non sborda più** su iPhone (CSS globale `input[type="date"]`).
+- **Bottone "+ Aggiungi" Operatore**: full-width su mobile (no sbordi).
+- **Badge DNA** visibile su iPhone verticale (badge sotto al nome, non troncato).
+- **"Salva Note"** allineato (no sbordi su mobile).
 
-Aggiunto `user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE` a:
-- `appuntamenti`, `clienti`, `fatture`, `fornitori`
-- `impostazioni`, `movimenti_magazzino`, `ordini_fornitore`
-- `percorsi`, `prodotti`, `righe_ordine_fornitore`
-- `scarichi_seduta`, `servizi`
-- `sessioni_firma`, `sessioni_firma_ddt`, `sessioni_firma_fattura`
-
-**Indici** su `user_id`. **Constraint `impostazioni`**: UNIQUE `(user_id, chiave)`.
-
-### FASE B — Frontend `src/lib/*.ts` ✅ COMPLETATA
-
-Tutti i file aggiornati con filtro `user_id`:
-
-`clienti.ts`, `prodotti.ts`, `servizi.ts`, `appuntamenti.ts`, `percorsi.ts`, `scarichi.ts`, `fatture.ts`, `fornitori.ts`, `ordini.ts`, `magazzino.ts`, `datiAziendali.ts`, `agenda-config.ts`, `aspetto.ts`, `fatturazione.ts`, `privacy.ts`, `Impostazioni.tsx`.
-
-**Eccezioni (pubbliche via token)**: funzioni `get/completa/isSessione*` per `sessioni_firma*`.
-
-### FASE B-bis — Logo multi-tenant ✅ COMPLETATA
-
-- **Righetti**: logo fisso in `azienda/logo.png`
-- **Altri utenti**: logo in `azienda/{user_id}/logo.png`
-- **Non loggato**: fallback `/logo.png`
-- **`logo.ts`**: cache globale + `initLogoPath()` / `resetLogoPath()`
-- **`auth.tsx`**: init su SIGNED_IN, reset su SIGNED_OUT
-
-### FASE C — RLS policies ✅ COMPLETATA
-
-**Tabelle** (15): RLS + policy "solo i propri dati" (`auth.uid() = user_id`).
-**Eccezioni**: `sessioni_firma*` con lettura pubblica via token.
-
-**Storage bucket `azienda`** (5 policy):
-- `azienda leggi proprio logo` (authenticated): legge `{user_id}/logo.png` + `logo.png`
-- `azienda leggi logo pubblico` (anon): legge solo `logo.png` (Login)
-- `azienda scrittura propria` (INSERT authenticated)
-- `azienda update propria` (UPDATE authenticated)
-- `azienda delete propria` (DELETE authenticated)
-
-### FASE D — Backend `demo_seed.py` + Pannello Admin ✅ COMPLETATA
-
-**D1** — `backend/app/services/demo_seed.py`:
-- **Logo demo** → copia in `azienda/{user_id}/logo.png`
-- 3 clienti (Mario Rossi, Laura Bianchi, Giuseppe Verdi)
-- 4 servizi (Check-up, Seduta Base, Seduta Avanzata, Controllo)
-- 5 prodotti
-- 2 percorsi attivi
-- 4 appuntamenti (2 passati, 2 futuri)
-- Dati aziendali "Studio Demo Tricologico"
-- Il seed **cancella prima tutti i dati** dell'utente
-
-**D2** — Endpoint `POST /api/licenze/popola-demo` ✅
-
-**D3** — Frontend `app/src/lib/api.ts` (nuovo):
-- `getAdminUtenti(adminEmail)`
-- `prorogaDemoUtente(adminEmail, params)`
-- `sbloccaUtenteReale(adminEmail, params)`
-- `popolaDemoUtente(adminEmail, userId)`
-
-**D4** — Tab "👑 Licenze" in Impostazioni (solo Righetti):
-- Lista utenti con stato e filtri (Tutti/Demo/Reali)
-- Azioni: `+7gg`, `+15gg`, `🧪 Popola DEMO`, `🔓 Attiva Reale (Reset)`
-
-**D5** — Sidebar conditional TricoAI ✅
-`🧬 TricoAI` visibile solo a Righetti e utenti reali (nascosto ai DEMO).
+### 🆕 11. Fix Sidebar Pulsante Attivo (28/09/2026)
+- Il pulsante attivo nella Sidebar ora segue correttamente `currentPage` (prima rimaneva sempre su Dashboard per uso errato di `useLocation`).
 
 ---
 
-## 🎯 Roadmap — Prossimi Step
+## 🎯 Roadmap da Sviluppare
 
-### 🔴 Priorità Alta
-1. **#5/6 Card WhatsApp + Email in Impostazioni** (SMTP + Whatsender + test invio)
-2. **#4 Firma accettazione + invio WhatsApp** (Whatsender)
-3. **#9 Sync Gestionale → TricoAI** (clienti/prodotti creati qui appaiono in TricoAI)
+### 🔴 Priorità 1 — Auto-Save Multi-Device (STIMATO ~20 ORE)
+Vedi sezione dettagliata in `STATO.md` di TricoAI. Il progetto è **condiviso** tra i due software.
 
-### 🟡 Priorità Media
-4. **Scontrino digitale** (alternativa a Fatture + DDT)
-5. **Google OAuth** (abilitare su Supabase)
+### 🔴 Priorità 2 — Ponte Sincronizzazione Gestionale → TricoAI (STIMATO ~4 ORE)
+Vedi sezione dettagliata in `STATO.md` di TricoAI.
 
-### 🔵 Backlog
-6. **Collegamento Agenzia delle Entrate (SDI + RT)**
-7. **Template email business** (fatture, DDT)
+### 🔴 Priorità 3 — Card WhatsApp & Email in Impostazioni (~4 ORE)
+**Obiettivo:** configurare parametri SMTP e API WhatsApp (Whatsender) per l'invio di documenti.
+
+**Specifiche:**
+- Card in Impostazioni Gestionale.
+- Campi per: SMTP host, porta, user, password, mittente email.
+- Campi per: API Key Whatsender, numero mittente, template messaggi.
+- **Bottone "Test invio"** per verificare le credenziali.
+- Endpoint o script Google Sheet per il salvataggio dei parametri (da definire in implementazione).
+- **Solo in Gestionale** (non in TricoAI).
+
+### 🟡 Priorità 4 — Attività Recenti Cliccabili (STIMATO ~4 ORE)
+Vedi sezione dettagliata in `STATO.md` di TricoAI.
+
+### 🟡 Priorità 5 — Nuove Funzionalità Operative
+
+**Agenda — `+ Nuovo Servizio` rapido (in verde):**
+- Sostituire `+ Aggiungi altro servizio` con pulsante verde `+ Nuovo Servizio`.
+- Permette creazione servizio al volo dalla modale appuntamento (Nome, Prezzo lordo, Durata minuti).
+
+**Avatar Utente e Foto Profilo in Sidebar:**
+- Upload foto su Supabase Storage (`avatars`).
+- Colori Apple per avatar iniziale.
+- Foto miniatura in basso a sinistra.
+
+**Link a TricoAI nella Sidebar:**
+- Voce dedicata con icona 🧬 e link diretto.
+
+### 🟢 Priorità 6 — Fisco, Cassa & Firma
+
+**Switch Fiscale: Fatture/DDT vs Scontrino Digitale:**
+- Impostazione aziendale per scegliere modalità di emissione.
+
+**Sessioni di Lavoro & Cassa Utente:**
+- Turni e apertura/chiusura cassa operatore.
+
+**Firma Accettazione & Invio WhatsApp:**
+- Firma digitale preventivi + invio link via WhatsApp (Whatsender).
+
+### 🟣 Priorità 7 — Internazionalizzazione (IT + EN)
+Traduzione sistematica (fase successiva).
 
 ---
 
-## 🛠️ Comandi utili
+## 🛠️ Comandi Rapidi di Sviluppo
+- Avvio locale: `npm run dev`
+- Controllo e Build: `npm run build`
+- Deploy rapido: `git add . && git commit -m "messaggio" && git push`
 
-### Backend locale
-```bash
-cd backend
-uvicorn app.main:app --reload --port 8000
-Frontend locale
-bash
-cd app
-npm run dev
-Build frontend
-bash
-cd app
-npm run build
-Deploy
-bash
-git add .
-git commit -m "messaggio"
-git push
-→ Vercel + Railway fanno auto-deploy
+---
 
-📋 Checklist Multi-tenant
-✅ DB: user_id su tutte le tabelle
+## 📝 Note tecniche importanti
 
-✅ Frontend: src/lib/*.ts multi-tenant
-
-✅ Logo multi-tenant (Righetti fisso, altri personali)
-
-✅ RLS policies su Supabase (tabelle + bucket azienda)
-
-✅ Backend demo_seed.py multi-tenant (con logo demo)
-
-✅ Endpoint POST /api/licenze/popola-demo
-
-✅ Frontend src/lib/api.ts (funzioni admin)
-
-✅ Pannello "👑 Licenze" in Impostazioni
-
-✅ Sidebar conditional TricoAI (nascosto a DEMO)
-
-Multi-tenant: 100% completo 🎉
-
-Documento aggiornato il 25/09/2026.
-EOF
-
-echo "✅ STATO riscritto"
-echo ""
-echo "=== Git status ==="
-git status --short
-echo ""
-echo "=== Commit + push ==="
-git add .
-git commit -m "docs: STATO riscritto — multi-tenant 100% completo (FASI A/B/B-bis/C/D)"
-git push
-echo ""
-echo "=== Log ==="
-git log --oneline -3
+- **TricoAI e Gestionale usano DB Supabase DIVERSI**:
+  - TricoAI: `fucagtrfydacobostdoa.supabase.co`
+  - Gestionale: `yporpszebtasalwazirz.supabase.co`
+- Il "Ponte di sincronizzazione" è **urgente** per condividere dati.
+- **Attenzione:** la tabella `clienti` di TricoAI usa `codice_cliente`, mentre il Gestionale usa `nome_cognome`. Mappatura necessaria.
+- Il campo `dna` esiste solo nel DB Gestionale. In TricoAI va **aggiunto** e **popolato** tramite il Ponte.
