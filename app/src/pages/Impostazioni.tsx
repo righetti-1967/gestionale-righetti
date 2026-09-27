@@ -250,7 +250,7 @@ export function Impostazioni() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:gap-2 lg:overflow-x-auto lg:pb-1 gap-2 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
         {tabs.map((tab) => {
           const attiva = tabAttiva === tab.id;
           return (
@@ -1673,8 +1673,8 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
                 className="px-3 py-1.5 rounded-apple bg-white border border-gray-200 text-xs text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/40"
               />
             </div>
-            <div className="flex items-center justify-between gap-3 pt-1">
-              <div className="flex items-center gap-1.5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs text-apple-gray">Colore:</span>
                 {COLORI_DISPONIBILI.map((c) => (
                   <button
@@ -1692,7 +1692,7 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
                 type="button"
                 onClick={aggiungiOperatore}
                 disabled={!nuovoOpNome.trim()}
-                className="px-4 py-1.5 bg-apple-blue text-white rounded-apple text-xs font-medium hover:bg-apple-blue/90 disabled:opacity-50 transition-all shadow-apple"
+                className="w-full sm:w-auto px-4 py-1.5 bg-apple-blue text-white rounded-apple text-xs font-medium hover:bg-apple-blue/90 disabled:opacity-50 transition-all shadow-apple whitespace-nowrap"
               >
                 + Aggiungi
               </button>
