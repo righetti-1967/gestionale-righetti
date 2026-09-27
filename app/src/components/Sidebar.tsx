@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { caricaDatiAziendali } from '../lib/datiAziendali';
 import { getLogoUrl } from '../lib/logo';
@@ -27,7 +27,6 @@ const menuItems = [
 
 export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: SidebarProps) {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, signOut } = useAuth();
   const [confermaLogout, setConfermaLogout] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string>('');
@@ -37,7 +36,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
     caricaDatiAziendali().then((d) => setLogoUrl(d.logo_url ?? '')).catch(console.error);
   }, []);
 
-  const currentPageId = location.pathname.replace('/', '') || 'dashboard';
+  const currentPageId = currentPage;
 
   function handleNavigate(id: string) {
     if (id === 'tricoai') {
