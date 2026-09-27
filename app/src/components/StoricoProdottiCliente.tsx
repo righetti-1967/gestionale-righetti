@@ -1,35 +1,50 @@
 import { useEffect, useState, useMemo } from 'react';
 import { getScarichiCliente, type ScaricoSeduta } from '../lib/scarichi';
+import { getFattureCliente, type Fattura } from '../lib/fatture';
+import { DettaglioDdt } from './DettaglioDdt';
+import { DettaglioFattura } from './DettaglioFattura';
 
 interface StoricoProdottiProps {
   clienteId: number;
 }
 
-type TabFiltro = 'tutti' | 'prodotti' | 'servizi' | 'extra';
+type TabFiltro = 'tutti' | 'prodotti' | 'servizi' | 'extra' | 'fatture';
 
 interface VoceStorico {
   id: string;
-  tipo: 'prodotto' | 'servizio';
+  tipo: 'prodotto' | 'servizio' | 'fattura';
   data: string;
-  numeroDdt: number;
+  numeroDdt: number | null;
+  numeroFattura: string | null;
   anno: number;
   nome: string;
   quantita: number;
   isExtra: boolean;
+  importo: number | null;
+  pagata: boolean;
+  scarico: ScaricoSeduta | null;
+  fattura: Fattura | null;
 }
 
 export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
   const [scarichi, setScarichi] = useState<ScaricoSeduta[]>([]);
+  const [fatture, setFatture] = useState<Fattura[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabFiltro>('tutti');
   const [ricerca, setRicerca] = useState('');
+  const [ddtAperto, setDdtAperto] = useState<ScaricoSeduta | null>(null);
+  const [fatturaAperta, setFatturaAperta] = useState<Fattura | null>(null);
 
   useEffect(() => {
     async function carica() {
       try {
         setLoading(true);
-        const data = await getScarichiCliente(clienteId);
-        setScarichi(data);
+        const [dataScarichi, dataFatture] = await Promise.all([
+          getScarichiCliente(clienteId),
+          getFattureCliente(clienteId),
+        ]);
+        setScarichi(dataScarichi);
+        setFatture(dataFatture);
       } catch (err) {
         console.error('Errore nel recupero storico cliente:', err);
       } finally {
@@ -53,16 +68,43 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
           tipo: r.tipo,
           data: s.data_seduta,
           numeroDdt: s.numero_ddt,
+          numeroFattura: null,
           anno,
           nome: nomePulito,
           quantita: r.quantita,
           isExtra,
+          importo: null,
+          pagata: false,
+          scarico: s,
+          fattura: null,
         });
       }
     }
+
+    // Aggiungi FATTURE (una voce per fattura)
+    for (const fatt of fatture) {
+      const dataRif = fatt.data_fine || fatt.data_inizio || fatt.created_at;
+      const anno = fatt.anno ?? new Date(dataRif).getFullYear();
+      list.push({
+        id: `fattura-${fatt.id}`,
+        tipo: 'fattura',
+        data: dataRif,
+        numeroDdt: null,
+        numeroFattura: fatt.numero_fattura,
+        anno,
+        nome: `Fattura ${fatt.numero_fattura}`,
+        quantita: 1,
+        isExtra: false,
+        importo: fatt.lordo_ivato,
+        pagata: !!fatt.data_incasso,
+        scarico: null,
+        fattura: fatt,
+      });
+    }
+
     // Ordina per data più recente
     return list.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
-  }, [scarichi]);
+  }, [scarichi, fatture]);
 
   // Conteggi
   const totaleProdotti = tutteVoci
@@ -74,6 +116,7 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
     .reduce((sum, v) => sum + v.quantita, 0);
 
   const totaleExtra = tutteVoci.filter((v) => v.isExtra).length;
+  const totaleFatture = tutteVoci.filter((v) => v.tipo === 'fattura').length;
 
   // Filtra per tab e per ricerca
   const vociFiltrate = useMemo(() => {
@@ -81,7 +124,9 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
       if (tab === 'prodotti' && v.tipo !== 'prodotto') return false;
       if (tab === 'servizi' && v.tipo !== 'servizio') return false;
       if (tab === 'extra' && !v.isExtra) return false;
-      if (tab !== 'extra' && v.isExtra && tab !== 'tutti') return false;
+      if (tab !== 'extra' && v.isExtra && tab !== 'tutti' && tab !== 'fatture') return false;
+      if (tab === 'fatture' && v.tipo !== 'fattura') return false;
+      if (tab !== 'fatture' && v.tipo === 'fattura' && tab !== 'tutti') return false;
 
       if (ricerca.trim()) {
         const q = ricerca.toLowerCase();
@@ -183,6 +228,20 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
             ⭐ EXTRA ({totaleExtra})
           </button>
         )}
+
+        {totaleFatture > 0 && (
+          <button
+            type="button"
+            onClick={() => setTab('fatture')}
+            className={`px-3 py-1 rounded-apple text-xs font-semibold transition-all ${
+              tab === 'fatture'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-blue-700 hover:text-blue-900'
+            }`}
+          >
+            📄 Fatture & Scontrini ({totaleFatture})
+          </button>
+        )}
       </div>
 
       {/* Lista risultati */}
@@ -223,22 +282,90 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
                   </div>
                   <p className="text-[11px] text-apple-gray mt-0.5">
                     📅 {formatData(item.data)} •{' '}
-                    <span className="font-medium text-apple-blue">{numDdtFormattato}</span>
+                    {item.tipo === 'fattura' && item.fattura ? (
+                      <button
+                        type="button"
+                        onClick={() => setFatturaAperta(item.fattura)}
+                        className="font-medium text-apple-blue hover:underline"
+                        title="Apri fattura"
+                      >
+                        📄 {item.numeroFattura}
+                      </button>
+                    ) : item.scarico ? (
+                      <button
+                        type="button"
+                        onClick={() => setDdtAperto(item.scarico)}
+                        className="font-medium text-apple-blue hover:underline"
+                        title="Apri DDT"
+                      >
+                        {numDdtFormattato}
+                      </button>
+                    ) : (
+                      <span className="font-medium text-apple-blue">{numDdtFormattato}</span>
+                    )}
                   </p>
                 </div>
 
-                <div className="shrink-0 text-right">
-                  <span className="font-bold text-xs bg-white px-2.5 py-1 rounded-apple border border-gray-200 text-apple-darkgray shadow-sm">
-                    {item.tipo === 'servizio'
-                      ? `${item.quantita} seduta`
-                      : `× ${item.quantita}`}
-                  </span>
+                <div className="shrink-0 text-right flex items-center gap-2">
+                  {item.tipo === 'fattura' && item.importo != null && (
+                    <>
+                      <span className="text-xs font-bold text-apple-darkgray">
+                        € {item.importo.toFixed(2)}
+                      </span>
+                      {item.pagata && (
+                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
+                          Pagata
+                        </span>
+                      )}
+                    </>
+                  )}
+                  {item.tipo !== 'fattura' && (
+                    <span className="font-bold text-xs bg-white px-2.5 py-1 rounded-apple border border-gray-200 text-apple-darkgray shadow-sm">
+                      {item.tipo === 'servizio'
+                        ? `${item.quantita} seduta`
+                        : `× ${item.quantita}`}
+                    </span>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
       )}
+      {/* Modale Dettaglio DDT */}
+      {ddtAperto && (
+        <DettaglioDdt
+          scarico={ddtAperto as unknown as Parameters<typeof DettaglioDdt>[0]['scarico']}
+          onClose={() => setDdtAperto(null)}
+          onFirma={() => {
+            setDdtAperto(null);
+            window.alert('Per firmare il DDT, apri la pagina DDT dedicata.');
+          }}
+          onInvia={(canale) => {
+            window.alert(`Per inviare il DDT via ${canale}, apri la pagina DDT dedicata.`);
+          }}
+          onScaricaPdf={(tipo) => {
+            window.alert(`Download PDF ${tipo} disponibile dalla pagina DDT.`);
+          }}
+          onEliminato={() => {
+            setDdtAperto(null);
+            setScarichi((prev) => prev.filter((s) => s.id !== ddtAperto.id));
+          }}
+        />
+      )}
+
+      {/* Modale Dettaglio Fattura */}
+      {fatturaAperta && (
+        <DettaglioFattura
+          fattura={fatturaAperta as unknown as Parameters<typeof DettaglioFattura>[0]['fattura']}
+          onClose={() => setFatturaAperta(null)}
+          onUpdate={() => {
+            // Ricarica lista fatture dopo modifica
+            getFattureCliente(clienteId).then(setFatture).catch(console.error);
+          }}
+        />
+      )}
+
     </div>
   );
 }
