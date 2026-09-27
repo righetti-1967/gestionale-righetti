@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getClienti, type Cliente } from '../lib/clienti';
-import { getServizi, type Servizio } from '../lib/servizi';
+import { getServizi, creaServizio, type Servizio } from '../lib/servizi';
 import { getPercorsiCliente, type Percorso } from '../lib/percorsi';
 import {
   creaAppuntamento,
@@ -105,6 +105,7 @@ export function FormNuovoAppuntamento({
   );
   const [servizioCheckupId, setServizioCheckupId] = useState<number | null>(null);
   const [showPickerServizi, setShowPickerServizi] = useState(false);
+  const [showNuovoServizioRapido, setShowNuovoServizioRapido] = useState(false);
   const percorsoSelectRef = useRef<HTMLSelectElement>(null);
   const [ricercaPickerServizi, setRicercaPickerServizi] = useState('');
   const [selezionatiPicker, setSelezionatiPicker] = useState<Set<number>>(new Set());
@@ -865,13 +866,24 @@ export function FormNuovoAppuntamento({
                   ? 'Servizio Check-up & Altri Servizi Aggiuntivi'
                   : "Servizi dell'appuntamento"}
               </label>
-              <button
-                type="button"
-                onClick={() => setShowPickerServizi(true)}
-                className="text-xs text-apple-blue hover:underline font-semibold"
-              >
-                + Aggiungi altro servizio
-              </button>
+              <div className="flex items-center gap-2">
+                {vociSelezionate.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPickerServizi(true)}
+                    className="text-xs text-apple-blue hover:underline font-semibold"
+                  >
+                    + Scegli da listino
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowNuovoServizioRapido(true)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors shadow-sm"
+                >
+                  <span className="text-sm font-bold leading-none">+</span> Nuovo Servizio
+                </button>
+              </div>
             </div>
 
             {vociSelezionate.length > 0 ? (
@@ -1082,6 +1094,25 @@ export function FormNuovoAppuntamento({
           }}
         />
       )}
+
+      <ModaleNuovoServizioRapido
+        open={showNuovoServizioRapido}
+        onClose={() => setShowNuovoServizioRapido(false)}
+        onCreato={(nuovo) => {
+          setServizi((prev) => [...prev, nuovo]);
+          setVociSelezionate((prev) => [
+            ...prev,
+            {
+              tipo: 'servizio',
+              servizio_id: nuovo.id,
+              prodotto_id: null,
+              nome: nuovo.nome,
+              quantita: 1,
+              durata_minuti: nuovo.durata_minuti || 30,
+            },
+          ]);
+        }}
+      />
 
       {showPickerServizi && (
         <div
