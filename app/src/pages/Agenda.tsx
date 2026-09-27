@@ -88,7 +88,7 @@ export function Agenda() {
   }>({});
   const [dettaglio, setDettaglio] = useState<AppuntamentoConCliente | null>(null);
   const [highlightAppuntamentoId, setHighlightAppuntamentoId] = useState<number | null>(null);
-  const [cardAttiva, setCardAttiva] = useState<'pending' | 'rebooking' | null>(null);
+  const [modalePendingRebooking, setModalePendingRebooking] = useState<'pending' | 'rebooking' | null>(null);
 
   const [scaricoDaApp, setScaricoDaApp] = useState<{
     percorso: Percorso;
@@ -172,7 +172,6 @@ export function Agenda() {
     const primoNome = nomeCliente.split(' ')[0] || '';
 
     let testo: string;
-
     if (tipo === 'pending') {
       const dataIt = new Date(app.data + 'T00:00:00').toLocaleDateString('it-IT', {
         weekday: 'long',
@@ -185,9 +184,23 @@ export function Agenda() {
       testo = `Ciao ${primoNome}, ti scrivo dallo Studio Righetti per riprogrammare il tuo appuntamento. Le nostre disponibilità sono:\n- `;
     }
 
-    const messaggio = encodeURIComponent(testo);
-    window.open(`https://wa.me/${numero}?text=${messaggio}`, '_blank');
+    const encoded = encodeURIComponent(testo);
+    // whatsapp:// apre l'APP nativa (Mac/iPhone/Android)
+    // wa.me apre il web (fallback)
+    const appUrl = `whatsapp://send?phone=${numero}&text=${encoded}`;
+    const webUrl = `https://wa.me/${numero}?text=${encoded}`;
+
+    // Prova ad aprire l'app nativa; se non c'è, fallback sul web
+    const start = Date.now();
+    window.location.href = appUrl;
+    setTimeout(() => {
+      // Se dopo 1.5s la pagina non è cambiata (app non installata), apri web
+      if (Date.now() - start < 2000) {
+        window.open(webUrl, '_blank');
+      }
+    }, 1500);
   }
+
 
   async function ricarica() {
     try {
@@ -560,159 +573,20 @@ export function Agenda() {
         <div className="flex flex-wrap gap-2 mb-3">
           {pendingList.length > 0 && (
             <button
-              onClick={() => setCardAttiva(cardAttiva === 'pending' ? null : 'pending')}
-              className={`px-3 py-2 rounded-apple text-xs font-semibold transition-all shadow-apple ${
-                cardAttiva === 'pending'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100'
-              }`}
+              onClick={() => setModalePendingRebooking('pending')}
+              className="px-3 py-2 rounded-apple text-xs font-semibold transition-all shadow-apple bg-red-50 border border-red-200 text-red-700 hover:bg-red-100"
             >
               ⏳ Pending <strong>({pendingList.length})</strong>
             </button>
           )}
           {rebookingList.length > 0 && (
             <button
-              onClick={() =>
-                setCardAttiva(cardAttiva === 'rebooking' ? null : 'rebooking')
-              }
-              className={`px-3 py-2 rounded-apple text-xs font-semibold transition-all shadow-apple ${
-                cardAttiva === 'rebooking'
-                  ? 'bg-orange-600 text-white'
-                  : 'bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100'
-              }`}
+              onClick={() => setModalePendingRebooking('rebooking')}
+              className="px-3 py-2 rounded-apple text-xs font-semibold transition-all shadow-apple bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100"
             >
               🔄 Rebooking <strong>({rebookingList.length})</strong>
             </button>
           )}
-        </div>
-      )}
-
-      {/* Pannello Pending */}
-      {cardAttiva === 'pending' && pendingList.length > 0 && (
-        <div className="mb-3 space-y-2 p-3 bg-red-50/50 border border-red-200 rounded-apple">
-          <h3 className="text-xs font-bold text-red-900 uppercase tracking-wide">
-            ⏳ Appuntamenti da confermare
-          </h3>
-          {pendingList.map((app) => (
-            <div
-              key={app.id}
-              className="bg-white border border-red-200 rounded-apple p-3 flex flex-wrap items-center gap-3"
-            >
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-semibold text-xs shrink-0">
-                  {(app.cliente?.nome_cognome ?? '?')
-                    .split(' ')
-                    .map((n) => n[0])
-                    .slice(0, 2)
-                    .join('')
-                    .toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-apple-darkgray truncate">
-                    {app.cliente?.nome_cognome ?? '—'}
-                  </p>
-                  <p className="text-xs text-apple-gray">
-                    📅{' '}
-                    {new Date(app.data + 'T00:00:00').toLocaleDateString('it-IT', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                    {' • '}
-                    {app.ora_inizio.slice(0, 5)}
-                    {' • '}
-                    {app.titolo}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                {app.cliente?.cellulare && (
-                  <button
-                    onClick={() => apriWhatsAppCliente(app, 'pending')}
-                    className="w-8 h-8 rounded-apple flex items-center justify-center text-green-600 hover:bg-green-50 transition-colors"
-                    title="Invia WhatsApp (conferma)"
-                  >
-                    💬
-                  </button>
-                )}
-                <button
-                  onClick={() => handleVaiAAppuntamento(app.data, app.id)}
-                  className="w-8 h-8 rounded-apple flex items-center justify-center text-apple-gray hover:bg-apple-lightgray transition-colors"
-                  title="Apri in Agenda"
-                >
-                  📅
-                </button>
-                <button
-                  onClick={() => setDettaglio(app)}
-                  className="w-8 h-8 rounded-apple flex items-center justify-center text-apple-gray hover:bg-apple-lightgray transition-colors"
-                  title="Modifica"
-                >
-                  ✏️
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Pannello Rebooking */}
-      {cardAttiva === 'rebooking' && rebookingList.length > 0 && (
-        <div className="mb-3 space-y-2 p-3 bg-orange-50/50 border border-orange-200 rounded-apple">
-          <h3 className="text-xs font-bold text-orange-900 uppercase tracking-wide">
-            🔄 Clienti da riprogrammare
-          </h3>
-          {rebookingList.map((app) => (
-            <div
-              key={app.id}
-              className="bg-white border border-orange-200 rounded-apple p-3 flex flex-wrap items-center gap-3"
-            >
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-semibold text-xs shrink-0">
-                  {(app.cliente?.nome_cognome ?? '?')
-                    .split(' ')
-                    .map((n) => n[0])
-                    .slice(0, 2)
-                    .join('')
-                    .toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-apple-darkgray truncate">
-                    {app.cliente?.nome_cognome ?? '—'}
-                  </p>
-                  <p className="text-xs text-apple-gray">
-                    📅{' '}
-                    {new Date(app.data + 'T00:00:00').toLocaleDateString('it-IT', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                    {' • '}
-                    {app.ora_inizio.slice(0, 5)}
-                    {' • '}
-                    {app.titolo}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                {app.cliente?.cellulare && (
-                  <button
-                    onClick={() => apriWhatsAppCliente(app, 'rebooking')}
-                    className="w-8 h-8 rounded-apple flex items-center justify-center text-green-600 hover:bg-green-50 transition-colors"
-                    title="Invia WhatsApp (riprogramma)"
-                  >
-                    💬
-                  </button>
-                )}
-                <button
-                  onClick={() => setDettaglio(app)}
-                  className="w-8 h-8 rounded-apple flex items-center justify-center text-apple-gray hover:bg-apple-lightgray transition-colors"
-                  title="Fissa appuntamento"
-                >
-                  📅
-                </button>
-              </div>
-            </div>
-          ))}
         </div>
       )}
 
@@ -875,6 +749,142 @@ export function Agenda() {
           tipo={toast.tipo}
           onComplete={() => setToast(null)}
         />
+      )}
+
+      {/* Modale Pending/Rebooking */}
+      {modalePendingRebooking && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setModalePendingRebooking(null)}
+        >
+          <div
+            className="bg-white rounded-apple shadow-apple-lg max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200/60">
+              <div>
+                <h2 className="text-base font-semibold text-apple-darkgray">
+                  {modalePendingRebooking === 'pending'
+                    ? '⏳ Appuntamenti da confermare'
+                    : '🔄 Clienti da riprogrammare'}
+                </h2>
+                <p className="text-xs text-apple-gray mt-0.5">
+                  {modalePendingRebooking === 'pending'
+                    ? pendingList.length
+                    : rebookingList.length}{' '}
+                  {modalePendingRebooking === 'pending' ? 'appuntamenti' : 'clienti'}
+                </p>
+              </div>
+              <button
+                onClick={() => setModalePendingRebooking(null)}
+                className="w-8 h-8 rounded-apple flex items-center justify-center text-apple-gray hover:bg-apple-lightgray transition-colors text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Lista */}
+            <div className="overflow-y-auto p-4 space-y-2">
+              {(modalePendingRebooking === 'pending' ? pendingList : rebookingList).map(
+                (app) => (
+                  <div
+                    key={app.id}
+                    className={`rounded-apple border p-4 transition-colors ${
+                      modalePendingRebooking === 'pending'
+                        ? 'bg-red-50/50 border-red-200 hover:bg-red-50'
+                        : 'bg-orange-50/50 border-orange-200 hover:bg-orange-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-xs shrink-0 ${
+                          modalePendingRebooking === 'pending'
+                            ? 'bg-gradient-to-br from-red-500 to-red-600'
+                            : 'bg-gradient-to-br from-orange-500 to-orange-600'
+                        }`}
+                      >
+                        {(app.cliente?.nome_cognome ?? '?')
+                          .split(' ')
+                          .map((n) => n[0])
+                          .slice(0, 2)
+                          .join('')
+                          .toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-apple-darkgray truncate">
+                          {app.cliente?.nome_cognome ?? '—'}
+                        </p>
+                        <p className="text-xs text-apple-gray">
+                          📅{' '}
+                          {new Date(app.data + 'T00:00:00').toLocaleDateString('it-IT', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                          })}
+                          {' • '}
+                          {app.ora_inizio.slice(0, 5)}
+                          {' • '}
+                          {app.titolo}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {app.cliente?.cellulare && (
+                        <button
+                          onClick={() =>
+                            apriWhatsAppCliente(
+                              app,
+                              modalePendingRebooking === 'pending'
+                                ? 'pending'
+                                : 'rebooking'
+                            )
+                          }
+                          className="flex-1 sm:flex-none px-3 py-2 rounded-apple bg-green-50 border border-green-200 text-green-700 text-xs font-medium hover:bg-green-100 transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          💬 WhatsApp
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setModalePendingRebooking(null);
+                          if (modalePendingRebooking === 'pending') {
+                            handleVaiAAppuntamento(app.data, app.id);
+                          } else {
+                            setDettaglio(app);
+                          }
+                        }}
+                        className="flex-1 sm:flex-none px-3 py-2 rounded-apple bg-white border border-gray-200 text-apple-darkgray text-xs font-medium hover:bg-apple-lightgray transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        {modalePendingRebooking === 'pending' ? '📅 Apri' : '📅 Fissa'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setModalePendingRebooking(null);
+                          setDettaglio(app);
+                        }}
+                        className="flex-1 sm:flex-none px-3 py-2 rounded-apple bg-white border border-gray-200 text-apple-darkgray text-xs font-medium hover:bg-apple-lightgray transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        ✏️ Dettaglio
+                      </button>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 border-t border-gray-200/60 flex justify-end">
+              <button
+                onClick={() => setModalePendingRebooking(null)}
+                className="px-4 py-2 rounded-apple bg-white border border-gray-200 text-sm font-medium text-apple-darkgray hover:bg-apple-lightgray transition-colors"
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
