@@ -561,9 +561,19 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
                       .toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-apple-darkgray truncate">
-                      {cliente.nome_cognome}
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-apple-darkgray truncate">
+                        {cliente.nome_cognome}
+                      </p>
+                      {cliente.dna && (
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200 shrink-0"
+                          title="DNA cliente"
+                        >
+                          🧬 {cliente.dna}
+                        </span>
+                      )}
+                    </div>
                     {cliente.codice_fiscale && (
                       <p className="text-xs text-apple-gray truncate uppercase">
                         {cliente.codice_fiscale}
