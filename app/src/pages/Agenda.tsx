@@ -157,7 +157,10 @@ export function Agenda() {
     [appuntamenti]
   );
 
-  function apriWhatsAppCliente(app: AppuntamentoConCliente) {
+  function apriWhatsAppCliente(
+    app: AppuntamentoConCliente,
+    tipo: 'pending' | 'rebooking' = 'pending'
+  ) {
     const cellulare = app.cliente?.cellulare;
     if (!cellulare) {
       setToast({ message: 'Cliente senza cellulare', tipo: 'error' });
@@ -166,15 +169,23 @@ export function Agenda() {
     const pulito = cellulare.replace(/\D/g, '');
     const numero = pulito.startsWith('39') ? pulito : `39${pulito}`;
     const nomeCliente = app.cliente?.nome_cognome ?? '';
-    const dataIt = new Date(app.data + 'T00:00:00').toLocaleDateString('it-IT', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-    });
-    const ora = app.ora_inizio.slice(0, 5);
-    const messaggio = encodeURIComponent(
-      `Ciao ${nomeCliente.split(' ')[0]}, ti scrivo dallo Studio Righetti per confermare il tuo appuntamento di ${dataIt} alle ${ora}. Confermi?`
-    );
+    const primoNome = nomeCliente.split(' ')[0] || '';
+
+    let testo: string;
+
+    if (tipo === 'pending') {
+      const dataIt = new Date(app.data + 'T00:00:00').toLocaleDateString('it-IT', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      });
+      const ora = app.ora_inizio.slice(0, 5);
+      testo = `Ciao ${primoNome}, ti scrivo dallo Studio Righetti per confermare il tuo appuntamento di ${dataIt} alle ${ora}. Confermi?`;
+    } else {
+      testo = `Ciao ${primoNome}, ti scrivo dallo Studio Righetti per riprogrammare il tuo appuntamento. Le nostre disponibilità sono:\n- `;
+    }
+
+    const messaggio = encodeURIComponent(testo);
     window.open(`https://wa.me/${numero}?text=${messaggio}`, '_blank');
   }
 
@@ -617,9 +628,9 @@ export function Agenda() {
               <div className="flex items-center gap-1 shrink-0">
                 {app.cliente?.cellulare && (
                   <button
-                    onClick={() => apriWhatsAppCliente(app)}
+                    onClick={() => apriWhatsAppCliente(app, 'pending')}
                     className="w-8 h-8 rounded-apple flex items-center justify-center text-green-600 hover:bg-green-50 transition-colors"
-                    title="Invia WhatsApp"
+                    title="Invia WhatsApp (conferma)"
                   >
                     💬
                   </button>
@@ -685,9 +696,9 @@ export function Agenda() {
               <div className="flex items-center gap-1 shrink-0">
                 {app.cliente?.cellulare && (
                   <button
-                    onClick={() => apriWhatsAppCliente(app)}
+                    onClick={() => apriWhatsAppCliente(app, 'rebooking')}
                     className="w-8 h-8 rounded-apple flex items-center justify-center text-green-600 hover:bg-green-50 transition-colors"
-                    title="Invia WhatsApp"
+                    title="Invia WhatsApp (riprogramma)"
                   >
                     💬
                   </button>
