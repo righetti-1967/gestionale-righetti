@@ -92,7 +92,15 @@ export function InputTelefono({
           type="tel"
           inputMode="tel"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            let val = e.target.value;
+            // Se Italia (+39), rimuove prefissi comuni durante l'input
+            if (paese === 'IT') {
+              if (val.startsWith('+39')) val = val.replace('+39', '');
+              else if (val.startsWith('39') && val.length > 10) val = val.replace('39', '');
+            }
+            onChange(val);
+          }}
           onBlur={() => setTouched(true)}
           placeholder={placeholder || 'es. 3496780650'}
           className="flex-1 min-w-0 px-3 py-3 sm:py-2.5 bg-transparent text-sm text-apple-darkgray placeholder:text-apple-gray/60 focus:outline-none"
