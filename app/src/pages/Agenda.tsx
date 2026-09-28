@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabase';
 import {
   getAppuntamenti,
   aggiornaAppuntamentiCompletati,
@@ -202,9 +203,9 @@ export function Agenda() {
   }
 
 
-  async function ricarica() {
+  async function ricarica(silenzioso = false) {
     try {
-      setLoading(true);
+      if (!silenzioso) setLoading(true);
       setErrore(null);
       const data = await getAppuntamenti(range.inizio, range.fine);
       setAppuntamenti(data);
@@ -212,7 +213,7 @@ export function Agenda() {
       const msg = err instanceof Error ? err.message : String(err);
       setErrore(msg || 'Errore nel caricamento');
     } finally {
-      setLoading(false);
+      if (!silenzioso) setLoading(false);
     }
   }
 
@@ -220,6 +221,27 @@ export function Agenda() {
     if (!configCaricata) return;
     ricarica();
   }, [range.inizio, range.fine, configCaricata]);
+
+  // ⚡ Sincronizzazione Realtime Multi-Device (MacBook, iPhone, iPad)
+  useEffect(() => {
+    if (!configCaricata) return;
+
+    const channel = supabase
+      .channel('realtime_agenda_appuntamenti')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'appuntamenti' },
+        () => {
+          // Ping istantaneo da un altro dispositivo: aggiorna la griglia al volo
+          ricarica(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [configCaricata, range.inizio, range.fine]);
 
   const giorniSettimana = useMemo(() => {
     if (vista !== 'settimanale') return [];
