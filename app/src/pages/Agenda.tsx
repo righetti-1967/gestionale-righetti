@@ -501,15 +501,79 @@ export function Agenda() {
 
   return (
     <div>
-      <div className="mb-3">
+      {/* --- HEADER MOBILE (< 768px): Stile compatto riferimento --- */}
+      <div className="sm:hidden mb-3">
+        {/* Riga 1: Data centrata */}
+        <div className="text-center font-bold text-base text-apple-darkgray capitalize mb-2">
+          {titoloData()}
+        </div>
+
+        {/* Riga 2: Barra comandi orizzontale compatta in un unico livello */}
+        <div className="flex items-center justify-between gap-1.5 w-full">
+          {/* Pillola < Oggi > */}
+          <div className="inline-flex items-center rounded-apple bg-apple-blue text-white shadow-apple overflow-hidden h-9">
+            <button onClick={() => vai(-1)} className="px-2.5 h-full hover:bg-blue-600 active:bg-blue-700 font-bold text-sm">‹</button>
+            <button onClick={vaiAOggi} className="px-2.5 h-full hover:bg-blue-600 active:bg-blue-700 text-xs font-semibold border-x border-blue-400/40">Oggi</button>
+            <button onClick={() => vai(1)} className="px-2.5 h-full hover:bg-blue-600 active:bg-blue-700 font-bold text-sm">›</button>
+          </div>
+
+          {/* Switcher M | S | G */}
+          <div className="inline-flex rounded-apple bg-apple-blue text-white shadow-apple overflow-hidden h-9">
+            {[
+              { id: 'mensile', label: 'M' },
+              { id: 'settimanale', label: 'S' },
+              { id: 'giornaliera', label: 'G' },
+            ].map((v) => (
+              <button
+                key={v.id}
+                onClick={() => setVista(v.id as any)}
+                className={`px-2.5 h-full text-xs font-bold transition-colors border-r last:border-r-0 border-blue-400/40 ${
+                  vista === v.id ? 'bg-white text-apple-blue shadow-sm' : 'hover:bg-blue-600'
+                }`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Date picker 📅 & Nuovo + */}
+          <div className="flex items-center gap-1.5">
+            <label className="w-9 h-9 rounded-apple bg-apple-blue text-white shadow-apple flex items-center justify-center cursor-pointer hover:bg-blue-600 active:bg-blue-700 relative shrink-0">
+              <span className="text-sm">📅</span>
+              <input
+                type="date"
+                value={dataCorrente}
+                onChange={(e) => {
+                  const d = new Date(e.target.value + 'T00:00:00');
+                  while (!isGiornoLavorativo(d)) {
+                    d.setDate(d.getDate() + 1);
+                  }
+                  setDataCorrente(dataToLocaleISO(d));
+                }}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              />
+            </label>
+
+            <button
+              onClick={apriNuovoGenerico}
+              className="w-9 h-9 rounded-apple bg-apple-blue text-white shadow-apple flex items-center justify-center text-lg font-bold hover:bg-blue-600 active:bg-blue-700 shrink-0"
+              title="Nuovo Appuntamento"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* --- HEADER DESKTOP (>= 768px): Lasciato esattamente come prima --- */}
+      <div className="hidden sm:block mb-3">
         <h1 className="text-xl sm:text-2xl font-bold text-apple-darkgray mb-0.5">
           Agenda
         </h1>
         <p className="text-xs text-apple-gray capitalize">{titoloData()}</p>
       </div>
 
-      {/* Riga unica: azioni + navigazione + viste */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
+      <div className="hidden sm:flex flex-wrap items-center gap-2 mb-4">
         {/* Azioni */}
         <RicercaClienteAgenda onVaiAAppuntamento={handleVaiAAppuntamento} />
         <button

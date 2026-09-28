@@ -100,8 +100,11 @@ export function AgendaGiornaliera({
 
   const altezzaSlot = useMemo(() => {
     if (slots.length === 0) return 22;
+    // Su mobile (< 768px): slot da 28px per dare aria e leggibilita (30 min = 56px)
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    if (isMobile) return 28;
     const calcolata = Math.floor(altezzaDisponibile / slots.length);
-    return Math.max(10, Math.min(40, calcolata));
+    return Math.max(18, Math.min(45, calcolata));
   }, [slots.length, altezzaDisponibile]);
 
   const pxPerMinuto = altezzaSlot / agendaConfig.granularitaMinuti;
