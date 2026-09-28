@@ -22,11 +22,45 @@ import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
 import { getDemoStatus } from './lib/demo';
 
+const PAGINE_VALIDE = [
+  'dashboard',
+  'agenda',
+  'clienti',
+  'fatture',
+  'ddt',
+  'magazzino',
+  'ordini',
+  'servizi',
+  'prodotti',
+  'percorsi',
+  'impostazioni',
+];
+
 function AppGestionale() {
   const { user } = useAuth();
   const demoStatus = getDemoStatus(user);
-  const [currentPage, setCurrentPage] = useState('dashboard');
+
+  // Inizializza leggendo prima l'URL corrente, poi il localStorage, fallback dashboard
+  const [currentPage, setCurrentPage] = useState<string>(() => {
+    const path = window.location.pathname.replace(/^\//, '').toLowerCase();
+    if (PAGINE_VALIDE.includes(path)) return path;
+
+    const salvata = localStorage.getItem('gestionale_current_page');
+    if (salvata && PAGINE_VALIDE.includes(salvata)) return salvata;
+
+    return 'dashboard';
+  });
+
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Sincronizza l'URL e il localStorage ogni volta che cambi pagina
+  useEffect(() => {
+    localStorage.setItem('gestionale_current_page', currentPage);
+    const targetPath = `/${currentPage}`;
+    if (window.location.pathname !== targetPath) {
+      window.history.replaceState(null, '', targetPath);
+    }
+  }, [currentPage]);
 
   return (
     <div className="flex h-screen bg-apple-lightgray">
@@ -60,7 +94,6 @@ function AppGestionale() {
                 <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </button>
-
           </div>
 
           {/* Badge Demo con conto alla rovescia (solo per utenti in prova 15gg) */}
@@ -194,7 +227,6 @@ function AuthGate() {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  // Controllo licenza Demo 15 giorni
   const demoStatus = getDemoStatus(user);
   if (demoStatus.isScaduto) {
     return <SchermataBloccoDemo user={user} signOut={signOut} />;
@@ -204,7 +236,6 @@ function AuthGate() {
 }
 
 function App() {
-  // Listener per reset password (type=recovery)
   useEffect(() => {
     const hash = window.location.hash;
     const search = window.location.search;
