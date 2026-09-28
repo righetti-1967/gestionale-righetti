@@ -695,6 +695,11 @@ function BloccoRnd({
             <p className="text-[10px] truncate opacity-90 leading-tight">
               {voce?.nome || app.titolo}
             </p>
+            {isFirst && hasNote && (
+              <p className="text-[9px] italic truncate leading-tight mt-0.5 px-1 py-0.5 rounded bg-black/10 font-medium" title={app.note}>
+                📝 {app.note}
+              </p>
+            )}
           </div>
         )}
       </div>
