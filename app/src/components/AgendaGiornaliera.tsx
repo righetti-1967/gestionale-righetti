@@ -679,50 +679,47 @@ function BloccoRnd({
             )}
           </div>
         ) : (
-          {height < 36 ? (
-          /* Micro: 15 min */
-          <div className="h-full flex items-center gap-1.5 overflow-hidden text-[10px] px-0.5">
-            <span className="font-semibold shrink-0 opacity-80">{oraLiveInizio}</span>
-            <span className="font-bold truncate">{app.cliente?.nome_cognome || "—"}</span>
-            {isFirst && hasNote && <span className="shrink-0 text-[9px]" title={app.note || undefined}>📝</span>}
-          </div>
-        ) : height < 55 ? (
-          /* Compatto: 30 min (2 righe eleganti) */
-          <div className="h-full flex flex-col justify-center overflow-hidden leading-tight py-0.5">
-            <p className="text-[10px] font-bold truncate flex items-center gap-1">
-              <span className="font-normal opacity-75 shrink-0">{oraLiveInizio}</span>
-              <span className="truncate">{app.cliente?.nome_cognome || "—"}</span>
-              {isFirst && app.stato === "completato" && <span className="text-[9px]">✓</span>}
-            </p>
-            <p className="text-[9px] truncate opacity-90 mt-0.5 flex items-center gap-1">
-              <span className="truncate">{voce?.nome || app.titolo}</span>
-              {isFirst && hasNote && (
-                <span className="shrink-0 font-medium italic bg-black/10 px-1 rounded text-[8px]" title={app.note || undefined}>
-                  📝 {app.note}
-                </span>
-              )}
-            </p>
-          </div>
-        ) : (
-          /* Normale / Esteso: 45m, 1h+ */
-          <div className="h-full flex flex-col overflow-hidden">
-            <p className={`text-[10px] truncate leading-tight ${isLive ? "font-bold" : "opacity-90"}`}>
-              {oraLiveInizio} – {oraLiveFine}
-            </p>
-            <p className="text-xs font-bold truncate leading-tight flex items-center gap-1">
-              <span className="truncate">{app.cliente?.nome_cognome || "—"}</span>
-              {isFirst && app.stato === "completato" && <span className="text-[10px]">✓</span>}
-            </p>
-            <p className="text-[10px] truncate opacity-90 leading-tight">
-              {voce?.nome || app.titolo}
-            </p>
-            {isFirst && hasNote && (
-              <p className="text-[9px] italic truncate leading-tight mt-0.5 px-1 py-0.5 rounded bg-black/10 font-medium" title={app.note || undefined}>
-                📝 {app.note}
+          height < 40 ? (
+            <div className="h-full flex items-center gap-1 overflow-hidden text-[10px] px-0.5">
+              <span className="font-semibold shrink-0 opacity-80">{oraLiveInizio}</span>
+              <span className="font-bold truncate">{app.cliente?.nome_cognome || "—"}</span>
+              {isFirst && hasNote && <span className="shrink-0 text-[9px]" title={app.note || undefined}>📝</span>}
+            </div>
+          ) : height < 55 ? (
+            <div className="h-full flex flex-col justify-center overflow-hidden leading-tight py-0.5">
+              <p className="text-[10px] font-bold truncate flex items-center gap-1">
+                <span className="font-normal opacity-75 shrink-0">{oraLiveInizio}</span>
+                <span className="truncate">{app.cliente?.nome_cognome || "—"}</span>
+                {isFirst && app.stato === "completato" && <span className="text-[9px]">✓</span>}
               </p>
-            )}
-          </div>
-        )}
+              <p className="text-[9px] truncate opacity-90 mt-0.5 flex items-center gap-1">
+                <span className="truncate">{voce?.nome || app.titolo}</span>
+                {isFirst && hasNote && (
+                  <span className="shrink-0 font-medium italic bg-black/10 px-1 rounded text-[8px]" title={app.note || undefined}>
+                    📝 {app.note}
+                  </span>
+                )}
+              </p>
+            </div>
+          ) : (
+            <div className="h-full flex flex-col overflow-hidden">
+              <p className={`text-[10px] truncate leading-tight ${isLive ? "font-bold" : "opacity-90"}`}>
+                {oraLiveInizio} – {oraLiveFine}
+              </p>
+              <p className="text-xs font-bold truncate leading-tight flex items-center gap-1">
+                <span className="truncate">{app.cliente?.nome_cognome || "—"}</span>
+                {isFirst && app.stato === "completato" && <span className="text-[10px]">✓</span>}
+              </p>
+              <p className="text-[10px] truncate opacity-90 leading-tight">
+                {voce?.nome || app.titolo}
+              </p>
+              {isFirst && hasNote && (
+                <p className="text-[9px] italic truncate leading-tight mt-0.5 px-1 py-0.5 rounded bg-black/10 font-medium" title={app.note || undefined}>
+                  📝 {app.note}
+                </p>
+              )}
+            </div>
+          )
         )}
       </div>
     </Rnd>
