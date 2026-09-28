@@ -1,4 +1,3 @@
-import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAgendaConfig } from '../lib/useAgendaConfig';
 import { Rnd } from 'react-rnd';
@@ -556,7 +555,6 @@ function BloccoRnd({
   const { config: agendaConfig } = useAgendaConfig();
 
   const { app, voce, top, height, oraInizio, oraFine, isFirst } = blocco;
-  const [popupNota, setPopupNota] = useState<{ x: number; y: number } | null>(null);
   const isBlocco = app.is_blocco === true;
 
   const sid = voce?.servizio_id ?? app.servizio_id;
@@ -685,30 +683,13 @@ function BloccoRnd({
               <p className={`text-[10px] truncate leading-tight ${isLive ? "font-bold" : "opacity-90"}`}>
                 {oraLiveInizio} – {oraLiveFine}
               </p>
-              <p className="text-xs font-bold truncate leading-tight flex items-center gap-1.5">
+              <p className="text-xs font-bold truncate leading-tight" title={hasNote ? app.note || undefined : undefined}>
                 <span className="truncate">{app.cliente?.nome_cognome || "—"}</span>
-                {isFirst && app.stato === "completato" && <span className="text-[10px]">✓</span>}
+                {isFirst && app.stato === "completato" && <span className="ml-1 text-[10px]">✓</span>}
                 {isFirst && hasNote && (
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center shrink-0 w-4 h-4 rounded-full bg-red-100 text-[10px] text-red-600 border border-red-300 hover:scale-125 active:scale-95 transition-transform cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation(); // ⛔ Blocca apertura modale appuntamento su iPhone/iPad
-                      if (popupNota) {
-                        setPopupNota(null);
-                      } else {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setPopupNota({ x: rect.left + rect.width / 2, y: rect.top - 8 });
-                      }
-                    }}
-                    onMouseEnter={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      setPopupNota({ x: rect.left + rect.width / 2, y: rect.top - 8 });
-                    }}
-                    onMouseLeave={() => setPopupNota(null)}
-                  >
-                    💬
-                  </button>
+                  <span className="ml-1 text-[11px] font-semibold text-red-600 tracking-tight">
+                    | 📝 {app.note}
+                  </span>
                 )}
               </p>
               <p className="text-[10px] truncate opacity-90 leading-tight">
@@ -718,46 +699,6 @@ function BloccoRnd({
         )}
       </div>
     
-    {popupNota && hasNote && createPortal(
-        <>
-          {/* Backdrop trasparente: tocca fuori per chiudere su iPhone/iPad */}
-          <div
-            className="fixed inset-0 z-[9998] bg-transparent"
-            onClick={(e) => {
-              e.stopPropagation();
-              setPopupNota(null);
-            }}
-            onTouchStart={(e) => {
-              e.stopPropagation();
-              setPopupNota(null);
-            }}
-          />
-          <div
-            className="fixed z-[9999] pointer-events-auto p-3 bg-white text-gray-800 rounded-apple shadow-apple-lg border border-red-200 w-72 text-left"
-            style={{
-              left: Math.max(20, Math.min(popupNota.x, window.innerWidth - 300)),
-              top: Math.max(20, popupNota.y),
-              transform: 'translate(-50%, -100%)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between text-[11px] font-bold text-red-600 uppercase tracking-wider mb-1.5 pb-1 border-b border-gray-100">
-              <span className="flex items-center gap-1.5"><span>💬</span> Nota Appuntamento</span>
-              <button
-                type="button"
-                onClick={() => setPopupNota(null)}
-                className="text-gray-400 hover:text-gray-600 text-xs font-bold px-1"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-normal">
-              {app.note}
-            </p>
-          </div>
-        </>,
-        document.body
-      )}
     </Rnd>
   );
 }
