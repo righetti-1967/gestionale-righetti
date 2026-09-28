@@ -130,3 +130,35 @@ export async function popolaDemoUtente(
   }
   return await res.json();
 }
+
+// ============================================================
+// SINCRONIZZAZIONE GOOGLE SHEETS
+// ============================================================
+export interface SheetsSyncResponse {
+  success: boolean;
+  nuovi: number;
+  aggiornati: number;
+  saltati: number;
+  totale: number;
+  messaggio: string;
+}
+
+export async function syncGoogleSheets(sheetUrl: string): Promise<SheetsSyncResponse> {
+  const res = await fetch(`${FASTAPI_URL}/api/sheets/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sheet_url: sheetUrl }),
+  });
+
+  if (!res.ok) {
+    let dettaglio = '';
+    try {
+      const j = await res.json();
+      dettaglio = j.detail ?? JSON.stringify(j);
+    } catch {
+      dettaglio = await res.text();
+    }
+    throw new Error(`Errore ${res.status}: ${dettaglio.slice(0, 400)}`);
+  }
+  return res.json();
+}

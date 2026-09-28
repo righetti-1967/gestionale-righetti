@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import {
+  syncGoogleSheets,
+  type SheetsSyncResponse,
   getAdminUtenti,
   prorogaDemoUtente,
   sbloccaUtenteReale,
@@ -97,7 +99,7 @@ function normalizzaDati(raw: unknown): DatiAziendali {
   };
 }
 
-type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'licenze';
+type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'licenze';
 
 const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'profilo', label: 'Profilo', icon: '👤' },
@@ -106,6 +108,7 @@ const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'agenda', label: 'Agenda', icon: '📅' },
   { id: 'privacy', label: 'Privacy', icon: '🔒' },
   { id: 'aspetto', label: 'Aspetto', icon: '🎨' },
+  { id: 'google_sheets', label: 'Google Sheets', icon: '🔄' },
 ];
 
 const ADMIN_EMAIL = 'righetti@righetti.club';
@@ -207,6 +210,241 @@ function FormSede({
   );
 }
 
+
+// ============================================================
+// TAB GOOGLE SHEETS (Con Auto-Sync ogni 15 minuti)
+// ============================================================
+function TabGoogleSheets({ registraSalva }: { registraSalva: (fn: () => void, s: boolean) => void }) {
+  const { user } = useAuth();
+  const [url, setUrl] = useState('');
+  const [urlOriginale, setUrlOriginale] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const [sincronizzando, setSincronizzando] = useState(false);
+  const [ultimoSyncAt, setUltimoSyncAt] = useState<Date | null>(() => {
+    const salvato = localStorage.getItem('gestionale_sheets_last_sync');
+    return salvato ? new Date(salvato) : null;
+  });
+  const [messaggio, setMessaggio] = useState<{ tipo: 'ok' | 'errore'; testo: string } | null>(null);
+  const [risultatoSync, setRisultatoSync] = useState<SheetsSyncResponse | null>(null);
+
+  // Carica URL salvato da Supabase
+  useEffect(() => {
+    async function caricaConfig() {
+      if (!user?.id) return;
+      try {
+        const { data, error } = await supabase
+          .from('impostazioni')
+          .select('valore')
+          .eq('user_id', user.id)
+          .eq('chiave', 'google_sheet_url')
+          .maybeSingle();
+
+        if (error) console.warn('Errore lettura sheet_url:', error);
+        else if (data?.valore) {
+          setUrl(data.valore);
+          setUrlOriginale(data.valore);
+        }
+      } catch (err) {
+        console.warn('Errore:', err);
+      }
+    }
+    caricaConfig();
+  }, [user?.id]);
+
+  // Funzione di sincronizzazione (usabile sia a mano che dal timer)
+  const eseguiSync = useCallback(async (silenzioso = false) => {
+    const targetUrl = urlOriginale || url;
+    if (!targetUrl.trim()) return;
+
+    if (!silenzioso) {
+      setSincronizzando(true);
+      setMessaggio(null);
+    }
+
+    try {
+      const res = await syncGoogleSheets(targetUrl.trim());
+      setRisultatoSync(res);
+      const adesso = new Date();
+      setUltimoSyncAt(adesso);
+      localStorage.setItem('gestionale_sheets_last_sync', adesso.toISOString());
+      if (!silenzioso) {
+        setMessaggio({ tipo: 'ok', testo: res.messaggio || 'Sincronizzazione completata con successo!' });
+      }
+    } catch (e: any) {
+      if (!silenzioso) {
+        setMessaggio({ tipo: 'errore', testo: e.message || 'Errore durante la sincronizzazione' });
+      }
+    } finally {
+      if (!silenzioso) setSincronizzando(false);
+    }
+  }, [url, urlOriginale]);
+
+  // ⏱️ TIMER AUTOMATICO: Sincronizza ogni 15 minuti in background
+  useEffect(() => {
+    if (!urlOriginale) return;
+
+    // Intervallo di 15 minuti (15 * 60 * 1000 ms)
+    const QUINDICI_MINUTI = 15 * 60 * 1000;
+    const interval = setInterval(() => {
+      eseguiSync(true); // Esegue in background senza mostrare spinner
+    }, QUINDICI_MINUTI);
+
+    return () => clearInterval(interval);
+  }, [urlOriginale, eseguiSync]);
+
+  // Salvataggio URL
+  async function handleSalva() {
+    if (!user?.id || !url.trim()) return;
+    setSalvando(true);
+    setMessaggio(null);
+    try {
+      const { error } = await supabase
+        .from('impostazioni')
+        .upsert(
+          {
+            user_id: user.id,
+            chiave: 'google_sheet_url',
+            valore: url.trim(),
+            aggiornato_il: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,chiave' }
+        );
+
+      if (error) throw error;
+      setUrlOriginale(url.trim());
+      setMessaggio({ tipo: 'ok', testo: 'URL Google Sheet salvato con successo!' });
+    } catch (e: any) {
+      setMessaggio({ tipo: 'errore', testo: e.message || 'Errore salvataggio URL' });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  useEffect(() => {
+    if (url.trim() !== urlOriginale) {
+      registraSalva(handleSalva, salvando);
+    }
+  }, [url, urlOriginale, salvando]);
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      {/* Banner Sincronizzazione Automatica Attiva */}
+      {urlOriginale && (
+        <div className="p-4 rounded-apple bg-green-50/70 border border-green-200 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+            <div>
+              <p className="text-xs font-bold text-green-900">
+                Sincronizzazione automatica attiva (ogni 15 minuti)
+              </p>
+              <p className="text-[11px] text-green-700">
+                {ultimoSyncAt
+                  ? `Ultimo controllo: ${ultimoSyncAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`
+                  : 'In attesa del prossimo ciclo automatico...'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => eseguiSync(false)}
+            disabled={sincronizzando}
+            className="px-4 py-2 rounded-apple bg-green-600 text-white text-xs font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors shadow-apple flex items-center gap-1.5"
+          >
+            {sincronizzando ? (
+              <>
+                <span className="animate-spin">⏳</span> Sincronizzazione in corso...
+              </>
+            ) : (
+              <>
+                <span>🔄</span> Sincronizza ora (Manuale)
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Card Configurazione Foglio */}
+      <div className="bg-white rounded-apple shadow-apple p-6">
+        <h3 className="text-base font-bold text-apple-darkgray mb-1">
+          Foglio Google per Anagrafica Clienti
+        </h3>
+        <p className="text-xs text-apple-gray mb-4">
+          Inserisci il link del Google Sheet condiviso. I clienti aggiunti o modificati nel foglio verranno importati in automatico nel Gestionale.
+        </p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-apple-gray mb-1.5">
+              URL del Foglio Google
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+                className="flex-1 px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all"
+              />
+              <button
+                type="button"
+                onClick={handleSalva}
+                disabled={salvando || !url.trim() || url === urlOriginale}
+                className="px-5 py-2.5 rounded-apple bg-apple-blue text-white text-xs font-semibold hover:bg-blue-600 disabled:opacity-40 transition-colors shadow-apple"
+              >
+                {salvando ? 'Salvataggio...' : 'Salva URL'}
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-apple bg-blue-50/50 border border-blue-100 text-xs text-apple-gray leading-relaxed space-y-1">
+            <p className="font-semibold text-apple-darkgray">ℹ️ Come funziona l'integrazione:</p>
+            <p>• Il foglio deve avere l'accesso impostato su <strong>"Chiunque abbia il link può visualizzare"</strong>.</p>
+            <p>• Rileva in automatico i nuovi clienti e aggiorna numeri di cellulare, email e anagrafiche già esistenti.</p>
+            <p>• Se sei fuori sede e aggiungi un cliente nel foglio da telefono, entro 15 minuti lo trovi già sincronizzato nel Gestionale.</p>
+          </div>
+        </div>
+
+        {/* Feedback Messaggi */}
+        {messaggio && (
+          <div
+            className={`mt-4 p-3.5 rounded-apple text-xs font-medium flex items-center gap-2 ${
+              messaggio.tipo === 'ok'
+                ? 'bg-green-50 text-green-800 border border-green-200'
+                : 'bg-red-50 text-red-800 border border-red-200'
+            }`}
+          >
+            <span>{messaggio.tipo === 'ok' ? '✅' : '⚠️'}</span>
+            <span>{messaggio.testo}</span>
+          </div>
+        )}
+
+        {/* Risultato Contatori */}
+        {risultatoSync && (
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3 rounded-apple bg-green-50 border border-green-200 text-center">
+              <p className="text-xl font-bold text-green-700">{risultatoSync.nuovi}</p>
+              <p className="text-[10px] font-semibold text-green-800 uppercase tracking-wider mt-0.5">Nuovi Clienti</p>
+            </div>
+            <div className="p-3 rounded-apple bg-blue-50 border border-blue-200 text-center">
+              <p className="text-xl font-bold text-apple-blue">{risultatoSync.aggiornati}</p>
+              <p className="text-[10px] font-semibold text-blue-800 uppercase tracking-wider mt-0.5">Aggiornati</p>
+            </div>
+            <div className="p-3 rounded-apple bg-gray-50 border border-gray-200 text-center">
+              <p className="text-xl font-bold text-apple-gray">{risultatoSync.saltati}</p>
+              <p className="text-[10px] font-semibold text-apple-gray uppercase tracking-wider mt-0.5">Invariati / Saltati</p>
+            </div>
+            <div className="p-3 rounded-apple bg-purple-50 border border-purple-200 text-center">
+              <p className="text-xl font-bold text-purple-700">{risultatoSync.totale}</p>
+              <p className="text-[10px] font-semibold text-purple-800 uppercase tracking-wider mt-0.5">Totale Righe</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ============ PAGINA PRINCIPALE ============
 export function Impostazioni() {
   const { user } = useAuth();
@@ -277,6 +515,7 @@ export function Impostazioni() {
         {tabAttiva === 'agenda' && <TabAgenda registraSalva={registraSalva} />}
         {tabAttiva === 'privacy' && <TabPrivacy registraSalva={registraSalva} />}
         {tabAttiva === 'aspetto' && <TabAspetto registraSalva={registraSalva} />}
+        {tabAttiva === 'google_sheets' && <TabGoogleSheets registraSalva={registraSalva} />}
         {tabAttiva === 'licenze' && isAdmin && <TabLicenze adminEmail={user?.email || ''} />}
       </div>
     </div>
