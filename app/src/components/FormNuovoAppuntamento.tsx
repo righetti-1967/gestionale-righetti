@@ -299,7 +299,11 @@ export function FormNuovoAppuntamento({
   }, [clienti, ricercaCliente]);
 
   const durataVoci = vociSelezionate.reduce((sum, v) => sum + (v.durata_minuti || 0), 0);
-  const durataNum = durataVoci > 0 ? durataVoci : parseInt(durata, 10) || 60;
+  const durataManuale = parseInt(durata, 10);
+  // Se l'operatore scrive a mano la durata, vince sempre quella manuale
+  const durataNum = !isNaN(durataManuale) && durataManuale > 0 
+    ? durataManuale 
+    : (durataVoci > 0 ? durataVoci : 60);
   const oraFine = calcolaOraFine(oraInizio, durataNum);
   const coloreFinale = colore || coloreDefault(tipo);
 
@@ -331,7 +335,10 @@ export function FormNuovoAppuntamento({
           (v.tipo === 'servizio' ? `S-${v.servizio_id}` : `P-${v.prodotto_id}`) === chiave
       );
       if (esistente >= 0) {
-        return prev.filter((_, i) => i !== esistente);
+        const aggiornati = prev.filter((_, i) => i !== esistente);
+        const nuovaSomma = aggiornati.reduce((sum, v) => sum + (v.durata_minuti || 0), 0);
+        if (nuovaSomma > 0) setDurata(String(nuovaSomma));
+        return aggiornati;
       }
       return [
         ...prev,
@@ -466,7 +473,9 @@ export function FormNuovoAppuntamento({
         cliente_id: clienteId,
         percorso_id: tipo === 'percorso' ? percorsoId : null,
         servizio_id: tipo === 'checkup_nuovo' ? (servizioCheckupId || (vociSelezionate[0]?.servizio_id ?? null)) : null,
-        voci_selezionate: vociSelezionate,
+        voci_selezionate: vociSelezionate.length === 1 
+          ? [{ ...vociSelezionate[0], durata_minuti: durataNum }] 
+          : vociSelezionate,
         operatore,
         data,
         ora_inizio: oraInizio,
