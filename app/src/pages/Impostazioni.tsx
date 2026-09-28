@@ -305,8 +305,7 @@ function TabGoogleSheets({ registraSalva }: { registraSalva: (fn: () => void, s:
             user_id: user.id,
             chiave: 'google_sheet_url',
             valore: url.trim(),
-            aggiornato_il: new Date().toISOString(),
-          },
+                      },
           { onConflict: 'user_id,chiave' }
         );
 
