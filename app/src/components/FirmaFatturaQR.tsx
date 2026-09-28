@@ -1,3 +1,4 @@
+import { CondividiLinkFirma } from './CondividiLinkFirma';
 import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -159,16 +160,7 @@ export function FirmaFatturaQR({
               </div>
             </div>
 
-            {!isTouchDevice && (
-              <div className="text-center">
-                <p className="text-xs text-apple-gray mb-1">
-                  Oppure apri questo link sull'iPad:
-                </p>
-                <p className="text-xs text-apple-blue font-mono break-all">
-                  {urlFirma}
-                </p>
-              </div>
-            )}
+            <CondividiLinkFirma urlFirma={urlFirma} cliente={cliente} tipoDocumento="Fattura / Ricevuta" />
 
             <div className="mt-6 pt-4 border-t border-gray-200/60 flex gap-3">
               <button
