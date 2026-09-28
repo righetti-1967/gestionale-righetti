@@ -1,6 +1,6 @@
 # STATO PROGETTO — GESTIONALE RIGHETTI 1967
 
-Ultimo aggiornamento: **28/09/2026 01:30 — Badge DNA, Righe Cliccabili, Tab Responsive**
+Ultimo aggiornamento: **28/09/2026 19:30 — Auto-Save TricoAI OK, Ponte Sync in PAUSA**
 
 ---
 
@@ -40,30 +40,30 @@ Ultimo aggiornamento: **28/09/2026 01:30 — Badge DNA, Righe Cliccabili, Tab Re
 - DDT Commercialista → "Documento di Competenza".
 - Fix crash Scheda Cliente → Appuntamenti | Disdette.
 
-### 🆕 5. Badge DNA Cliente (28/09/2026)
+### 5. Badge DNA Cliente (28/09/2026)
 - Campo `dna` (codice corto, max 20 caratteri) visibile come **badge verde** 🧬 sotto il nome cliente.
 - Visibile in: **tabella Clienti (desktop)**, **card mobile** (fix iPhone verticale).
 - Campo editabile nel modale cliente (sezione "🧬 DNA Cliente" con bottone "💾 Salva DNA").
 
-### 🆕 6. Storico Fatture & Scontrini in Modale Cliente (28/09/2026)
+### 6. Storico Fatture & Scontrini in Modale Cliente (28/09/2026)
 - Nuova tab **📄 Fatture & Scontrini** nella sezione "Storico Sedute & Consegne".
 - Mostra **tutte le fatture del cliente** (indipendentemente da scarico).
 - Prodotti/Servizi filtrati per escludere EXTRA (tab **⭐ EXTRA** dedicata).
 
-### 🆕 7. Riga Cliente Cliccabile (28/09/2026)
+### 7. Riga Cliente Cliccabile (28/09/2026)
 - Click su riga cliente → apre modale dettaglio.
 - Bottoni azione con `stopPropagation()`.
 
-### 🆕 8. Modali Anteprima Minimali DDT/Fattura (28/09/2026)
+### 8. Modali Anteprima Minimali DDT/Fattura (28/09/2026)
 - Click su numero DDT o Fattura → modale anteprima minimale (👁️ Anteprima + 📥 Scarica PDF + ✖️ Chiudi).
 - No azioni extra (Email, WhatsApp, Firma, Modifica, ecc.).
 
-### 🆕 9. Barra Pending/Rebooking in Agenda (28/09/2026)
+### 9. Barra Pending/Rebooking in Agenda (28/09/2026)
 - 2 card **⏳ Pending (N)** e **🔄 Rebooking (N)** sotto le tab Giorno/Settimana/Mese.
 - Click card → modale con lista clienti e azioni: 💬 WhatsApp (messaggio differenziato pending vs rebooking), 📅 Apri in Agenda, ✏️ Dettaglio.
 - WhatsApp apre l'**app nativa** (schema `whatsapp://` con fallback web `wa.me`).
 
-### 🆕 10. Fix Responsive Mobile (28/09/2026)
+### 10. Fix Responsive Mobile (28/09/2026)
 - **Sidebar mobile scrollabile** (tutta la sidebar scorre, `100dvh`, `overscroll-contain`, `WebkitOverflowScrolling`).
 - **Avatar centrato in Sidebar collapsed** (fix `lg:gap-0 lg:group-hover:gap-3`).
 - **Tab Impostazioni**: griglia 2 colonne su mobile, flex su tablet/desktop.
@@ -72,18 +72,26 @@ Ultimo aggiornamento: **28/09/2026 01:30 — Badge DNA, Righe Cliccabili, Tab Re
 - **Badge DNA** visibile su iPhone verticale (badge sotto al nome, non troncato).
 - **"Salva Note"** allineato (no sbordi su mobile).
 
-### 🆕 11. Fix Sidebar Pulsante Attivo (28/09/2026)
+### 11. Fix Sidebar Pulsante Attivo (28/09/2026)
 - Il pulsante attivo nella Sidebar ora segue correttamente `currentPage` (prima rimaneva sempre su Dashboard per uso errato di `useLocation`).
 
 ---
 
-## 🎯 Roadmap da Sviluppare
+## 🎯 Roadmap
 
-### 🔴 Priorità 1 — Auto-Save Multi-Device (STIMATO ~20 ORE)
-Vedi sezione dettagliata in `STATO.md` di TricoAI. Il progetto è **condiviso** tra i due software.
+### 🔴 Priorità 1 — Estendere Auto-Save Multi-Device
+**Stato attuale:** FASE 1 completata per Analisi (TricoAI). Da estendere a:
+- Prodotti & Cura, Schede Cura (TricoAI).
+- **Fatture, DDT, Appuntamenti, Clienti, Prodotti (Gestionale)**.
 
-### 🔴 Priorità 2 — Ponte Sincronizzazione Gestionale → TricoAI (STIMATO ~4 ORE)
 Vedi sezione dettagliata in `STATO.md` di TricoAI.
+
+### ⚠️ Priorità 2 — Ponte Sync bidirezionale (IN PAUSA)
+**Stato:** **IN PAUSA — DA FIXARE PRIMA DI RIPRENDERE**
+
+Vedi sezione dettagliata in `STATO.md` di TricoAI. Impatta anche il Gestionale:
+- 55 clienti duplicati attribuiti erroneamente a Righetti (`user_id = 6e5f076c-...`).
+- Da fare: backup, pulizia duplicati, fix codice, riattivazione.
 
 ### 🔴 Priorità 3 — Card WhatsApp & Email in Impostazioni (~4 ORE)
 **Obiettivo:** configurare parametri SMTP e API WhatsApp (Whatsender) per l'invio di documenti.
@@ -141,6 +149,6 @@ Traduzione sistematica (fase successiva).
 - **TricoAI e Gestionale usano DB Supabase DIVERSI**:
   - TricoAI: `fucagtrfydacobostdoa.supabase.co`
   - Gestionale: `yporpszebtasalwazirz.supabase.co`
-- Il "Ponte di sincronizzazione" è **urgente** per condividere dati.
-- **Attenzione:** la tabella `clienti` di TricoAI usa `codice_cliente`, mentre il Gestionale usa `nome_cognome`. Mappatura necessaria.
-- Il campo `dna` esiste solo nel DB Gestionale. In TricoAI va **aggiunto** e **popolato** tramite il Ponte.
+- **Ponte sync**: **IN PAUSA**. Prima di riattivare: backup + pulizia duplicati + fix codice (vedi `STATO.md` TricoAI).
+- **Auto-Save**: hook condiviso `useDraft` (lato TricoAI). Il Gestionale dovrà avere il suo `useDraft` equivalente.
+- Il campo `dna` esiste nel Gestionale. In TricoAI è stato aggiunto ma va **popolato** tramite sync (quando il Ponte sarà attivo).
