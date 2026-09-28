@@ -696,7 +696,7 @@ function BloccoRnd({
               {voce?.nome || app.titolo}
             </p>
             {isFirst && hasNote && (
-              <p className="text-[9px] italic truncate leading-tight mt-0.5 px-1 py-0.5 rounded bg-black/10 font-medium" title={app.note}>
+              <p className="text-[9px] italic truncate leading-tight mt-0.5 px-1 py-0.5 rounded bg-black/10 font-medium" title={app.note || undefined}>
                 📝 {app.note}
               </p>
             )}
