@@ -197,3 +197,33 @@ export async function inviaEmailTest(payload: TestEmailPayload): Promise<{ succe
   }
   return res.json();
 }
+
+
+export interface InviaEmailPayload {
+  destinatario: string;
+  oggetto: string;
+  corpo_html: string;
+  corpo_testo?: string;
+  from_name?: string;
+  google_script_url?: string;
+}
+
+export async function inviaEmail(payload: InviaEmailPayload): Promise<{ success: boolean; messaggio: string }> {
+  const res = await fetch(`${FASTAPI_URL}/api/email/invia`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    let dettaglio = '';
+    try {
+      const j = await res.json();
+      dettaglio = j.detail ?? JSON.stringify(j);
+    } catch {
+      dettaglio = await res.text();
+    }
+    throw new Error(dettaglio || `Errore ${res.status}`);
+  }
+  return res.json();
+}

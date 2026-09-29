@@ -1,7 +1,8 @@
 import logging
 from fastapi import APIRouter, HTTPException
 
-from app.schemas.email import TestEmailRequest, EmailResponse
+from app.schemas.email import InviaEmailRequest,
+  TestEmailRequest, EmailResponse
 from app.services.email_service import invia_email_google_relay, invia_email_smtp
 
 logger = logging.getLogger(__name__)
@@ -58,4 +59,38 @@ async def test_email_endpoint(req: TestEmailRequest):
 
     except Exception as e:
         logger.error("Errore test email: %s", e)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/invia", response_model=EmailResponse)
+async def invia_email_generica_endpoint(req: InviaEmailRequest):
+    """Invia qualsiasi email con oggetto e corpo HTML personalizzati."""
+    try:
+        if req.google_script_url or not req.host:
+            res = invia_email_google_relay(
+                script_url=req.google_script_url or "",
+                destinatario=req.destinatario,
+                oggetto=req.oggetto,
+                corpo_html=req.corpo_html,
+                from_name=req.from_name or "Studio Righetti Since 1967",
+                corpo_testo=req.corpo_testo or "",
+            )
+            return EmailResponse(success=True, messaggio=res["messaggio"])
+        else:
+            res = invia_email_smtp(
+                host=req.host.strip(),
+                port=req.port,
+                secure=req.secure,
+                username=req.username.strip() if req.username else "",
+                password=req.password.strip() if req.password else "",
+                from_name=req.from_name or "Studio Righetti",
+                from_email=req.from_email or (req.username.strip() if req.username else ""),
+                destinatario=req.destinatario.strip(),
+                oggetto=req.oggetto,
+                corpo_html=req.corpo_html,
+                corpo_testo=req.corpo_testo or "",
+            )
+            return EmailResponse(success=True, messaggio=res["messaggio"])
+    except Exception as e:
+        logger.error("Errore invio email generica: %s", e)
         raise HTTPException(status_code=400, detail=str(e))

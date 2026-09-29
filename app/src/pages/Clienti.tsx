@@ -1,4 +1,4 @@
-import { inviaEmailTest } from '../lib/api';
+import { inviaEmail, inviaEmailTest } from '../lib/api';
 import { useEffect, useState } from 'react';
 import {
   getClienti,
@@ -402,15 +402,11 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
       </div>
       `;
 
-      await inviaEmailTest({
+      await inviaEmail({
         destinatario: cliente.email.trim(),
+        oggetto: 'Informativa Privacy GDPR — Studio Righetti Since 1967',
+        corpo_html: corpoHtml,
         from_name: 'Studio Righetti Since 1967',
-        // Invia attraverso il Relay Google Workspace
-        google_script_url: undefined, // usa il default integrato nel backend
-        host: undefined,
-        port: 587,
-        username: 'righetti@righetti.club',
-        password: '',
       });
 
       setToastMessage(`✅ Privacy inviata con successo via Email a ${cliente.email}!`);
