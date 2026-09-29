@@ -162,3 +162,37 @@ export async function syncGoogleSheets(sheetUrl: string, userId?: string): Promi
   }
   return res.json();
 }
+
+// ============================================================
+// TEST INVIO EMAIL
+// ============================================================
+export interface TestEmailPayload {
+  host: string;
+  port: number;
+  secure?: boolean;
+  username: string;
+  password: string;
+  from_name?: string;
+  from_email?: string;
+  destinatario: string;
+}
+
+export async function inviaEmailTest(payload: TestEmailPayload): Promise<{ success: boolean; messaggio: string }> {
+  const res = await fetch(`${FASTAPI_URL}/api/email/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    let dettaglio = '';
+    try {
+      const j = await res.json();
+      dettaglio = j.detail ?? JSON.stringify(j);
+    } catch {
+      dettaglio = await res.text();
+    }
+    throw new Error(dettaglio || `Errore ${res.status}`);
+  }
+  return res.json();
+}

@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
+import {
+  useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   syncGoogleSheets,
+  inviaEmailTest,
   type SheetsSyncResponse,
   getAdminUtenti,
   prorogaDemoUtente,
@@ -482,6 +484,40 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
   
   // WhatsApp State
   const [waToken, setWaToken] = useState('');
+  const [testEmailDestinatario, setTestEmailDestinatario] = useState(user?.email || '');
+  const [inviandoTestEmail, setInviandoTestEmail] = useState(false);
+  const [esitoTestEmail, setEsitoTestEmail] = useState<{ tipo: 'ok' | 'errore'; testo: string } | null>(null);
+
+  async function handleTestEmail() {
+    if (!emailConfig.host || !emailConfig.username || !emailConfig.password) {
+      alert('Compila prima Host, Username e Password dell\'email.');
+      return;
+    }
+    if (!testEmailDestinatario.trim()) {
+      alert('Inserisci l\'indirizzo email a cui inviare il test.');
+      return;
+    }
+
+    setInviandoTestEmail(true);
+    setEsitoTestEmail(null);
+    try {
+      const res = await inviaEmailTest({
+        host: emailConfig.host.trim(),
+        port: parseInt(emailConfig.port, 10) || 587,
+        secure: emailConfig.secure,
+        username: emailConfig.username.trim(),
+        password: emailConfig.password.trim(),
+        from_name: emailConfig.fromName.trim() || undefined,
+        from_email: emailConfig.username.trim(),
+        destinatario: testEmailDestinatario.trim(),
+      });
+      setEsitoTestEmail({ tipo: 'ok', testo: res.messaggio });
+    } catch (err: any) {
+      setEsitoTestEmail({ tipo: 'errore', testo: err.message || 'Errore durante l\'invio del test' });
+    } finally {
+      setInviandoTestEmail(false);
+    }
+  }
   const [waSenderPhone, setWaSenderPhone] = useState('');
   const [waOriginale, setWaOriginale] = useState({ token: '', phone: '' });
 
@@ -717,6 +753,42 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
             />
             Usa connessione SSL/TLS diretta (porta 465)
           </label>
+        </div>
+
+        {/* Box Test Connessione Email */}
+        <div className="mt-5 p-4 rounded-apple bg-gray-50 border border-gray-200/80">
+          <p className="text-xs font-bold text-apple-darkgray mb-1">
+            🧪 Test di Connessione e Invio Email
+          </p>
+          <p className="text-[11px] text-apple-gray mb-3">
+            Invia un\'email di prova per verificare che Google Workspace accetti la tua password per le app.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="email"
+              value={testEmailDestinatario}
+              onChange={(e) => setTestEmailDestinatario(e.target.value)}
+              placeholder="Inserisci email di prova..."
+              className="flex-1 px-3.5 py-2 bg-white border border-gray-200 rounded-apple text-xs text-apple-darkgray focus:outline-none focus:border-apple-blue"
+            />
+            <button
+              type="button"
+              onClick={handleTestEmail}
+              disabled={inviandoTestEmail}
+              className="px-4 py-2 bg-apple-blue text-white rounded-apple text-xs font-semibold hover:bg-blue-600 disabled:opacity-50 transition-colors shadow-apple shrink-0"
+            >
+              {inviandoTestEmail ? '⏳ Invio in corso...' : '✉️ Invia Email di Test'}
+            </button>
+          </div>
+
+          {esitoTestEmail && (
+            <div className={`mt-3 p-3 rounded-apple text-xs font-medium flex items-center gap-2 ${
+              esitoTestEmail.tipo === 'ok' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
+            }`}>
+              <span>{esitoTestEmail.tipo === 'ok' ? '✅' : '❌'}</span>
+              <span>{esitoTestEmail.testo}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
