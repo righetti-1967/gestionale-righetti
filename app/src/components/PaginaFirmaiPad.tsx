@@ -57,6 +57,8 @@ export function PaginaFirmaiPad({ token }: PaginaFirmaiPadProps) {
 
   useEffect(() => {
     if (!cliente || !canvasRef.current) return;
+    // 🛡️ Se il pad esiste già, NON ricrearlo e NON resettare il canvas!
+    if (signaturePadRef.current) return;
 
     const canvas = canvasRef.current;
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -78,7 +80,7 @@ export function PaginaFirmaiPad({ token }: PaginaFirmaiPadProps) {
     });
 
     return () => {
-      pad.off();
+      // Mantiene attiva la firma senza distruggerla
     };
   }, [cliente]);
 
