@@ -16,7 +16,7 @@ interface PaginaFirmaFatturaIPadProps {
 
 export function PaginaFirmaFatturaIPad({ token }: PaginaFirmaFatturaIPadProps) {
   const { dati: azienda } = useDatiAziendali();
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const signaturePadRef = useRef<SignaturePad | null>(null);
   const [fattura, setFattura] = useState<FatturaConCliente | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,25 +25,11 @@ export function PaginaFirmaFatturaIPad({ token }: PaginaFirmaFatturaIPadProps) {
   const [firmaPresente, setFirmaPresente] = useState(false);
   const [completato, setCompletato] = useState(false);
 
-  const canvasCallback = (canvas: HTMLCanvasElement | null) => {
-    if (!canvas) {
-      signaturePadRef.current?.off();
-      signaturePadRef.current = null;
-      return;
-    }
+  useEffect(() => {
+    if (!fattura || !canvasRef.current) return;
+    if (signaturePadRef.current) return;
 
-    if (signaturePadRef.current && canvasRef.current === canvas) {
-      return;
-    }
-
-    if (signaturePadRef.current) {
-      signaturePadRef.current.off();
-      signaturePadRef.current = null;
-    }
-
-    canvas.width = 0;
-    canvas.height = 0;
-
+    const canvas = canvasRef.current;
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
     canvas.width = canvas.offsetWidth * ratio;
     canvas.height = canvas.offsetHeight * ratio;
@@ -58,15 +44,10 @@ export function PaginaFirmaFatturaIPad({ token }: PaginaFirmaFatturaIPadProps) {
     signaturePadRef.current = pad;
     canvas.style.touchAction = 'none';
 
-    pad.addEventListener('beginStroke', () => {
-      setFirmaPresente(true);
-    });
     pad.addEventListener('endStroke', () => {
       setFirmaPresente(!pad.isEmpty());
     });
-
-    canvasRef.current = canvas;
-  };
+  }, [fattura]);
 
   useEffect(() => {
     async function carica() {
@@ -242,7 +223,7 @@ export function PaginaFirmaFatturaIPad({ token }: PaginaFirmaFatturaIPadProps) {
             </div>
             <div className="relative border-2 border-dashed border-gray-300 rounded-apple overflow-hidden bg-white">
               <canvas
-                ref={canvasCallback}
+                ref={canvasRef}
                 className="w-full"
                 style={{ height: '300px', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
               />
