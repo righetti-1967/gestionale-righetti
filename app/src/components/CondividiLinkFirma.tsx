@@ -26,7 +26,7 @@ export function CondividiLinkFirma({
     const numPulito = tel.replace(/\D/g, '');
     const prefisso = numPulito.startsWith('39') ? '' : '39';
     const numeroCompleto = numPulito ? `${prefisso}${numPulito}` : '';
-    const testo = `Ciao ${nome}, per completare la procedura ti chiediamo cortesemente di apporre la tua firma digitale per ${tipoDocumento} cliccando su questo link sicuro:\n\n${urlFirma}`;
+    const testo = `Ciao ${nome}, per completare la procedura ti chiediamo cortesemente di apporre la tua firma digitale per ${tipoDocumento} cliccando su questo link:\n\n${urlFirma}`;
     const waUrl = numeroCompleto
       ? `https://wa.me/${numeroCompleto}?text=${encodeURIComponent(testo)}`
       : `https://wa.me/?text=${encodeURIComponent(testo)}`;
@@ -37,7 +37,8 @@ export function CondividiLinkFirma({
     const nome = cliente?.nome_cognome || 'Gentile Cliente';
     const email = cliente?.email || '';
     const oggetto = `Richiesta Firma Digitale - ${tipoDocumento}`;
-    const corpo = `Gentile ${nome},\n\nper completare la procedura ti chiediamo cortesemente di apporre la tua firma digitale per ${tipoDocumento} cliccando sul link sicuro qui sotto:\n\n${urlFirma}\n\nGrazie,\nRighetti Since 1967`;
+    const nomeSalone = (cliente as any)?.azienda || 'il nostro Studio';
+    const corpo = `Gentile ${nome},\n\nper completare la procedura ti chiediamo cortesemente di apporre la tua firma digitale per ${tipoDocumento} cliccando sul link sicuro qui sotto:\n\n${urlFirma}\n\nGrazie!`;
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(corpo)}`;
   }
 

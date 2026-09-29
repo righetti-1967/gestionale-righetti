@@ -315,7 +315,7 @@ export function PaginaFirmaiPad({ token }: PaginaFirmaiPadProps) {
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(7);
       doc.setTextColor(150, 150, 150);
-      doc.text(`Documento generato automaticamente dal Gestionale Righetti 1967 - Cliente ID ${c.id}`, paginaLarghezza / 2, paginaAltezza - 8, { align: 'center' });
+      doc.text(`Documento generato automaticamente dal Gestionale - Cliente ID ${c.id}`, paginaLarghezza / 2, paginaAltezza - 8, { align: 'center' });
       doc.text(`Pagina ${i} di ${totalePagine}`, paginaLarghezza - margin, paginaAltezza - 8, { align: 'right' });
     }
 
@@ -377,7 +377,7 @@ export function PaginaFirmaiPad({ token }: PaginaFirmaiPadProps) {
           </div>
           <h1 className="text-2xl font-bold text-apple-darkgray mb-2">Grazie!</h1>
           <p className="text-sm text-apple-gray mb-6">
-            La firma della Privacy è stata completata. Consegna l'iPad a Righetti Since 1967.
+            La firma è stata completata con successo. Puoi restituire il dispositivo.
           </p>
           <p className="text-xs text-apple-gray">
             Puoi chiudere questa pagina.
@@ -453,7 +453,7 @@ export function PaginaFirmaiPad({ token }: PaginaFirmaiPadProps) {
       </main>
 
       <footer className="py-4 text-center text-xs text-apple-gray">
-        Powered by Righetti 1967 Gestionale
+        Gestionale • Firma Digitale Sicura
       </footer>
     </div>
   );

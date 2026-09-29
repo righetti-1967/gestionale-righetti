@@ -1,3 +1,4 @@
+import { getBrandInfo } from '../lib/brand';
 import jsPDF from 'jspdf';
 import { inviaEmail, inviaEmailTest } from '../lib/api';
 import { useEffect, useState } from 'react';
