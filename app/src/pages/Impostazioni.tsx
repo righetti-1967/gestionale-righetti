@@ -99,7 +99,7 @@ function normalizzaDati(raw: unknown): DatiAziendali {
   };
 }
 
-type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'licenze';
+type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'comunicazioni' | 'promemoria' | 'licenze';
 
 const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'profilo', label: 'Profilo', icon: '👤' },
@@ -109,6 +109,8 @@ const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'privacy', label: 'Privacy', icon: '🔒' },
   { id: 'aspetto', label: 'Aspetto', icon: '🎨' },
   { id: 'google_sheets', label: 'Google Sheets', icon: '🔄' },
+  { id: 'comunicazioni', label: 'Comunicazioni', icon: '💬' },
+  { id: 'promemoria', label: 'Promemoria', icon: '⏰' },
 ];
 
 const ADMIN_EMAIL = 'righetti@righetti.club';
@@ -471,6 +473,427 @@ function TabGoogleSheets({ registraSalva }: { registraSalva: (fn: () => void, s:
   );
 }
 
+
+// ============================================================
+// TAB COMUNICAZIONI (WhatsApp & Email)
+// ============================================================
+function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s: boolean) => void }) {
+  const { user } = useAuth();
+  
+  // WhatsApp State
+  const [waToken, setWaToken] = useState('');
+  const [waSenderPhone, setWaSenderPhone] = useState('');
+  const [waOriginale, setWaOriginale] = useState({ token: '', phone: '' });
+
+  // Email State
+  const [emailConfig, setEmailConfig] = useState({
+    provider: 'smtp', // smtp | sendgrid | resend
+    host: '',
+    port: '587',
+    secure: false,
+    username: '',
+    password: '',
+    fromEmail: '',
+    fromName: '',
+  });
+  const [emailOriginale, setEmailOriginale] = useState({ ...emailConfig });
+
+  const [salvando, setSalvando] = useState(false);
+  const [messaggio, setMessaggio] = useState<{ tipo: 'ok' | 'errore'; testo: string } | null>(null);
+
+  // Caricamento impostazioni da Supabase (per user_id)
+  useEffect(() => {
+    async function carica() {
+      if (!user?.id) return;
+      try {
+        const { data: dataWa } = await supabase
+          .from('impostazioni')
+          .select('valore')
+          .eq('user_id', user.id)
+          .eq('chiave', 'config_whatsapp')
+          .maybeSingle();
+
+        if (dataWa?.valore) {
+          const val = typeof dataWa.valore === 'string' ? JSON.parse(dataWa.valore) : dataWa.valore;
+          setWaToken(val.token || '');
+          setWaSenderPhone(val.phone || '');
+          setWaOriginale({ token: val.token || '', phone: val.phone || '' });
+        }
+
+        const { data: dataEmail } = await supabase
+          .from('impostazioni')
+          .select('valore')
+          .eq('user_id', user.id)
+          .eq('chiave', 'config_email')
+          .maybeSingle();
+
+        if (dataEmail?.valore) {
+          const val = typeof dataEmail.valore === 'string' ? JSON.parse(dataEmail.valore) : dataEmail.valore;
+          setEmailConfig((prev) => ({ ...prev, ...val }));
+          setEmailOriginale((prev) => ({ ...prev, ...val }));
+        }
+      } catch (err) {
+        console.warn('Errore caricamento comunicazioni:', err);
+      }
+    }
+    carica();
+  }, [user?.id]);
+
+  async function handleSalvaTutto() {
+    if (!user?.id) return;
+    setSalvando(true);
+    setMessaggio(null);
+    try {
+      // 1. Salva WhatsApp
+      const payloadWa = { token: waToken.trim(), phone: waSenderPhone.trim() };
+      await supabase.from('impostazioni').upsert({
+        user_id: user.id,
+        chiave: 'config_whatsapp',
+        valore: payloadWa,
+      }, { onConflict: 'user_id,chiave' });
+
+      // 2. Salva Email
+      await supabase.from('impostazioni').upsert({
+        user_id: user.id,
+        chiave: 'config_email',
+        valore: emailConfig,
+      }, { onConflict: 'user_id,chiave' });
+
+      setWaOriginale(payloadWa);
+      setEmailOriginale({ ...emailConfig });
+      setMessaggio({ tipo: 'ok', testo: 'Impostazioni WhatsApp ed Email salvate con successo!' });
+    } catch (e: any) {
+      setMessaggio({ tipo: 'errore', testo: e.message || 'Errore nel salvataggio' });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  // Registra il pulsante globale "Salva modifiche" in alto a destra
+  useEffect(() => {
+    registraSalva(handleSalvaTutto, salvando);
+  }, [waToken, waSenderPhone, emailConfig, salvando]);
+
+  return (
+    <div className="space-y-6">
+      {messaggio && (
+        <div className={`p-4 rounded-apple text-xs font-semibold flex items-center gap-2 ${
+          messaggio.tipo === 'ok' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
+        }`}>
+          <span>{messaggio.tipo === 'ok' ? '✅' : '⚠️'}</span>
+          <span>{messaggio.testo}</span>
+        </div>
+      )}
+
+      {/* CARD WHATSAPP (Whatsender) */}
+      <div className="bg-white rounded-apple shadow-apple p-6">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl">💬</span>
+            <div>
+              <h3 className="text-base font-bold text-apple-darkgray">WhatsApp (Whatsender)</h3>
+              <p className="text-xs text-apple-gray">Configura l\'istanza Whatsender per l\'invio automatico di messaggi e promemoria</p>
+            </div>
+          </div>
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+            waOriginale.token ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+          }`}>
+            {waOriginale.token ? '● Connesso' : '○ Non configurato'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <div>
+            <label className="block text-xs font-medium text-apple-gray mb-1.5">
+              Whatsender API Token / Instance ID *
+            </label>
+            <input
+              type="password"
+              value={waToken}
+              onChange={(e) => setWaToken(e.target.value)}
+              placeholder="Incolla il token Whatsender..."
+              className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all font-mono"
+            />
+            <p className="text-[10px] text-apple-gray mt-1">Generato dalla tua dashboard Whatsender</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-apple-gray mb-1.5">
+              Numero WhatsApp Mittente (Opzionale)
+            </label>
+            <input
+              type="text"
+              value={waSenderPhone}
+              onChange={(e) => setWaSenderPhone(e.target.value)}
+              placeholder="Es. +39 340 1234567"
+              className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all"
+            />
+            <p className="text-[10px] text-apple-gray mt-1">Numero associato all\'istanza Whatsender</p>
+          </div>
+        </div>
+      </div>
+
+      {/* CARD EMAIL PROVIDER */}
+      <div className="bg-white rounded-apple shadow-apple p-6">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl">✉️</span>
+            <div>
+              <h3 className="text-base font-bold text-apple-darkgray">Provider Email</h3>
+              <p className="text-xs text-apple-gray">Configura il server SMTP o il provider per l\'invio di email, report e proforma</p>
+            </div>
+          </div>
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+            emailOriginale.host ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+          }`}>
+            {emailOriginale.host ? '● Attivo' : '○ Non configurato'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-medium text-apple-gray mb-1.5">Host SMTP</label>
+            <input
+              type="text"
+              value={emailConfig.host}
+              onChange={(e) => setEmailConfig({ ...emailConfig, host: e.target.value })}
+              placeholder="Es. smtp.gmail.com o mail.tuodominio.it"
+              className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-apple-gray mb-1.5">Porta SMTP</label>
+            <input
+              type="text"
+              value={emailConfig.port}
+              onChange={(e) => setEmailConfig({ ...emailConfig, port: e.target.value })}
+              placeholder="587 / 465"
+              className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-apple-gray mb-1.5">Username / Email Accesso</label>
+            <input
+              type="text"
+              value={emailConfig.username}
+              onChange={(e) => setEmailConfig({ ...emailConfig, username: e.target.value })}
+              placeholder="info@salone.it"
+              className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-apple-gray mb-1.5">Password / API Key</label>
+            <input
+              type="password"
+              value={emailConfig.password}
+              onChange={(e) => setEmailConfig({ ...emailConfig, password: e.target.value })}
+              placeholder="••••••••••••"
+              className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-apple-gray mb-1.5">Nome Mittente Visibile</label>
+            <input
+              type="text"
+              value={emailConfig.fromName}
+              onChange={(e) => setEmailConfig({ ...emailConfig, fromName: e.target.value })}
+              placeholder="Es. Studio Righetti"
+              className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+          <label className="flex items-center gap-2 text-xs text-apple-darkgray cursor-pointer">
+            <input
+              type="checkbox"
+              checked={emailConfig.secure}
+              onChange={(e) => setEmailConfig({ ...emailConfig, secure: e.target.checked })}
+              className="w-4 h-4 accent-apple-blue rounded"
+            />
+            Usa connessione SSL/TLS diretta (porta 465)
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// TAB PROMEMORIA & AUTOMAZIONI (Struttura Pronta)
+// ============================================================
+function TabPromemoria({ registraSalva }: { registraSalva: (fn: () => void, s: boolean) => void }) {
+  const { user } = useAuth();
+  const [config, setConfig] = useState({
+    attivo: true,
+    canale: 'whatsapp', // whatsapp | email | entrambi
+    oreAnticipo: '24',
+    messaggioStandard: 'Gentile {cliente}, le ricordiamo il suo appuntamento per il giorno {data} alle ore {ora}. A presto!',
+    // Automazione specifica Nuovo Cliente Check-Up
+    attivoCheckup: true,
+    oreAnticipoCheckup: '48',
+    messaggioCheckup: 'Gentile {cliente}, le ricordiamo la sua prima visita: "Righetti Check-Up Gratuito" per il giorno {data} ore {ora}. La aspettiamo presso il nostro studio!',
+  });
+  const [salvando, setSalvando] = useState(false);
+  const [messaggio, setMessaggio] = useState<{ tipo: 'ok' | 'errore'; testo: string } | null>(null);
+
+  useEffect(() => {
+    async function carica() {
+      if (!user?.id) return;
+      try {
+        const { data } = await supabase
+          .from('impostazioni')
+          .select('valore')
+          .eq('user_id', user.id)
+          .eq('chiave', 'config_promemoria')
+          .maybeSingle();
+
+        if (data?.valore) {
+          const val = typeof data.valore === 'string' ? JSON.parse(data.valore) : data.valore;
+          setConfig((prev) => ({ ...prev, ...val }));
+        }
+      } catch (err) {
+        console.warn('Errore promemoria:', err);
+      }
+    }
+    carica();
+  }, [user?.id]);
+
+  async function handleSalva() {
+    if (!user?.id) return;
+    setSalvando(true);
+    try {
+      await supabase.from('impostazioni').upsert({
+        user_id: user.id,
+        chiave: 'config_promemoria',
+        valore: config,
+      }, { onConflict: 'user_id,chiave' });
+      setMessaggio({ tipo: 'ok', testo: 'Regole promemoria salvate con successo!' });
+    } catch (e: any) {
+      setMessaggio({ tipo: 'errore', testo: e.message || 'Errore salvataggio' });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  useEffect(() => {
+    registraSalva(handleSalva, salvando);
+  }, [config, salvando]);
+
+  return (
+    <div className="space-y-6">
+      {messaggio && (
+        <div className={`p-4 rounded-apple text-xs font-semibold ${
+          messaggio.tipo === 'ok' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
+        }`}>
+          {messaggio.testo}
+        </div>
+      )}
+
+      {/* Regola Generale Agenda */}
+      <div className="bg-white rounded-apple shadow-apple p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-bold text-apple-darkgray">Promemoria Appuntamenti Standard</h3>
+            <p className="text-xs text-apple-gray">Invia un messaggio di promemoria automatico prima dell\'appuntamento</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={config.attivo}
+            onChange={(e) => setConfig({ ...config, attivo: e.target.checked })}
+            className="w-5 h-5 accent-apple-blue rounded"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-xs font-medium text-apple-gray mb-1.5">Canale di Invio</label>
+            <select
+              value={config.canale}
+              onChange={(e) => setConfig({ ...config, canale: e.target.value })}
+              className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all"
+            >
+              <option value="whatsapp">Solo WhatsApp</option>
+              <option value="email">Solo Email</option>
+              <option value="entrambi">WhatsApp + Email</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-apple-gray mb-1.5">Anticipo di Invio</label>
+            <select
+              value={config.oreAnticipo}
+              onChange={(e) => setConfig({ ...config, oreAnticipo: e.target.value })}
+              className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all"
+            >
+              <option value="24">24 ore prima (1 giorno)</option>
+              <option value="48">48 ore prima (2 giorni)</option>
+              <option value="72">72 ore prima (3 giorni)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-apple-gray mb-1.5">Testo del Messaggio</label>
+          <textarea
+            value={config.messaggioStandard}
+            onChange={(e) => setConfig({ ...config, messaggioStandard: e.target.value })}
+            rows={3}
+            className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all font-mono text-xs leading-relaxed"
+          />
+          <p className="text-[10px] text-apple-gray mt-1">Variabili disponibili: {'{cliente}'}, {'{data}'}, {'{ora}'}, {'{servizio}'}</p>
+        </div>
+      </div>
+
+      {/* Regola Specifica: Check-Up Gratuito Nuovo Cliente */}
+      <div className="bg-white rounded-apple shadow-apple p-6 border-l-4 border-apple-blue">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-apple-darkgray">Check-Up Gratuito (Nuovo Cliente)</h3>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-apple-blue">Dedicato</span>
+            </div>
+            <p className="text-xs text-apple-gray">Automazione specifica per i nuovi clienti con prima visita Check-Up</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={config.attivoCheckup}
+            onChange={(e) => setConfig({ ...config, attivoCheckup: e.target.checked })}
+            className="w-5 h-5 accent-apple-blue rounded"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-apple-gray mb-1.5">Anticipo di Invio Dedicato</label>
+          <select
+            value={config.oreAnticipoCheckup}
+            onChange={(e) => setConfig({ ...config, oreAnticipoCheckup: e.target.value })}
+            className="w-full sm:w-64 px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all"
+          >
+            <option value="24">24 ore prima</option>
+            <option value="48">48 ore prima</option>
+            <option value="72">72 ore prima</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-apple-gray mb-1.5">Testo Dedicato Prima Visita</label>
+          <textarea
+            value={config.messaggioCheckup}
+            onChange={(e) => setConfig({ ...config, messaggioCheckup: e.target.value })}
+            rows={3}
+            className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all font-mono text-xs leading-relaxed"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ============ PAGINA PRINCIPALE ============
 export function Impostazioni() {
   const { user } = useAuth();
@@ -542,6 +965,8 @@ export function Impostazioni() {
         {tabAttiva === 'privacy' && <TabPrivacy registraSalva={registraSalva} />}
         {tabAttiva === 'aspetto' && <TabAspetto registraSalva={registraSalva} />}
         {tabAttiva === 'google_sheets' && <TabGoogleSheets registraSalva={registraSalva} />}
+        {tabAttiva === 'comunicazioni' && <TabComunicazioni registraSalva={registraSalva} />}
+        {tabAttiva === 'promemoria' && <TabPromemoria registraSalva={registraSalva} />}
         {tabAttiva === 'licenze' && isAdmin && <TabLicenze adminEmail={user?.email || ''} />}
       </div>
     </div>
