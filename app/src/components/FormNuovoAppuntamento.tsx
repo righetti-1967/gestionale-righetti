@@ -432,8 +432,8 @@ export function FormNuovoAppuntamento({
     nuovaDurata: number
   ) {
     if (nuovaDurata < 5) return;
-    setVociSelezionate((prev) =>
-      prev.map((v) => {
+    setVociSelezionate((prev) => {
+      const aggiornati = prev.map((v) => {
         const match =
           (tipoVoce === 'servizio' && v.servizio_id === id) ||
           (tipoVoce === 'prodotto' && v.prodotto_id === id);
@@ -441,8 +441,11 @@ export function FormNuovoAppuntamento({
           return { ...v, durata_minuti: nuovaDurata };
         }
         return v;
-      })
-    );
+      });
+      const nuovaSomma = aggiornati.reduce((sum, v) => sum + (v.durata_minuti || 0), 0);
+      setDurata(String(nuovaSomma));
+      return aggiornati;
+    });
   }
 
   function rimuoviVoce(tipoVoce: 'servizio' | 'prodotto', id: number) {
