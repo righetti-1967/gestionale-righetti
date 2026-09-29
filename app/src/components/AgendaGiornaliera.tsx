@@ -16,6 +16,7 @@ import {
 interface AgendaGiornalieraProps {
   data: string;
   appuntamenti: AppuntamentoConCliente[];
+  raggruppaSeduta?: boolean;
   onClickAppuntamento: (app: AppuntamentoConCliente) => void;
   onClickSlot: (operatore: Operatore, ora: string) => void;
   onUpdateAppuntamento: (
@@ -59,6 +60,7 @@ interface BloccoCalcolato {
 export function AgendaGiornaliera({
   data,
   appuntamenti,
+  raggruppaSeduta = false,
   onClickAppuntamento,
   onClickSlot,
   onUpdateAppuntamento,
@@ -147,7 +149,33 @@ export function AgendaGiornaliera({
 
       const voci = app.voci_selezionate || [];
 
-      if (voci.length === 0) {
+      // Se raggruppaSeduta è attivo oppure non ci sono voci, crea un unico blocco per tutta la seduta
+      if (raggruppaSeduta || voci.length === 0) {
+        const inizioApp = oraToMinuti(app.ora_inizio.slice(0, 5));
+        const durataTotale = app.durata_minuti || (voci.length > 0 ? voci.reduce((s, v) => s + (v.durata_minuti || 30), 0) : 60);
+        const top = (inizioApp - inizioGiornata) * pxPerMinuto;
+        const height = durataTotale * pxPerMinuto;
+        const opDest = app.operatore;
+
+        if (!mappa[opDest]) mappa[opDest] = [];
+        mappa[opDest].push({
+          app,
+          voceIndex: null,
+          voce: voci.length > 0 ? {
+            tipo: 'servizio',
+            servizio_id: null,
+            prodotto_id: null,
+            nome: voci.map(v => v.nome).join(' + '),
+            quantita: 1,
+            durata_minuti: durataTotale,
+          } : null,
+          top,
+          height,
+          oraInizio: app.ora_inizio.slice(0, 5),
+          oraFine: minutiToOra(inizioApp + durataTotale),
+          isFirst: true,
+        });
+      } else if (voci.length === 0) {
         const inizioApp = oraToMinuti(app.ora_inizio.slice(0, 5));
         const top = (inizioApp - inizioGiornata) * pxPerMinuto;
         const height = app.durata_minuti * pxPerMinuto;
@@ -360,9 +388,24 @@ export function AgendaGiornaliera({
 
     if (tipo === 'cambia-operatore' && nuovoOperatore) {
       if (voceIndex === null) {
+        // Ricalcola orari sequenziali per tutte le voci con il nuovo operatore
+        let minutoProg = nuovaOra ? oraToMinuti(nuovaOra) : oraToMinuti(app.ora_inizio.slice(0, 5));
+        const vociRicalcolate = (app.voci_selezionate || []).map(v => {
+          const h = Math.floor(minutoProg / 60);
+          const m = minutoProg % 60;
+          const oraVoce = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+          minutoProg += (v.durata_minuti || 30);
+          return {
+            ...v,
+            operatore: nuovoOperatore,
+            ora_inizio: oraVoce,
+          };
+        });
+
         onUpdateAppuntamento(app.id, {
           operatore: nuovoOperatore,
-          ora_inizio: nuovaOra,
+          ora_inizio: nuovaOra || app.ora_inizio,
+          voci_selezionate: vociRicalcolate,
         });
       } else {
         const vociAggiornate = [...(app.voci_selezionate || [])];
@@ -376,7 +419,23 @@ export function AgendaGiornaliera({
       setNota(`Spostato su ${OPERATORI[nuovoOperatore]?.label || nuovoOperatore} ✅`);
     } else if (tipo === 'sposta' && nuovaOra) {
       if (voceIndex === null) {
-        onUpdateAppuntamento(app.id, { ora_inizio: nuovaOra });
+        // Ricalcola orari sequenziali per tutte le voci mantenendo l'operatore
+        let minutoProg = oraToMinuti(nuovaOra);
+        const vociRicalcolate = (app.voci_selezionate || []).map(v => {
+          const h = Math.floor(minutoProg / 60);
+          const m = minutoProg % 60;
+          const oraVoce = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+          minutoProg += (v.durata_minuti || 30);
+          return {
+            ...v,
+            ora_inizio: oraVoce,
+          };
+        });
+
+        onUpdateAppuntamento(app.id, {
+          ora_inizio: nuovaOra,
+          voci_selezionate: vociRicalcolate,
+        });
         setNota(`Spostato alle ${nuovaOra} ✅`);
       } else {
         const vociAggiornate = [...(app.voci_selezionate || [])];

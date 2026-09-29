@@ -40,6 +40,17 @@ function dataToLocaleISO(d: Date): string {
 
 export function Agenda() {
   const [vista, setVista] = useState<Vista>('giornaliera');
+  const [raggruppaSeduta, setRaggruppaSeduta] = useState<boolean>(() => {
+    return localStorage.getItem('gestionale_raggruppa_seduta') === 'true';
+  });
+
+  const toggleRaggruppaSeduta = () => {
+    setRaggruppaSeduta(prev => {
+      const next = !prev;
+      localStorage.setItem('gestionale_raggruppa_seduta', String(next));
+      return next;
+    });
+  };
   const [configCaricata, setConfigCaricata] = useState(false);
 
   useEffect(() => {
@@ -553,6 +564,17 @@ export function Agenda() {
                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
               />
             </label>
+
+            <button
+              type="button"
+              onClick={toggleRaggruppaSeduta}
+              className={`w-9 h-9 rounded-apple flex items-center justify-center text-sm font-bold shadow-apple transition-all shrink-0 ${
+                raggruppaSeduta ? 'bg-orange-500 text-white' : 'bg-white text-apple-darkgray border border-gray-200'
+              }`}
+              title="Toggle Blocco Unico"
+            >
+              {raggruppaSeduta ? '🧩' : '🗂️'}
+            </button>
 
             <button
               onClick={apriNuovoGenerico}
