@@ -1,5 +1,5 @@
 import { caricaFatturazione } from '../lib/fatturazione';
-import { inviaEmailTest } from '../lib/api';
+import { inviaEmail, inviaEmailTest } from '../lib/api';
 import { useEffect, useMemo, useState } from 'react';
 import {
   getTuttiScarichi,
@@ -212,11 +212,16 @@ export function DDT() {
         </div>
         `;
 
-        await inviaEmailTest({
+        // Genera il report PDF per il commercialista
+        await generaPdfReportDdtCommercialista(scarichiMese, filtroMese);
+
+        await inviaEmail({
           destinatario: emailComm,
+          oggetto: `Report Mensile DDT ${nomeMeseStr} — Studio Righetti`,
+          corpo_html: corpoHtml,
           from_name: 'Studio Righetti Since 1967',
-          username: 'righetti@righetti.club',
-          password: '',
+          allegato_base64: undefined,
+          allegato_nome: undefined,
         });
       }
 

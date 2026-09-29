@@ -1,3 +1,4 @@
+import jsPDF from 'jspdf';
 import { inviaEmail, inviaEmailTest } from '../lib/api';
 import { useEffect, useState } from 'react';
 import {
@@ -397,16 +398,63 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
           </p>
         </div>
         <div style="border-top: 1px solid #e5e5ea; padding-top: 12px; font-size: 11px; color: #8e8e93; text-align: center;">
-          Studio Righetti Since 1967 • Tel. e WhatsApp salone • Email: righetti@righetti.club
+          Studio Righetti Since 1967 • Tel. e WhatsApp Studio • Email: righetti@righetti.club
         </div>
       </div>
       `;
+
+      // Genera il PDF firmato da allegare se la firma e' presente
+      let pdfBase64: string | undefined = undefined;
+      const nomeAllegato = `Informativa_Privacy_${cliente.nome_cognome.replace(/\s+/g, '_')}.pdf`;
+
+      if (cliente.privacy_firma_immagine) {
+        try {
+          const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+          doc.setFillColor(0, 122, 255);
+          doc.rect(0, 0, 210, 28, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(14);
+          doc.text('Studio Righetti Since 1967', 105, 14, { align: 'center' });
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.text('INFORMATIVA PRIVACY GDPR — COPIA CLIENTE', 105, 21, { align: 'center' });
+
+          doc.setTextColor(28, 28, 30);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(11);
+          doc.text('DATI DELL\'INTERESSATO', 18, 38);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          doc.text(`Cliente: ${cliente.nome_cognome}`, 18, 45);
+          if (cliente.codice_fiscale) doc.text(`Codice Fiscale: ${cliente.codice_fiscale.toUpperCase()}`, 18, 51);
+          if (cliente.email) doc.text(`Email: ${cliente.email}`, 18, 57);
+
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.text('CONSENSO PRIVACY ACQUISITO', 18, 70);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8.5);
+          doc.text('Il cliente ha sottoscritto digitalmente il consenso informato GDPR.', 18, 77);
+
+          if (cliente.privacy_firma_immagine) {
+            doc.addImage(cliente.privacy_firma_immagine, 'PNG', 18, 85, 60, 22);
+          }
+
+          const rawB64 = doc.output('datauristring');
+          pdfBase64 = rawB64.split(',')[1];
+        } catch (e) {
+          console.warn('Errore generazione PDF privacy allegato:', e);
+        }
+      }
 
       await inviaEmail({
         destinatario: cliente.email.trim(),
         oggetto: 'Informativa Privacy GDPR — Studio Righetti Since 1967',
         corpo_html: corpoHtml,
         from_name: 'Studio Righetti Since 1967',
+        allegato_base64: pdfBase64,
+        allegato_nome: pdfBase64 ? nomeAllegato : undefined,
       });
 
       setToastMessage(`✅ Privacy inviata con successo via Email a ${cliente.email}!`);

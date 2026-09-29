@@ -175,14 +175,14 @@ export function Registrati() {
 
                 <div>
                   <label className="block text-xs font-medium text-apple-darkgray mb-1">
-                    Nome salone / studio *
+                    Nome Studio *
                   </label>
                   <input
                     type="text"
                     value={azienda}
                     onChange={(e) => setAzienda(e.target.value)}
                     required
-                    placeholder="Es. Salone Bellessere"
+                    placeholder="Es. Studio Righetti"
                     disabled={loading || loadingGoogle}
                     className="w-full px-3.5 py-2 rounded-apple bg-apple-lightgray border border-transparent text-apple-darkgray placeholder:text-apple-gray text-sm focus:outline-none focus:bg-white focus:border-apple-blue transition-all"
                   />

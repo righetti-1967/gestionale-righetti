@@ -227,7 +227,7 @@ function SchermataBloccoDemo({ user, signOut }: { user: any; signOut: () => Prom
           </div>
           {user.user_metadata?.azienda && (
             <div className="flex justify-between text-apple-gray">
-              <span>Studio / Salone:</span>
+              <span>Studio:</span>
               <span className="font-medium text-apple-darkgray">{user.user_metadata.azienda}</span>
             </div>
           )}

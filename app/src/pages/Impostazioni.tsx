@@ -729,7 +729,7 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
               type="text"
               value={emailConfig.username}
               onChange={(e) => setEmailConfig({ ...emailConfig, username: e.target.value })}
-              placeholder="info@salone.it"
+              placeholder="info@studiorighetti.it"
               className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all"
             />
           </div>
@@ -2912,7 +2912,7 @@ function TabLicenze({ adminEmail }: { adminEmail: string }) {
 
   async function handleSbloccaReale(u: AdminUtenteLicenza) {
     const conferma = window.confirm(
-      `ATTENZIONE: Stai per attivare la licenza REALE a vita per:\n${u.email} (${u.azienda || 'Salone'})\n\nTutti i suoi dati di prova demo (clienti, prodotti, fatture, appuntamenti) verranno AZZERATI.\n\nConfermi?`
+      `ATTENZIONE: Stai per attivare la licenza REALE a vita per:\n${u.email} (${u.azienda || 'Studio'})\n\nTutti i suoi dati di prova demo (clienti, prodotti, fatture, appuntamenti) verranno AZZERATI.\n\nConfermi?`
     );
     if (!conferma) return;
 
