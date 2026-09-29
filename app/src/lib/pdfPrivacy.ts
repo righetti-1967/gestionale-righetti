@@ -164,7 +164,7 @@ export async function generaPdfPrivacyCompleto(
 
   doc.setFontSize(9);
   const dataOra = new Date().toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  doc.text(`Luogo: ${formatSede(az.sedeLegale).split(',').pop()?.trim() || '—'}`, margin, y);
+  doc.text(`Luogo: ${az.sedeOperativa?.citta || az.sedeLegale?.citta || 'Milano'}`, margin, y);
   doc.text(`Data: ${dataOra}`, margin + larghezzaTesto / 2, y);
   y += 6;
 
@@ -207,7 +207,7 @@ export async function generaPdfPrivacyCompleto(
   y += consensoLines.length * 4 + 4;
 
   doc.setFontSize(9);
-  doc.text(`Luogo: ${formatSede(az.sedeLegale).split(',').pop()?.trim() || '—'}`, margin, y);
+  doc.text(`Luogo: ${az.sedeOperativa?.citta || az.sedeLegale?.citta || 'Milano'}`, margin, y);
   doc.text(`Data: ${dataOra}`, margin + larghezzaTesto / 2, y);
   y += 6;
 
