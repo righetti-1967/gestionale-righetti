@@ -262,7 +262,7 @@ function TabGoogleSheets({ registraSalva }: { registraSalva: (fn: () => void, s:
     }
 
     try {
-      const res = await syncGoogleSheets(targetUrl.trim());
+      const res = await syncGoogleSheets(targetUrl.trim(), user?.id);
       setRisultatoSync(res);
       const adesso = new Date();
       setUltimoSyncAt(adesso);

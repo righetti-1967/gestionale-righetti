@@ -143,11 +143,11 @@ export interface SheetsSyncResponse {
   messaggio: string;
 }
 
-export async function syncGoogleSheets(sheetUrl: string): Promise<SheetsSyncResponse> {
+export async function syncGoogleSheets(sheetUrl: string, userId?: string): Promise<SheetsSyncResponse> {
   const res = await fetch(`${FASTAPI_URL}/api/sheets/sync`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sheet_url: sheetUrl }),
+    body: JSON.stringify({ sheet_url: sheetUrl, user_id: userId }),
   });
 
   if (!res.ok) {
