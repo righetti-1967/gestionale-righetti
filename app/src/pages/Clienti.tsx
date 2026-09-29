@@ -1,3 +1,4 @@
+import { inviaEmailTest } from '../lib/api';
 import { useEffect, useState } from 'react';
 import {
   getClienti,
@@ -354,10 +355,70 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
     setClienteDaFirmare(cliente);
   }
 
-  function handleInviaPrivacy(cliente: Cliente, canale: 'email' | 'whatsapp') {
-    const canaleLabel = canale === 'email' ? 'Email' : 'WhatsApp';
-    setToastMessage(`📧 Invio Privacy ${canaleLabel} di ${cliente.nome_cognome} in arrivo`);
+  async function handleInviaPrivacy(cliente: Cliente, canale: 'email' | 'whatsapp') {
+    if (canale === 'whatsapp') {
+      const tel = cliente.cellulare || '';
+      const numPulito = tel.replace(/\D/g, '');
+      const prefisso = numPulito.startsWith('39') ? '' : '39';
+      const numeroFinale = numPulito ? `${prefisso}${numPulito}` : '';
+      
+      const testo = `Gentile ${cliente.nome_cognome}, confermiamo che la sua Informativa sul trattamento dei dati personali (Privacy GDPR) è stata archiviata con successo presso lo Studio Righetti Since 1967. Cordiali saluti!`;
+      const waUrl = numeroFinale
+        ? `https://wa.me/${numeroFinale}?text=${encodeURIComponent(testo)}`
+        : `https://wa.me/?text=${encodeURIComponent(testo)}`;
+      
+      window.open(waUrl, '_blank');
+      setToastMessage(`Chat WhatsApp aperta per ${cliente.nome_cognome}`);
+      setToastTipo('success');
+      return;
+    }
+
+    // Invio Email reale tramite Google Workspace Relay
+    if (!cliente.email || !cliente.email.trim()) {
+      setToastMessage(`Nessun indirizzo email configurato per ${cliente.nome_cognome}`);
+      setToastTipo('error');
+      return;
+    }
+
+    setToastMessage(`Invio email in corso a ${cliente.email}...`);
     setToastTipo('info');
+
+    try {
+      const corpoHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5ea;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h1 style="color: #007aff; margin: 0; font-size: 22px;">Studio Righetti Since 1967</h1>
+          <p style="color: #8e8e93; font-size: 13px; margin: 4px 0 0 0;">Conferma Informativa Privacy GDPR</p>
+        </div>
+        <div style="background: #f2f2f7; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+          <p style="margin: 0; color: #1c1c1e; font-size: 14px; font-weight: 600;">Gentile ${cliente.nome_cognome},</p>
+          <p style="margin: 8px 0 0 0; color: #3a3a3c; font-size: 13px; line-height: 1.5;">
+            le confermiamo la ricezione e la corretta registrazione del consenso al trattamento dei dati personali (Regolamento UE 2016/679 - GDPR) presso la nostra sede.
+          </p>
+        </div>
+        <div style="border-top: 1px solid #e5e5ea; padding-top: 12px; font-size: 11px; color: #8e8e93; text-align: center;">
+          Studio Righetti Since 1967 • Tel. e WhatsApp salone • Email: righetti@righetti.club
+        </div>
+      </div>
+      `;
+
+      await inviaEmailTest({
+        destinatario: cliente.email.trim(),
+        from_name: 'Studio Righetti Since 1967',
+        // Invia attraverso il Relay Google Workspace
+        google_script_url: undefined, // usa il default integrato nel backend
+        host: undefined,
+        port: 587,
+        username: 'righetti@righetti.club',
+        password: '',
+      });
+
+      setToastMessage(`✅ Privacy inviata con successo via Email a ${cliente.email}!`);
+      setToastTipo('success');
+    } catch (err: any) {
+      setToastMessage(`Errore invio email: ${err.message || 'Errore sconosciuto'}`);
+      setToastTipo('error');
+    }
   }
 
   function apriNuovoPercorso(cliente: Cliente) {

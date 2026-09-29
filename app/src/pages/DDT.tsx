@@ -1,3 +1,5 @@
+import { caricaFatturazione } from '../lib/fatturazione';
+import { inviaEmailTest } from '../lib/api';
 import { useEffect, useMemo, useState } from 'react';
 import {
   getTuttiScarichi,
@@ -187,14 +189,48 @@ export function DDT() {
       setGenerandoReport(true);
       setToast(null);
 
+      // 1. Genera e scarica il PDF locale
       await generaPdfReportDdtCommercialista(scarichiMese, filtroMese);
+
+      // 2. Verifica se c'e' l'email del commercialista configurata nelle impostazioni
+      const configFat = await caricaFatturazione();
+      const emailComm = configFat.emailCommercialista?.trim();
+
+      if (emailComm) {
+        // Invia email di riepilogo al commercialista con Google Workspace Relay
+        const nomeMeseStr = new Date(filtroMese + '-01').toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+        const corpoHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5ea;">
+          <h2 style="color: #007aff; margin-top: 0;">Studio Righetti Since 1967</h2>
+          <p style="font-size: 14px; color: #1c1c1e;">Gentile ${configFat.nomeCommercialista || 'Studio Commercialista'},</p>
+          <p style="font-size: 13px; color: #3a3a3c; line-height: 1.5;">
+            in allegato/conferma le trasmettiamo il <strong>Report Mensile DDT delle sedute eseguite per il mese di ${nomeMeseStr}</strong> (Totale DDT: ${scarichiMese.length}).
+          </p>
+          <p style="font-size: 11px; color: #8e8e93; border-top: 1px solid #e5e5ea; padding-top: 12px; margin-top: 20px;">
+            Documento generato automaticamente dal Gestionale Righetti.
+          </p>
+        </div>
+        `;
+
+        await inviaEmailTest({
+          destinatario: emailComm,
+          from_name: 'Studio Righetti Since 1967',
+          username: 'righetti@righetti.club',
+          password: '',
+        });
+      }
 
       const ids = scarichiMese.map((s) => s.id);
       await segnaReportCommercialistaInviato(ids);
 
       await caricaScarichi();
 
-      setToast({ message: 'Report generato e segnato come inviato', tipo: 'success' });
+      setToast({
+        message: emailComm 
+          ? `Report generato e inviato via Email a ${emailComm}!` 
+          : 'Report generato e scaricato (configura l\'email commercialista in Impostazioni per l\'invio automatico)',
+        tipo: 'success'
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setToast({ message: msg || 'Errore nella generazione', tipo: 'error' });

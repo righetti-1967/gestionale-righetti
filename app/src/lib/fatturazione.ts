@@ -11,6 +11,8 @@ export interface ConfigFatturazione {
   numerazioneAutomatica: boolean;
   ivaDefault: number;
   giorniScadenza: number;
+  emailCommercialista?: string;
+  nomeCommercialista?: string;
 }
 
 export const FATTURAZIONE_DEFAULT: ConfigFatturazione = {
@@ -20,6 +22,8 @@ export const FATTURAZIONE_DEFAULT: ConfigFatturazione = {
   numerazioneAutomatica: true,
   ivaDefault: 22,
   giorniScadenza: 30,
+  emailCommercialista: '',
+  nomeCommercialista: '',
 };
 
 let cache: ConfigFatturazione | null = null;
@@ -38,6 +42,8 @@ function adatta(raw: unknown): ConfigFatturazione {
     numerazioneAutomatica: r.numerazioneAutomatica !== false,
     ivaDefault: typeof r.ivaDefault === 'number' ? r.ivaDefault : 22,
     giorniScadenza: typeof r.giorniScadenza === 'number' ? r.giorniScadenza : 30,
+    emailCommercialista: typeof r.emailCommercialista === 'string' ? r.emailCommercialista : '',
+    nomeCommercialista: typeof r.nomeCommercialista === 'string' ? r.nomeCommercialista : '',
   };
 }
 

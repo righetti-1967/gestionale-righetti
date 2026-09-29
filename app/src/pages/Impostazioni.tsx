@@ -1326,6 +1326,41 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
       )}
 
       <Card
+        title="Studio Commercialista"
+        subtitle="Recapiti del commercialista per l'invio automatico dei report DDT e delle fatture."
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-apple-darkgray mb-1">
+              Email Commercialista *
+            </label>
+            <input
+              type="email"
+              value={config.emailCommercialista || ''}
+              onChange={(e) => aggiorna('emailCommercialista', e.target.value)}
+              placeholder="es. commercialista@studiorossi.it"
+              className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/40 focus:border-apple-blue transition-all"
+            />
+            <p className="text-[11px] text-apple-gray mt-1">
+              A questo indirizzo verranno spediti i report mensili DDT e riepiloghi contabili.
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-apple-darkgray mb-1">
+              Nome Studio o Dottore Commercialista
+            </label>
+            <input
+              type="text"
+              value={config.nomeCommercialista || ''}
+              onChange={(e) => aggiorna('nomeCommercialista', e.target.value)}
+              placeholder="es. Studio Dott. Rossi"
+              className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/40 focus:border-apple-blue transition-all"
+            />
+          </div>
+        </div>
+      </Card>
+
+      <Card
         title="Metodo di pagamento"
         subtitle="Verrà pre-selezionato quando marchi una fattura come pagata."
       >
