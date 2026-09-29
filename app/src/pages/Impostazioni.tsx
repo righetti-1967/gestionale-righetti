@@ -279,17 +279,44 @@ function TabGoogleSheets({ registraSalva }: { registraSalva: (fn: () => void, s:
     }
   }, [url, urlOriginale]);
 
-  // ⏱️ TIMER AUTOMATICO: Sincronizza ogni 15 minuti in background
+  // ⏱️ SMART SYNC: Controlla subito al mount/risveglio e poi ogni 15 minuti
   useEffect(() => {
     if (!urlOriginale) return;
 
-    // Intervallo di 15 minuti (15 * 60 * 1000 ms)
     const QUINDICI_MINUTI = 15 * 60 * 1000;
+
+    // Controlla se sono già passati 15 minuti dall'ultimo sync
+    function verificaESincronizza(silenzioso = true) {
+      const salvato = localStorage.getItem('gestionale_sheets_last_sync');
+      const last = salvato ? new Date(salvato).getTime() : 0;
+      const adesso = Date.now();
+      if (adesso - last >= QUINDICI_MINUTI) {
+        eseguiSync(silenzioso);
+      }
+    }
+
+    // 1. Controllo immediato appena apri la pagina
+    verificaESincronizza(true);
+
+    // 2. Controllo ogni volta che il Mac si risveglia dallo stop o torni sulla scheda
+    function onVisibile() {
+      if (document.visibilityState === 'visible') {
+        verificaESincronizza(true);
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibile);
+    window.addEventListener('focus', onVisibile);
+
+    // 3. Timer periodico standard
     const interval = setInterval(() => {
-      eseguiSync(true); // Esegue in background senza mostrare spinner
+      eseguiSync(true);
     }, QUINDICI_MINUTI);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibile);
+      window.removeEventListener('focus', onVisibile);
+    };
   }, [urlOriginale, eseguiSync]);
 
   // Salvataggio URL
