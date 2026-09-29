@@ -426,6 +426,25 @@ export function FormNuovoAppuntamento({
     setRicercaPickerServizi('');
   }
 
+  function aggiornaDurataVoce(
+    tipoVoce: 'servizio' | 'prodotto',
+    id: number,
+    nuovaDurata: number
+  ) {
+    if (nuovaDurata < 5) return;
+    setVociSelezionate((prev) =>
+      prev.map((v) => {
+        const match =
+          (tipoVoce === 'servizio' && v.servizio_id === id) ||
+          (tipoVoce === 'prodotto' && v.prodotto_id === id);
+        if (match) {
+          return { ...v, durata_minuti: nuovaDurata };
+        }
+        return v;
+      })
+    );
+  }
+
   function rimuoviVoce(tipoVoce: 'servizio' | 'prodotto', id: number) {
     setVociSelezionate((prev) =>
       prev.filter(
@@ -920,11 +939,58 @@ export function FormNuovoAppuntamento({
                               </span>
                             )}
                           </div>
-                          {v.durata_minuti && (
-                            <p className="text-xs text-apple-gray">
-                              ⏱️ {v.durata_minuti * v.quantita} min
-                            </p>
-                          )}
+                          v.tipo === 'servizio' && (
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-xs text-apple-gray">⏱️</span>
+                              <div className="inline-flex items-center rounded-apple bg-gray-100 p-0.5 border border-gray-200">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    aggiornaDurataVoce(
+                                      v.tipo,
+                                      id,
+                                      Math.max(15, (v.durata_minuti || 30) - 15)
+                                    )
+                                  }
+                                  className="w-6 h-6 rounded bg-white shadow-sm flex items-center justify-center text-xs font-bold text-apple-darkgray hover:bg-gray-50 active:scale-95 transition-all"
+                                  title="Diminuisci 15 min"
+                                >
+                                  −
+                                </button>
+                                <input
+                                  type="number"
+                                  step="5"
+                                  min="5"
+                                  value={v.durata_minuti || 30}
+                                  onChange={(e) =>
+                                    aggiornaDurataVoce(
+                                      v.tipo,
+                                      id,
+                                      parseInt(e.target.value, 10) || 15
+                                    )
+                                  }
+                                  className="w-12 text-center bg-transparent text-xs font-bold text-apple-darkgray focus:outline-none"
+                                />
+                                <span className="text-[10px] font-semibold text-apple-gray pr-1.5">
+                                  min
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    aggiornaDurataVoce(
+                                      v.tipo,
+                                      id,
+                                      (v.durata_minuti || 30) + 15
+                                    )
+                                  }
+                                  className="w-6 h-6 rounded bg-white shadow-sm flex items-center justify-center text-xs font-bold text-apple-darkgray hover:bg-gray-50 active:scale-95 transition-all"
+                                  title="Aumenta 15 min"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          )
                         </div>
                         <button
                           type="button"
