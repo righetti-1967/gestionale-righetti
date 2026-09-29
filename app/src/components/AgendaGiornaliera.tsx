@@ -52,6 +52,8 @@ interface BloccoCalcolato {
   oraInizio: string;
   oraFine: string;
   isFirst: boolean;
+  colIndex?: number;
+  totalCols?: number;
 }
 
 export function AgendaGiornaliera({
@@ -183,6 +185,69 @@ export function AgendaGiornaliera({
             isFirst: i === 0,
           });
           minutoCorrente = inizioVoce + durata;
+        }
+      }
+    }
+
+    // ⚡ Algoritmo Multi-Colonna per blocchi sovrapposti
+    for (const op of operatoriVisibili) {
+      const lista = mappa[op] || [];
+      if (lista.length <= 1) {
+        lista.forEach(b => { b.colIndex = 0; b.totalCols = 1; });
+        continue;
+      }
+
+      // Convertiamo gli orari in minuti numerici
+      const items = lista.map((b, idx) => ({
+        b,
+        start: oraToMinuti(b.oraInizio),
+        end: oraToMinuti(b.oraFine),
+        idx
+      })).sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+
+      // Raggruppamento in cluster di eventi che si toccano/sovrappongono
+      const clusters: (typeof items)[] = [];
+      let currentCluster: typeof items = [];
+      let clusterEnd = -1;
+
+      for (const it of items) {
+        if (currentCluster.length === 0) {
+          currentCluster.push(it);
+          clusterEnd = it.end;
+        } else if (it.start < clusterEnd) {
+          currentCluster.push(it);
+          clusterEnd = Math.max(clusterEnd, it.end);
+        } else {
+          clusters.push(currentCluster);
+          currentCluster = [it];
+          clusterEnd = it.end;
+        }
+      }
+      if (currentCluster.length > 0) {
+        clusters.push(currentCluster);
+      }
+
+      // Per ciascun cluster, assegniamo la colonna disponibile (greedy coloring)
+      for (const cluster of clusters) {
+        const columns: number[] = []; // Tiene traccia della fine minuto per corsia
+        for (const it of cluster) {
+          let assignedCol = -1;
+          for (let c = 0; c < columns.length; c++) {
+            if (columns[c] <= it.start) {
+              assignedCol = c;
+              columns[c] = it.end;
+              break;
+            }
+          }
+          if (assignedCol === -1) {
+            assignedCol = columns.length;
+            columns.push(it.end);
+          }
+          it.b.colIndex = assignedCol;
+        }
+        const total = Math.max(1, columns.length);
+        for (const it of cluster) {
+          it.b.totalCols = total;
         }
       }
     }
@@ -590,15 +655,21 @@ function BloccoRnd({
 
   const isLive = liveDeltaY !== 0 || liveDeltaHeight !== 0;
 
+  const colIdx = blocco.colIndex ?? 0;
+  const totCols = blocco.totalCols ?? 1;
+  const larghezzaUtile = larghezzaColonna - 8;
+  const larghezzaSingola = totCols > 1 ? Math.floor(larghezzaUtile / totCols) - 2 : larghezzaUtile;
+  const posX = 4 + colIdx * Math.floor(larghezzaUtile / totCols);
+
   const classeBase = isBlocco
     ? 'h-full w-full bg-gray-50 text-gray-700 border-2 border-dashed border-gray-400 rounded-md overflow-hidden px-1.5 py-0.5 cursor-grab active:cursor-grabbing'
     : `h-full w-full ${cfg.bg} ${cfg.text} ${cfg.border} rounded-md overflow-hidden px-1.5 py-0.5 cursor-grab active:cursor-grabbing`;
 
   return (
     <Rnd
-      default={{ x: 4, y: top, width: larghezzaColonna - 8, height: height }}
-      size={{ width: larghezzaColonna - 8, height }}
-      position={{ x: 4, y: top }}
+      default={{ x: posX, y: top, width: larghezzaSingola, height: height }}
+      size={{ width: larghezzaSingola, height }}
+      position={{ x: isLive ? posX + liveDeltaY * 0 : posX, y: isLive ? top + liveDeltaY : top }}
       dragAxis="both"
       enableResizing={{
         top: false,
