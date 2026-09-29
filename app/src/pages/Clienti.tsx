@@ -403,49 +403,17 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
       </div>
       `;
 
-      // Genera il PDF firmato da allegare se la firma e' presente
+      // Genera il PDF legale ufficiale completo di 2 pagine con testo GDPR e firme
       let pdfBase64: string | undefined = undefined;
       const nomeAllegato = `Informativa_Privacy_${cliente.nome_cognome.replace(/\s+/g, '_')}.pdf`;
 
-      if (cliente.privacy_firma_immagine) {
-        try {
-          const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-          doc.setFillColor(0, 122, 255);
-          doc.rect(0, 0, 210, 28, 'F');
-          doc.setTextColor(255, 255, 255);
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(14);
-          doc.text('Studio Righetti Since 1967', 105, 14, { align: 'center' });
-          doc.setFontSize(8);
-          doc.setFont('helvetica', 'normal');
-          doc.text('INFORMATIVA PRIVACY GDPR — COPIA CLIENTE', 105, 21, { align: 'center' });
-
-          doc.setTextColor(28, 28, 30);
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(11);
-          doc.text('DATI DELL\'INTERESSATO', 18, 38);
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(9);
-          doc.text(`Cliente: ${cliente.nome_cognome}`, 18, 45);
-          if (cliente.codice_fiscale) doc.text(`Codice Fiscale: ${cliente.codice_fiscale.toUpperCase()}`, 18, 51);
-          if (cliente.email) doc.text(`Email: ${cliente.email}`, 18, 57);
-
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(10);
-          doc.text('CONSENSO PRIVACY ACQUISITO', 18, 70);
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8.5);
-          doc.text('Il cliente ha sottoscritto digitalmente il consenso informato GDPR.', 18, 77);
-
-          if (cliente.privacy_firma_immagine) {
-            doc.addImage(cliente.privacy_firma_immagine, 'PNG', 18, 85, 60, 22);
-          }
-
-          const rawB64 = doc.output('datauristring');
-          pdfBase64 = rawB64.split(',')[1];
-        } catch (e) {
-          console.warn('Errore generazione PDF privacy allegato:', e);
-        }
+      try {
+        const { generaPdfPrivacyCompleto } = await import('../lib/pdfPrivacy');
+        const docCompleto = await generaPdfPrivacyCompleto(cliente);
+        const rawB64 = docCompleto.output('datauristring');
+        pdfBase64 = rawB64.split(',')[1];
+      } catch (errPdf) {
+        console.error('Errore generazione PDF privacy ufficiale:', errPdf);
       }
 
       await inviaEmail({
