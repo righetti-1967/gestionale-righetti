@@ -363,7 +363,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
       const prefisso = numPulito.startsWith('39') ? '' : '39';
       const numeroFinale = numPulito ? `${prefisso}${numPulito}` : '';
       
-      const testo = `Gentile ${cliente.nome_cognome}, confermiamo che la sua Informativa sul trattamento dei dati personali (Privacy GDPR) è stata archiviata con successo presso lo Studio Righetti Since 1967. Cordiali saluti!`;
+      const testo = `Gentile ${cliente.nome_cognome}, confermiamo che la sua Informativa sul trattamento dei dati personali (Privacy GDPR) è stata archiviata con successo presso lo Righetti Since 1967. Cordiali saluti!`;
       const waUrl = numeroFinale
         ? `https://wa.me/${numeroFinale}?text=${encodeURIComponent(testo)}`
         : `https://wa.me/?text=${encodeURIComponent(testo)}`;
@@ -387,9 +387,9 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
     try {
       const corpoHtml = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5ea;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #007aff; margin: 0; font-size: 22px;">Studio Righetti Since 1967</h1>
-          <p style="color: #8e8e93; font-size: 13px; margin: 4px 0 0 0;">Conferma Informativa Privacy GDPR</p>
+        <div style="text-align: center; margin-bottom: 24px;">
+          <img src="https://yporpszebtasalwazirz.supabase.co/storage/v1/object/public/azienda/logo.png" alt="Righetti Since 1967" style="height: 52px; max-width: 220px; object-fit: contain; margin-bottom: 10px;" />
+          <p style="color: #8e8e93; font-size: 12px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Conferma Informativa Privacy GDPR</p>
         </div>
         <div style="background: #f2f2f7; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
           <p style="margin: 0; color: #1c1c1e; font-size: 14px; font-weight: 600;">Gentile ${cliente.nome_cognome},</p>
@@ -398,7 +398,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
           </p>
         </div>
         <div style="border-top: 1px solid #e5e5ea; padding-top: 12px; font-size: 11px; color: #8e8e93; text-align: center;">
-          Studio Righetti Since 1967 • Tel. e WhatsApp Studio • Email: righetti@righetti.club
+          Righetti Since 1967 • Tel. e WhatsApp • Email: righetti@righetti.club
         </div>
       </div>
       `;
@@ -418,9 +418,9 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
 
       await inviaEmail({
         destinatario: cliente.email.trim(),
-        oggetto: 'Informativa Privacy GDPR — Studio Righetti Since 1967',
+        oggetto: 'Informativa Privacy GDPR — Righetti Since 1967',
         corpo_html: corpoHtml,
-        from_name: 'Studio Righetti Since 1967',
+        from_name: 'Righetti Since 1967',
         allegato_base64: pdfBase64,
         allegato_nome: pdfBase64 ? nomeAllegato : undefined,
       });

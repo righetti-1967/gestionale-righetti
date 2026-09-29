@@ -151,7 +151,7 @@ export function PaginaFirmaFatturaIPad({ token }: PaginaFirmaFatturaIPadProps) {
           </div>
           <h1 className="text-2xl font-bold text-apple-darkgray mb-2">Grazie!</h1>
           <p className="text-sm text-apple-gray mb-6">
-            La firma della proforma è stata completata. Consegna l'iPad allo Studio Righetti.
+            La firma della proforma è stata completata. Consegna l'iPad a Righetti Since 1967.
           </p>
           <p className="text-xs text-apple-gray">Puoi chiudere questa pagina.</p>
         </div>

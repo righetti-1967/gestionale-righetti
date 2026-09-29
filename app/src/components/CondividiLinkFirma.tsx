@@ -37,7 +37,7 @@ export function CondividiLinkFirma({
     const nome = cliente?.nome_cognome || 'Gentile Cliente';
     const email = cliente?.email || '';
     const oggetto = `Richiesta Firma Digitale - ${tipoDocumento}`;
-    const corpo = `Gentile ${nome},\n\nper completare la procedura ti chiediamo cortesemente di apporre la tua firma digitale per ${tipoDocumento} cliccando sul link sicuro qui sotto:\n\n${urlFirma}\n\nGrazie,\nStudio Righetti`;
+    const corpo = `Gentile ${nome},\n\nper completare la procedura ti chiediamo cortesemente di apporre la tua firma digitale per ${tipoDocumento} cliccando sul link sicuro qui sotto:\n\n${urlFirma}\n\nGrazie,\nRighetti Since 1967`;
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(corpo)}`;
   }
 

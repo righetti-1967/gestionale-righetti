@@ -16,7 +16,7 @@ def invia_email_google_relay(
     destinatario: str,
     oggetto: str,
     corpo_html: str,
-    from_name: str = "Studio Righetti Since 1967",
+    from_name: str = "Righetti Since 1967",
     corpo_testo: str = "",
     allegato_base64: str | None = None,
     allegato_nome: str | None = None,
@@ -27,8 +27,8 @@ def invia_email_google_relay(
         "destinatario": destinatario.strip(),
         "oggetto": oggetto.strip(),
         "corpo_html": corpo_html,
-        "corpo_testo": corpo_testo or "Messaggio da Studio Righetti",
-        "from_name": from_name or "Studio Righetti Since 1967",
+        "corpo_testo": corpo_testo or "Messaggio da Righetti Since 1967",
+        "from_name": from_name or "Righetti Since 1967",
         "allegato_base64": allegato_base64,
         "allegato_nome": allegato_nome,
     }
@@ -65,7 +65,7 @@ def invia_email_smtp(
     """Invio fallback SMTP."""
     msg = MIMEMultipart("alternative")
     msg["Subject"] = oggetto
-    msg["From"] = formataddr((from_name or "Studio Righetti", from_email or username))
+    msg["From"] = formataddr((from_name or "Righetti Since 1967", from_email or username))
     msg["To"] = destinatario
 
     if corpo_testo:

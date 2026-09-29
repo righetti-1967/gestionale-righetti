@@ -18,7 +18,7 @@ async def test_email_endpoint(req: TestEmailRequest):
     corpo_html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5ea;">
         <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="color: #007aff; margin: 0; font-size: 22px;">Studio Righetti Since 1967</h1>
+            <img src="https://yporpszebtasalwazirz.supabase.co/storage/v1/object/public/azienda/logo.png" alt="Righetti Since 1967" style="height: 52px; max-width: 220px; object-fit: contain; margin-bottom: 8px;" />
             <p style="color: #8e8e93; font-size: 13px; margin: 4px 0 0 0;">Test Connessione Email Gestionale</p>
         </div>
         <div style="background: #f2f2f7; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
@@ -41,7 +41,7 @@ async def test_email_endpoint(req: TestEmailRequest):
                 destinatario=req.destinatario,
                 oggetto="✅ Test Connessione Email — Gestionale Righetti 1967",
                 corpo_html=corpo_html,
-                from_name=req.from_name or "Studio Righetti Since 1967",
+                from_name=req.from_name or "Righetti Since 1967",
             )
             return EmailResponse(success=True, messaggio=res["messaggio"])
         else:
@@ -52,7 +52,7 @@ async def test_email_endpoint(req: TestEmailRequest):
                 secure=req.secure,
                 username=req.username.strip() if req.username else "",
                 password=req.password.strip() if req.password else "",
-                from_name=req.from_name or "Studio Righetti",
+                from_name=req.from_name or "Righetti Since 1967",
                 from_email=req.from_email or (req.username.strip() if req.username else ""),
                 destinatario=req.destinatario.strip(),
                 oggetto="✅ Test Connessione Email — Gestionale Righetti 1967",
@@ -75,7 +75,7 @@ async def invia_email_generica_endpoint(req: InviaEmailRequest):
                 destinatario=req.destinatario,
                 oggetto=req.oggetto,
                 corpo_html=req.corpo_html,
-                from_name=req.from_name or "Studio Righetti Since 1967",
+                from_name=req.from_name or "Righetti Since 1967",
                 corpo_testo=req.corpo_testo or "",
                 allegato_base64=req.allegato_base64,
                 allegato_nome=req.allegato_nome,
@@ -88,7 +88,7 @@ async def invia_email_generica_endpoint(req: InviaEmailRequest):
                 secure=req.secure,
                 username=req.username.strip() if req.username else "",
                 password=req.password.strip() if req.password else "",
-                from_name=req.from_name or "Studio Righetti",
+                from_name=req.from_name or "Righetti Since 1967",
                 from_email=req.from_email or (req.username.strip() if req.username else ""),
                 destinatario=req.destinatario.strip(),
                 oggetto=req.oggetto,

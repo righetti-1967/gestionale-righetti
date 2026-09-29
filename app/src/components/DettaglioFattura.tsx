@@ -129,7 +129,7 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
       const numPulito = telDest.replace(/\D/g, '');
       const prefisso = numPulito.startsWith('39') ? '' : '39';
       const numeroFinale = numPulito ? `${prefisso}${numPulito}` : '';
-      const testo = `Gentile ${nomeCliente}, le trasmettiamo il documento ${numDoc} di importo pari a € ${totaleDoc} emesso da Studio Righetti Since 1967. Cordiali saluti!`;
+      const testo = `Gentile ${nomeCliente}, le trasmettiamo il documento ${numDoc} di importo pari a € ${totaleDoc} emesso da Righetti Since 1967. Cordiali saluti!`;
       const waUrl = numeroFinale
         ? `https://wa.me/${numeroFinale}?text=${encodeURIComponent(testo)}`
         : `https://wa.me/?text=${encodeURIComponent(testo)}`;
@@ -159,22 +159,24 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
 
       const corpoHtml = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5ea;">
-        <h2 style="color: #007aff; margin-top: 0;">Studio Righetti Since 1967</h2>
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="https://yporpszebtasalwazirz.supabase.co/storage/v1/object/public/azienda/logo.png" alt="Righetti Since 1967" style="height: 48px; max-width: 200px; object-fit: contain; margin-bottom: 8px;" />
+        </div>
         <p style="font-size: 14px; color: #1c1c1e;">Gentile <strong>${nomeCliente}</strong>,</p>
         <p style="font-size: 13px; color: #3a3a3c; line-height: 1.5;">
           in allegato le trasmettiamo il documento contabile <strong>${numDoc}</strong> per un importo totale di <strong>€ ${totaleDoc}</strong>.
         </p>
         <p style="font-size: 11px; color: #8e8e93; border-top: 1px solid #e5e5ea; padding-top: 12px; margin-top: 20px;">
-          Studio Righetti Since 1967 • Tel. e WhatsApp Studio • Email: righetti@righetti.club
+          Righetti Since 1967 • Tel. e WhatsApp • Email: righetti@righetti.club
         </p>
       </div>
       `;
 
       await inviaEmail({
         destinatario: emailDest,
-        oggetto: `Documento Contabile ${numDoc} — Studio Righetti Since 1967`,
+        oggetto: `Documento Contabile ${numDoc} — Righetti Since 1967`,
         corpo_html: corpoHtml,
-        from_name: 'Studio Righetti Since 1967',
+        from_name: 'Righetti Since 1967',
         allegato_base64: pdfB64,
         allegato_nome: pdfB64 ? nomeFile : undefined,
       });
