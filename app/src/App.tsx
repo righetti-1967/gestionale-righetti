@@ -1,3 +1,5 @@
+import { supabase } from './lib/supabase';
+import { syncGoogleSheets } from './lib/api';
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
@@ -39,6 +41,58 @@ const PAGINE_VALIDE = [
 function AppGestionale() {
   const { user } = useAuth();
   const demoStatus = getDemoStatus(user);
+
+  // 🔄 Auto-Sync Google Sheets Globale: gira sempre in background ogni 15 min ovunque ti trovi
+  useEffect(() => {
+    if (!user?.id) return;
+    const userId = user.id;
+
+    async function checkAndSync() {
+      try {
+        const { data } = await supabase
+          .from('impostazioni')
+          .select('valore')
+          .eq('user_id', userId)
+          .eq('chiave', 'google_sheet_url')
+          .maybeSingle();
+
+        const url = data?.valore;
+        if (!url || typeof url !== 'string' || !url.trim()) return;
+
+        const salvato = localStorage.getItem('gestionale_sheets_last_sync');
+        const last = salvato ? new Date(salvato).getTime() : 0;
+        const adesso = Date.now();
+        const QUINDICI_MINUTI = 15 * 60 * 1000;
+
+        if (adesso - last >= QUINDICI_MINUTI) {
+          await syncGoogleSheets(url.trim(), userId);
+          const now = new Date();
+          localStorage.setItem('gestionale_sheets_last_sync', now.toISOString());
+        }
+      } catch (err) {
+        console.warn('Auto-sync background:', err);
+      }
+    }
+
+    checkAndSync();
+
+    const QUINDICI_MINUTI = 15 * 60 * 1000;
+    const interval = setInterval(checkAndSync, QUINDICI_MINUTI);
+
+    function onVisibile() {
+      if (document.visibilityState === 'visible') {
+        checkAndSync();
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibile);
+    window.addEventListener('focus', onVisibile);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibile);
+      window.removeEventListener('focus', onVisibile);
+    };
+  }, [user?.id]);
 
   // Inizializza leggendo prima l'URL corrente, poi il localStorage, fallback dashboard
   const [currentPage, setCurrentPage] = useState<string>(() => {
