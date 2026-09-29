@@ -149,10 +149,10 @@ export function AgendaGiornaliera({
 
       const voci = app.voci_selezionate || [];
 
-      // Se raggruppaSeduta è attivo oppure non ci sono voci, crea un unico blocco per tutta la seduta
+      // Se raggruppaSeduta è attivo oppure non ci sono voci, crea un unico blocco continuo per tutta la seduta
       if (raggruppaSeduta || voci.length === 0) {
         const inizioApp = oraToMinuti(app.ora_inizio.slice(0, 5));
-        const durataTotale = app.durata_minuti || (voci.length > 0 ? voci.reduce((s, v) => s + (v.durata_minuti || 30), 0) : 60);
+        const durataTotale = voci.length > 0 ? voci.reduce((s, v) => s + (v.durata_minuti || 30), 0) : (app.durata_minuti || 60);
         const top = (inizioApp - inizioGiornata) * pxPerMinuto;
         const height = durataTotale * pxPerMinuto;
         const opDest = app.operatore;
@@ -173,21 +173,6 @@ export function AgendaGiornaliera({
           height,
           oraInizio: app.ora_inizio.slice(0, 5),
           oraFine: minutiToOra(inizioApp + durataTotale),
-          isFirst: true,
-        });
-      } else if (voci.length === 0) {
-        const inizioApp = oraToMinuti(app.ora_inizio.slice(0, 5));
-        const top = (inizioApp - inizioGiornata) * pxPerMinuto;
-        const height = app.durata_minuti * pxPerMinuto;
-        if (!mappa[app.operatore]) mappa[app.operatore] = [];
-        mappa[app.operatore].push({
-          app,
-          voceIndex: null,
-          voce: null,
-          top,
-          height,
-          oraInizio: app.ora_inizio.slice(0, 5),
-          oraFine: minutiToOra(inizioApp + app.durata_minuti),
           isFirst: true,
         });
       } else {
@@ -281,7 +266,7 @@ export function AgendaGiornaliera({
     }
 
     return mappa;
-  }, [appuntamenti, agendaConfig.oraApertura, pxPerMinuto, operatoriVisibili]);
+  }, [appuntamenti, agendaConfig.oraApertura, pxPerMinuto, operatoriVisibili, raggruppaSeduta]);
 
   function handleDragStop(
     app: AppuntamentoConCliente,
