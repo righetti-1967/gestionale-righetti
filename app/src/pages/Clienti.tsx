@@ -397,8 +397,8 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
             le confermiamo la ricezione e la corretta registrazione del consenso al trattamento dei dati personali (Regolamento UE 2016/679 - GDPR) presso la nostra sede.
           </p>
         </div>
-        <div style="border-top: 1px solid #e5e5ea; padding-top: 12px; font-size: 11px; color: #8e8e93; text-align: center;">
-          Righetti Since 1967 • Tel. e WhatsApp • Email: righetti@righetti.club
+        <div style="border-top: 1px solid #e5e5ea; padding-top: 12px; margin-top: 20px; font-size: 11px; color: #8e8e93; text-align: center;">
+          Documento generato automaticamente dal Gestionale Righetti.
         </div>
       </div>
       `;

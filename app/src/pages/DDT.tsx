@@ -143,7 +143,7 @@ export function DDT() {
           in allegato le trasmettiamo il <strong>${numDdt}</strong> relativo ai prodotti/trattamenti consegnati durante la seduta.
         </p>
         <p style="font-size: 11px; color: #8e8e93; border-top: 1px solid #e5e5ea; padding-top: 12px; margin-top: 20px;">
-          Righetti Since 1967 • Tel. e WhatsApp • Email: righetti@righetti.club
+          Documento generato automaticamente dal Gestionale Righetti.
         </p>
       </div>
       `;
