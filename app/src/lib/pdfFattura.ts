@@ -24,7 +24,10 @@ function formatEuroPdf(importo: number): string {
   );
 }
 
-export async function generaPdfFattura(fattura: FatturaConCliente): Promise<void> {
+export async function generaPdfFattura(
+  fattura: FatturaConCliente,
+  scarica: boolean = true
+): Promise<jsPDF> {
   const azienda: DatiAziendali = await caricaDatiAziendali();
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -337,5 +340,8 @@ export async function generaPdfFattura(fattura: FatturaConCliente): Promise<void
   );
 
   const nomeFile = `Fattura_${fattura.numero_fattura.replace('/', '-')}_${(fattura.cliente?.nome_cognome || 'cliente').replace(/\s+/g, '_')}.pdf`;
-  doc.save(nomeFile);
+  if (scarica) {
+    doc.save(nomeFile);
+  }
+  return doc;
 }
