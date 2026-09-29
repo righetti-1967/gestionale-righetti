@@ -206,6 +206,8 @@ export interface InviaEmailPayload {
   corpo_testo?: string;
   from_name?: string;
   google_script_url?: string;
+  allegato_base64?: string;
+  allegato_nome?: string;
 }
 
 export async function inviaEmail(payload: InviaEmailPayload): Promise<{ success: boolean; messaggio: string }> {
