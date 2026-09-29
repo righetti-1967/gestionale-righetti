@@ -326,7 +326,7 @@ function TabGoogleSheets({ registraSalva }: { registraSalva: (fn: () => void, s:
   }, [url, urlOriginale, salvando]);
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6">
       {/* Banner Sincronizzazione Automatica Attiva */}
       {urlOriginale && (
         <div className="p-4 rounded-apple bg-green-50/70 border border-green-200 flex items-center justify-between gap-3 flex-wrap">
