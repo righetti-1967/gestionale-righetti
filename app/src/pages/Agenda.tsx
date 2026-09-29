@@ -731,6 +731,7 @@ export function Agenda() {
             <AgendaGiornaliera
               data={dataCorrente}
               appuntamenti={appuntamenti}
+              raggruppaSeduta={raggruppaSeduta}
               onClickAppuntamento={clickAppuntamento}
               onClickSlot={clickSlotGiornaliera}
               onUpdateAppuntamento={handleUpdateAppuntamento}
