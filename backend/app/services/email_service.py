@@ -18,6 +18,8 @@ def invia_email_google_relay(
     corpo_html: str,
     from_name: str = "Studio Righetti Since 1967",
     corpo_testo: str = "",
+    allegato_base64: str | None = None,
+    allegato_nome: str | None = None,
 ) -> dict:
     """Invia email tramite Google Apps Script Web App su HTTPS (porta 443)."""
     url = script_url.strip() if script_url and script_url.strip() else DEFAULT_GOOGLE_SCRIPT_URL
@@ -27,6 +29,8 @@ def invia_email_google_relay(
         "corpo_html": corpo_html,
         "corpo_testo": corpo_testo or "Messaggio da Studio Righetti",
         "from_name": from_name or "Studio Righetti Since 1967",
+        "allegato_base64": allegato_base64,
+        "allegato_nome": allegato_nome,
     }
 
     resp = requests.post(url, json=payload, timeout=25, allow_redirects=True)

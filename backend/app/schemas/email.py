@@ -9,6 +9,8 @@ class InviaEmailRequest(BaseModel):
     corpo_testo: Optional[str] = None
     from_name: Optional[str] = None
     google_script_url: Optional[str] = None
+    allegato_base64: Optional[str] = None
+    allegato_nome: Optional[str] = None
     # Parametri opzionali SMTP
     host: Optional[str] = None
     port: int = 587

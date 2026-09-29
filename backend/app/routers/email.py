@@ -77,6 +77,8 @@ async def invia_email_generica_endpoint(req: InviaEmailRequest):
                 corpo_html=req.corpo_html,
                 from_name=req.from_name or "Studio Righetti Since 1967",
                 corpo_testo=req.corpo_testo or "",
+                allegato_base64=req.allegato_base64,
+                allegato_nome=req.allegato_nome,
             )
             return EmailResponse(success=True, messaggio=res["messaggio"])
         else:
