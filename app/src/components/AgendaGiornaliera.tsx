@@ -634,6 +634,7 @@ function BloccoRnd({
   const hasNote = !!app.note && app.note.trim().length > 0;
 
   const [liveDeltaY, setLiveDeltaY] = useState(0);
+  const [liveDeltaX, setLiveDeltaX] = useState(0);
   const [liveDeltaHeight, setLiveDeltaHeight] = useState(0);
 
   const minutiSpostatiLive = Math.round(liveDeltaY / altezzaSlot) * slotMinuti;
@@ -669,7 +670,7 @@ function BloccoRnd({
     <Rnd
       default={{ x: posX, y: top, width: larghezzaSingola, height: height }}
       size={{ width: larghezzaSingola, height }}
-      position={{ x: isLive ? posX + liveDeltaY * 0 : posX, y: isLive ? top + liveDeltaY : top }}
+      position={{ x: liveDeltaX !== 0 ? posX + liveDeltaX : posX, y: liveDeltaY !== 0 ? top + liveDeltaY : top }}
       dragAxis="both"
       enableResizing={{
         top: false,
@@ -689,12 +690,14 @@ function BloccoRnd({
       onDrag={(_e, d) => {
         const start = (window as any).__dragStart || { x: d.x, y: d.y };
         setLiveDeltaY(d.y - start.y);
+        setLiveDeltaX(d.x - start.x);
       }}
       onDragStop={(_e, d) => {
         const start = (window as any).__dragStart || { x: d.x, y: d.y };
         const deltaY = d.y - start.y;
         const deltaX = d.x - start.x;
         setLiveDeltaY(0);
+        setLiveDeltaX(0);
         onDragStop(deltaY, deltaX);
       }}
       onResize={(_e, _dir, ref) => {
