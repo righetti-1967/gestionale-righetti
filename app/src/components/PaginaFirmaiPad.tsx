@@ -75,10 +75,8 @@ export function PaginaFirmaiPad({ token }: PaginaFirmaiPadProps) {
     signaturePadRef.current = pad;
     canvas.style.touchAction = 'none';
 
-    pad.addEventListener('afterUpdateStroke', () => {
-      if (!firmaPresente && !pad.isEmpty()) {
-        setFirmaPresente(true);
-      }
+    pad.addEventListener('beginStroke', () => {
+      setFirmaPresente(true);
     });
     pad.addEventListener('endStroke', () => {
       setFirmaPresente(!pad.isEmpty());

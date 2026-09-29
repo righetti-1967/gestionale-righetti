@@ -58,10 +58,8 @@ export function PaginaFirmaFatturaIPad({ token }: PaginaFirmaFatturaIPadProps) {
     signaturePadRef.current = pad;
     canvas.style.touchAction = 'none';
 
-    pad.addEventListener('afterUpdateStroke', () => {
-      if (!firmaPresente && !pad.isEmpty()) {
-        setFirmaPresente(true);
-      }
+    pad.addEventListener('beginStroke', () => {
+      setFirmaPresente(true);
     });
     pad.addEventListener('endStroke', () => {
       setFirmaPresente(!pad.isEmpty());
@@ -248,16 +246,7 @@ export function PaginaFirmaFatturaIPad({ token }: PaginaFirmaFatturaIPadProps) {
                 className="w-full"
                 style={{ height: '300px', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
               />
-              {!firmaPresente && (
-                <div
-                  className="absolute inset-0 flex items-center justify-center"
-                  style={{ pointerEvents: 'none' }}
-                >
-                  <p className="text-apple-gray/60 text-base select-none">
-                    ✍️ Firma qui con il dito
-                  </p>
-                </div>
-              )}
+              
             </div>
           </div>
         )}
