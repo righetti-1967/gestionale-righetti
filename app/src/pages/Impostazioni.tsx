@@ -683,7 +683,7 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
             <span className="text-2xl">✉️</span>
             <div>
               <h3 className="text-base font-bold text-apple-darkgray">Provider Email (Google Workspace Relay)</h3>
-              <p className="text-xs text-apple-gray">Invio sicuro tramite Google Apps Script su HTTPS (porta 443) dal tuo account righetti@righetti.club</p>
+              <p className="text-xs text-apple-gray">Invio sicuro tramite Google Apps Script su HTTPS (porta 443) dal tuo account Gmail / Google Workspace</p>
             </div>
           </div>
           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
@@ -737,7 +737,7 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
               type="text"
               value={emailConfig.username}
               onChange={(e) => setEmailConfig({ ...emailConfig, username: e.target.value })}
-              placeholder="info@studiorighetti.it"
+              placeholder="es. info@tuodominio.it"
               className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all"
             />
           </div>
@@ -759,7 +759,7 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
               type="text"
               value={emailConfig.fromName}
               onChange={(e) => setEmailConfig({ ...emailConfig, fromName: e.target.value })}
-              placeholder="Es. Studio Righetti"
+              placeholder="Es. Nome del tuo Studio"
               className="w-full px-4 py-2.5 bg-apple-lightgray/60 border border-transparent rounded-apple text-sm text-apple-darkgray focus:bg-white focus:border-apple-blue focus:outline-none transition-all"
             />
           </div>
