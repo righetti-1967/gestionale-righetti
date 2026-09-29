@@ -1,3 +1,5 @@
+import { inviaEmail } from '../lib/api';
+import { getCliente } from '../lib/clienti';
 import { useState } from 'react';
 import { generaPdfFattura } from '../lib/pdfFattura';
 import { FirmaFatturaQR } from './FirmaFatturaQR';
@@ -115,10 +117,74 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
     setShowModifica(false);
   }
 
-  function handleInvia(canale: 'email' | 'whatsapp') {
-    const canaleLabel = canale === 'email' ? 'Email' : 'WhatsApp';
-    setToastInvia(`📧 Invio ${canaleLabel} di ${fattura.numero_fattura} in arrivo`);
-    setTimeout(() => setToastInvia(null), 4000);
+  async function handleInvia(canale: 'email' | 'whatsapp') {
+    const cl = await getCliente(fattura.cliente_id);
+    const nomeCliente = cl?.nome_cognome || fattura.cliente?.nome_cognome || 'Cliente';
+    const emailDest = cl?.email?.trim();
+    const telDest = cl?.cellulare || '';
+    const numDoc = fattura.numero_fattura;
+    const totaleDoc = Number(fattura.lordo_ivato || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 });
+
+    if (canale === 'whatsapp') {
+      const numPulito = telDest.replace(/\D/g, '');
+      const prefisso = numPulito.startsWith('39') ? '' : '39';
+      const numeroFinale = numPulito ? `${prefisso}${numPulito}` : '';
+      const testo = `Gentile ${nomeCliente}, le trasmettiamo il documento ${numDoc} di importo pari a € ${totaleDoc} emesso da Studio Righetti Since 1967. Cordiali saluti!`;
+      const waUrl = numeroFinale
+        ? `https://wa.me/${numeroFinale}?text=${encodeURIComponent(testo)}`
+        : `https://wa.me/?text=${encodeURIComponent(testo)}`;
+      window.open(waUrl, '_blank');
+      setToastInvia(`Chat WhatsApp aperta per ${nomeCliente}`);
+      setTimeout(() => setToastInvia(null), 4000);
+      return;
+    }
+
+    if (!emailDest) {
+      setToastInvia(`Nessuna email registrata per ${nomeCliente}`);
+      setTimeout(() => setToastInvia(null), 4000);
+      return;
+    }
+
+    setToastInvia(`Generazione PDF e invio email a ${emailDest}...`);
+    try {
+      let pdfB64: string | undefined = undefined;
+      const nomeFile = `Fattura_${numDoc.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      try {
+        const doc = await generaPdfFattura(fattura, false);
+        const raw = doc.output('datauristring');
+        pdfB64 = raw.split(',')[1];
+      } catch (errPdf) {
+        console.warn('Errore estrazione PDF fattura:', errPdf);
+      }
+
+      const corpoHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5ea;">
+        <h2 style="color: #007aff; margin-top: 0;">Studio Righetti Since 1967</h2>
+        <p style="font-size: 14px; color: #1c1c1e;">Gentile <strong>${nomeCliente}</strong>,</p>
+        <p style="font-size: 13px; color: #3a3a3c; line-height: 1.5;">
+          in allegato le trasmettiamo il documento contabile <strong>${numDoc}</strong> per un importo totale di <strong>€ ${totaleDoc}</strong>.
+        </p>
+        <p style="font-size: 11px; color: #8e8e93; border-top: 1px solid #e5e5ea; padding-top: 12px; margin-top: 20px;">
+          Studio Righetti Since 1967 • Tel. e WhatsApp Studio • Email: righetti@righetti.club
+        </p>
+      </div>
+      `;
+
+      await inviaEmail({
+        destinatario: emailDest,
+        oggetto: `Documento Contabile ${numDoc} — Studio Righetti Since 1967`,
+        corpo_html: corpoHtml,
+        from_name: 'Studio Righetti Since 1967',
+        allegato_base64: pdfB64,
+        allegato_nome: pdfB64 ? nomeFile : undefined,
+      });
+
+      setToastInvia(`✅ Fattura ${numDoc} inviata con PDF allegato a ${emailDest}!`);
+      setTimeout(() => setToastInvia(null), 5000);
+    } catch (err: any) {
+      setToastInvia(`Errore invio: ${err.message || 'Errore sconosciuto'}`);
+      setTimeout(() => setToastInvia(null), 5000);
+    }
   }
 
   async function handleRimuoviFirma() {

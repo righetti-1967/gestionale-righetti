@@ -53,7 +53,8 @@ function nomeMese(mese: string): string {
  */
 export async function generaPdfReportDdtCommercialista(
   scarichi: ScaricoConCliente[],
-  mese: string
+  mese: string,
+  scarica: boolean = true
 ): Promise<jsPDF> {
   const azienda: DatiAziendali = await caricaDatiAziendali();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -238,6 +239,5 @@ export async function generaPdfReportDdtCommercialista(
   );
 
   const nomeFile = `Report_DDT_Commercialista_${mese}.pdf`;
-  doc.save(nomeFile);
-  return doc;
+  if (scarica) { doc.save(nomeFile); } return doc;
 }

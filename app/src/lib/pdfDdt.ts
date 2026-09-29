@@ -50,6 +50,7 @@ interface ParametriPdf {
   cliente: Cliente | null;
   mostraPrezzi: boolean;
   mostraFirma: boolean;
+  scarica?: boolean;
 }
 
 async function generaPdfDdt({
@@ -58,7 +59,8 @@ async function generaPdfDdt({
   cliente,
   mostraPrezzi,
   mostraFirma,
-}: ParametriPdf): Promise<void> {
+  scarica = true,
+}: ParametriPdf): Promise<jsPDF> {
   const azienda: DatiAziendali = await caricaDatiAziendali();
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -349,33 +351,40 @@ async function generaPdfDdt({
 
   const tipoDoc = mostraPrezzi ? 'Commercialista' : 'Cliente';
   const nomeFile = `DDT-${String(scarico.numero_ddt).padStart(3, '0')}-${annoSeduta}_${tipoDoc}_${(cliente?.nome_cognome || 'cliente').replace(/\s+/g, '_')}.pdf`;
-  doc.save(nomeFile);
+  if (scarica) {
+    doc.save(nomeFile);
+  }
+  return doc;
 }
 
 export async function generaPdfDdtCliente(
   scarico: ScaricoSeduta,
   percorso: Percorso | null,
-  cliente: Cliente | null
-): Promise<void> {
+  cliente: Cliente | null,
+  scarica: boolean = true
+): Promise<jsPDF> {
   return generaPdfDdt({
     scarico,
     percorso,
     cliente,
     mostraPrezzi: false,
     mostraFirma: true,
+    scarica,
   });
 }
 
 export async function generaPdfDdtCommercialista(
   scarico: ScaricoSeduta,
   percorso: Percorso | null,
-  cliente: Cliente | null
-): Promise<void> {
+  cliente: Cliente | null,
+  scarica: boolean = true
+): Promise<jsPDF> {
   return generaPdfDdt({
     scarico,
     percorso,
     cliente,
     mostraPrezzi: true,
     mostraFirma: false,
+    scarica,
   });
 }

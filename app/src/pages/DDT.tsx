@@ -1,5 +1,6 @@
-import { caricaFatturazione } from '../lib/fatturazione';
 import { inviaEmail, inviaEmailTest } from '../lib/api';
+import { getCliente } from '../lib/clienti';
+import { caricaFatturazione } from '../lib/fatturazione';
 import { useEffect, useMemo, useState } from 'react';
 import {
   getTuttiScarichi,
@@ -95,13 +96,69 @@ export function DDT() {
     return Array.from(set).sort().reverse();
   }, [scarichi]);
 
-  function handleInviaDdt(scarico: ScaricoConCliente, canale: 'email' | 'whatsapp') {
-    const canaleLabel = canale === 'email' ? 'Email' : 'WhatsApp';
+  async function handleInviaDdt(scarico: ScaricoConCliente, canale: 'email' | 'whatsapp') {
+    const cl = await getCliente(scarico.cliente_id);
+    const nomeCliente = cl?.nome_cognome || scarico.cliente?.nome_cognome || 'Cliente';
+    const emailDest = cl?.email?.trim();
+    const telDest = cl?.cellulare || '';
     const numDdt = `DDT-${String(scarico.numero_ddt).padStart(3, '0')}-${new Date(scarico.data_seduta).getFullYear()}`;
-    setToast({
-      message: `📧 Invio ${canaleLabel} ${numDdt} in arrivo`,
-      tipo: 'info',
-    });
+
+    if (canale === 'whatsapp') {
+      const numPulito = telDest.replace(/\D/g, '');
+      const prefisso = numPulito.startsWith('39') ? '' : '39';
+      const numeroFinale = numPulito ? `${prefisso}${numPulito}` : '';
+      const testo = `Gentile ${nomeCliente}, le inviamo il Documento di Trasporto / Seduta ${numDdt} registrato presso lo Studio Righetti Since 1967.`;
+      const waUrl = numeroFinale
+        ? `https://wa.me/${numeroFinale}?text=${encodeURIComponent(testo)}`
+        : `https://wa.me/?text=${encodeURIComponent(testo)}`;
+      window.open(waUrl, '_blank');
+      setToast({ message: `Chat WhatsApp aperta per ${nomeCliente}`, tipo: 'success' });
+      return;
+    }
+
+    if (!emailDest) {
+      setToast({ message: `Nessuna email registrata per ${nomeCliente}`, tipo: 'error' });
+      return;
+    }
+
+    setToast({ message: `Generazione PDF e invio DDT a ${emailDest}...`, tipo: 'info' });
+    try {
+      let pdfB64: string | undefined = undefined;
+      const nomeFile = `${numDdt}.pdf`;
+      try {
+        const doc = await generaPdfDdtCliente(scarico, null, cl, false);
+        const raw = doc.output('datauristring');
+        pdfB64 = raw.split(',')[1];
+      } catch (errPdf) {
+        console.warn('Errore estrazione PDF DDT:', errPdf);
+      }
+
+      const corpoHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5ea;">
+        <h2 style="color: #007aff; margin-top: 0;">Studio Righetti Since 1967</h2>
+        <p style="font-size: 14px; color: #1c1c1e;">Gentile <strong>${nomeCliente}</strong>,</p>
+        <p style="font-size: 13px; color: #3a3a3c; line-height: 1.5;">
+          in allegato le trasmettiamo il <strong>${numDdt}</strong> relativo ai prodotti/trattamenti consegnati durante la seduta.
+        </p>
+        <p style="font-size: 11px; color: #8e8e93; border-top: 1px solid #e5e5ea; padding-top: 12px; margin-top: 20px;">
+          Studio Righetti Since 1967 • Tel. e WhatsApp Studio • Email: righetti@righetti.club
+        </p>
+      </div>
+      `;
+
+      await inviaEmail({
+        destinatario: emailDest,
+        oggetto: `Documento di Trasporto ${numDdt} — Studio Righetti Since 1967`,
+        corpo_html: corpoHtml,
+        from_name: 'Studio Righetti Since 1967',
+        allegato_base64: pdfB64,
+        allegato_nome: pdfB64 ? nomeFile : undefined,
+      });
+
+      setToast({ message: `✅ ${numDdt} inviato con PDF allegato a ${emailDest}!`, tipo: 'success' });
+    } catch (err: any) {
+      setToast({ message: `Errore invio: ${err.message || 'Errore sconosciuto'}`, tipo: 'error' });
+    }
   }
 
   async function riscaricaPdf(scarico: ScaricoConCliente) {
@@ -174,6 +231,68 @@ export function DDT() {
         .sort()
         .reverse()[0]
     : null;
+
+    async function handleInviaEmailReportCommercialista() {
+    if (scarichiMese.length === 0) {
+      setToast({ message: 'Nessun DDT in questo mese', tipo: 'error' });
+      return;
+    }
+
+    const configFat = await caricaFatturazione();
+    const emailComm = configFat.emailCommercialista?.trim();
+
+    if (!emailComm) {
+      setToast({
+        message: 'Configura prima l\'email del commercialista in Impostazioni -> Fatturazione',
+        tipo: 'error',
+      });
+      return;
+    }
+
+    try {
+      setGenerandoReport(true);
+      setToast({ message: `Invio report DDT in corso a ${emailComm}...`, tipo: 'info' });
+
+      // scarica = false -> NESSUNA finestra di salvataggio a schermo sul Mac!
+      const docPdf = await generaPdfReportDdtCommercialista(scarichiMese, filtroMese, false);
+      const raw = docPdf.output('datauristring');
+      const pdfB64 = raw.split(',')[1];
+      const nomeMeseStr = new Date(filtroMese + '-01').toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+      const nomeReport = `Report_DDT_Commercialista_${filtroMese}.pdf`;
+
+      const corpoHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5ea;">
+        <h2 style="color: #007aff; margin-top: 0;">Studio Righetti Since 1967</h2>
+        <p style="font-size: 14px; color: #1c1c1e;">Gentile <strong>${configFat.nomeCommercialista || 'Studio Commercialista'}</strong>,</p>
+        <p style="font-size: 13px; color: #3a3a3c; line-height: 1.5;">
+          in allegato le trasmettiamo il <strong>Report Mensile DDT delle sedute eseguite per il mese di ${nomeMeseStr}</strong> (Totale DDT: ${scarichiMese.length}).
+        </p>
+        <p style="font-size: 11px; color: #8e8e93; border-top: 1px solid #e5e5ea; padding-top: 12px; margin-top: 20px;">
+          Documento generato automaticamente dal Gestionale Righetti.
+        </p>
+      </div>
+      `;
+
+      await inviaEmail({
+        destinatario: emailComm,
+        oggetto: `Report Mensile DDT ${nomeMeseStr} — Studio Righetti`,
+        corpo_html: corpoHtml,
+        from_name: 'Studio Righetti Since 1967',
+        allegato_base64: pdfB64,
+        allegato_nome: nomeReport,
+      });
+
+      const ids = scarichiMese.map((s) => s.id);
+      await segnaReportCommercialistaInviato(ids);
+      await caricaScarichi();
+
+      setToast({ message: `✅ Report inviato con successo a ${emailComm}!`, tipo: 'success' });
+    } catch (err: any) {
+      setToast({ message: `Errore invio report: ${err.message || 'Errore sconosciuto'}`, tipo: 'error' });
+    } finally {
+      setGenerandoReport(false);
+    }
+  }
 
   async function handleScaricaReport() {
     if (!filtroMese) {
@@ -347,17 +466,26 @@ export function DDT() {
               >
                 👁️ Anteprima Report
               </button>
-              <button
-                onClick={handleScaricaReport}
-                disabled={generandoReport || !filtroMese || scarichiMese.length === 0}
-                className={`px-3 py-2 rounded-apple font-medium text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                  tuttiInviati
-                    ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
-                    : 'bg-amber-500 text-white hover:bg-amber-600'
-                }`}
-              >
-                {generandoReport ? '...' : tuttiInviati ? '📊 Reinvia Report' : '📊 Scarica Report'}
-              </button>
+              <div className="flex gap-2 w-full">
+                <button
+                  type="button"
+                  onClick={handleInviaEmailReportCommercialista}
+                  disabled={generandoReport || scarichiMese.length === 0}
+                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-apple text-xs font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 shadow-sm flex items-center justify-center gap-1.5"
+                  title="Invia direttamente il PDF via email al commercialista senza scaricarlo"
+                >
+                  <span>✉️</span> Invia Email Report
+                </button>
+                <button
+                  type="button"
+                  onClick={handleScaricaReport}
+                  disabled={generandoReport || scarichiMese.length === 0}
+                  className="px-4 py-2.5 bg-gray-100 text-apple-darkgray rounded-apple text-xs font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  title="Scarica copia del PDF sul computer"
+                >
+                  <span>💾</span> Scarica PDF
+                </button>
+              </div>
             </div>
           </div>
         )}
