@@ -38,16 +38,13 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
 
   const currentPageId = currentPage;
 
+  const isUserDemo = getDemoStatus(user).isDemo;
+
   function handleNavigate(id: string) {
     if (id === 'tricoai') {
-      if (getDemoStatus(user).isDemo) {
-        alert('Sei in modalità DEMO.\n\nPer provare TricoAI con i tuoi clienti, accedi a trico.righetti.club con le tue stesse credenziali DEMO.');
+      if (!isUserDemo) {
+        window.open('https://trico.righetti.club', '_blank');
       }
-      const demoStatus = getDemoStatus(user);
-      if (demoStatus.isDemo) {
-        alert('Sei in modalità DEMO.\n\nPer provare TricoAI con i tuoi clienti, accedi a trico.righetti.club con le tue stesse credenziali DEMO.');
-      }
-      window.open('https://trico.righetti.club', '_blank');
       return;
     }
     onNavigate(id);
@@ -92,10 +89,35 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
             </button>
           ))}
           <div className="my-3 border-t border-gray-200/60" />
-          <button onClick={() => handleNavigate('tricoai')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-apple text-sm font-medium text-apple-blue hover:bg-white/60 transition-all">
-            <span className="text-lg w-6 flex items-center justify-center">🧬</span>
-            <span className="whitespace-nowrap overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity font-semibold">TricoAI</span>
-          </button>
+          {isUserDemo ? (
+            <div className="relative group/trico">
+              <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-apple text-sm font-medium text-apple-gray/70 cursor-not-allowed select-none">
+                <span className="text-lg w-6 flex items-center justify-center opacity-60">🧬</span>
+                <span className="whitespace-nowrap overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity font-semibold">TricoAI 🔒</span>
+              </div>
+
+              {/* Tooltip Hover fluttuante a destra */}
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden group-hover/trico:block z-50 w-72 p-3 bg-white text-apple-darkgray rounded-apple shadow-apple-lg border border-gray-200 text-xs">
+                <p className="text-[11px] text-apple-gray leading-relaxed">
+                  <a
+                    href="https://trico.righetti.club/registrati"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-apple-blue font-bold underline hover:text-blue-700"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Registrati qui
+                  </a>{' '}
+                  per provare il software innovativo di Analisi Tricologica.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => handleNavigate('tricoai')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-apple text-sm font-medium text-apple-blue hover:bg-white/60 transition-all">
+              <span className="text-lg w-6 flex items-center justify-center">🧬</span>
+              <span className="whitespace-nowrap overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity font-semibold">TricoAI</span>
+            </button>
+          )}
         </nav>
 
         <div className="shrink-0 px-2 pb-3 pt-2 border-t border-gray-200/60">

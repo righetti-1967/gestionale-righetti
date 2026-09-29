@@ -2757,6 +2757,8 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
 
 // ============ COMPONENTE LOGO UPLOADER ============
 function LogoUploader() {
+  const { user } = useAuth();
+  const isRighetti = user?.email?.toLowerCase().trim() === 'righetti@righetti.club';
   const [url, setUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -2767,7 +2769,7 @@ function LogoUploader() {
     (async () => {
       const esiste = await esisteLogoCustom();
       setLogoCustom(esiste);
-      setUrl(esiste ? getLogoUrl(true) : '/logo.png');
+      setUrl(esiste ? getLogoUrl(true, user?.email) : (isRighetti ? '/logo.png' : ''));
       setLoading(false);
     })();
   }, []);
@@ -2802,7 +2804,7 @@ function LogoUploader() {
     if (error) {
       setErrore(error);
     } else {
-      setUrl('/logo.png');
+      setUrl(isRighetti ? '/logo.png' : '');
       setLogoCustom(false);
     }
     setUploading(false);
@@ -2821,18 +2823,21 @@ function LogoUploader() {
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <div className="w-28 h-28 rounded-apple bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
-          <img
-            src={url}
-            alt="Logo aziendale"
-            className="max-w-full max-h-full object-contain mix-blend-multiply"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = '/logo.png';
-            }}
-          />
+          {(logoCustom || isRighetti) ? (
+            <img
+              src={logoCustom ? url : (isRighetti ? '/logo.png' : '')}
+              alt="Logo aziendale"
+              className="max-w-full max-h-full object-contain mix-blend-multiply"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-2xl text-apple-gray/40 font-bold">
+              🏢
+            </div>
+          )}
         </div>
         <div className="flex-1">
           <p className="text-sm font-medium text-apple-darkgray mb-1">
-            {logoCustom ? 'Logo personalizzato' : 'Logo di default'}
+            {logoCustom ? 'Logo personalizzato' : (isRighetti ? 'Logo Righetti Since 1967' : 'Nessun logo caricato')}
           </p>
           <p className="text-xs text-apple-gray mb-3">
             Formato PNG, max 5 MB. Consigliato: sfondo trasparente, almeno 300px di larghezza.
