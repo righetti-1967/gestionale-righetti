@@ -1,8 +1,11 @@
 import logging
 from fastapi import APIRouter, HTTPException
 
-from app.schemas.email import InviaEmailRequest,
-  TestEmailRequest, EmailResponse
+from app.schemas.email import (
+    InviaEmailRequest,
+    TestEmailRequest,
+    EmailResponse,
+)
 from app.services.email_service import invia_email_google_relay, invia_email_smtp
 
 logger = logging.getLogger(__name__)
