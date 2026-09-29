@@ -1,13 +1,14 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class TestEmailRequest(BaseModel):
-    host: str
+    google_script_url: Optional[str] = None
+    host: Optional[str] = None
     port: int = 587
     secure: bool = False
-    username: str
-    password: str
+    username: Optional[str] = None
+    password: Optional[str] = None
     from_email: Optional[str] = None
     from_name: Optional[str] = None
     destinatario: str

@@ -167,11 +167,12 @@ export async function syncGoogleSheets(sheetUrl: string, userId?: string): Promi
 // TEST INVIO EMAIL
 // ============================================================
 export interface TestEmailPayload {
-  host: string;
-  port: number;
+  google_script_url?: string;
+  host?: string;
+  port?: number;
   secure?: boolean;
-  username: string;
-  password: string;
+  username?: string;
+  password?: string;
   from_name?: string;
   from_email?: string;
   destinatario: string;

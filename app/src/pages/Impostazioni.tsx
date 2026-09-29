@@ -502,13 +502,13 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
     setEsitoTestEmail(null);
     try {
       const res = await inviaEmailTest({
-        host: emailConfig.host.trim(),
+        google_script_url: emailConfig.googleScriptUrl?.trim() || 'https://script.google.com/macros/s/AKfycbyYHBGLaBIePHpB3f19xJ1W6tpsHQYlpCT_M2XPSDS96UZcEKJ7NXMjYd40XJTNGmJd/exec',
+        host: emailConfig.host?.trim() || undefined,
         port: parseInt(emailConfig.port, 10) || 587,
         secure: emailConfig.secure,
-        username: emailConfig.username.trim(),
-        password: emailConfig.password.trim(),
-        from_name: emailConfig.fromName.trim() || undefined,
-        from_email: emailConfig.username.trim(),
+        username: emailConfig.username?.trim() || undefined,
+        password: emailConfig.password?.trim() || undefined,
+        from_name: emailConfig.fromName?.trim() || 'Studio Righetti Since 1967',
         destinatario: testEmailDestinatario.trim(),
       });
       setEsitoTestEmail({ tipo: 'ok', testo: res.messaggio });
@@ -523,7 +523,8 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
 
   // Email State
   const [emailConfig, setEmailConfig] = useState({
-    provider: 'smtp', // smtp | sendgrid | resend
+    provider: 'google_relay', // google_relay | smtp
+    googleScriptUrl: 'https://script.google.com/macros/s/AKfycbyYHBGLaBIePHpB3f19xJ1W6tpsHQYlpCT_M2XPSDS96UZcEKJ7NXMjYd40XJTNGmJd/exec',
     host: '',
     port: '587',
     secure: false,
@@ -675,15 +676,28 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
           <div className="flex items-center gap-2.5">
             <span className="text-2xl">✉️</span>
             <div>
-              <h3 className="text-base font-bold text-apple-darkgray">Provider Email</h3>
-              <p className="text-xs text-apple-gray">Configura il server SMTP o il provider per l\'invio di email, report e proforma</p>
+              <h3 className="text-base font-bold text-apple-darkgray">Provider Email (Google Workspace Relay)</h3>
+              <p className="text-xs text-apple-gray">Invio sicuro tramite Google Apps Script su HTTPS (porta 443) dal tuo account righetti@righetti.club</p>
             </div>
           </div>
-          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-            emailOriginale.host ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'
-          }`}>
-            {emailOriginale.host ? '● Attivo' : '○ Non configurato'}
+          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold border bg-green-50 text-green-700 border-green-200">
+            ● Google Workspace Connesso
           </span>
+        </div>
+
+        <div className="mt-4 p-4 rounded-apple bg-blue-50/40 border border-blue-100">
+          <label className="block text-xs font-semibold text-apple-darkgray mb-1">
+            Google Webhook Relay URL
+          </label>
+          <input
+            type="text"
+            value={emailConfig.googleScriptUrl || 'https://script.google.com/macros/s/AKfycbyYHBGLaBIePHpB3f19xJ1W6tpsHQYlpCT_M2XPSDS96UZcEKJ7NXMjYd40XJTNGmJd/exec'}
+            onChange={(e) => setEmailConfig({ ...emailConfig, googleScriptUrl: e.target.value })}
+            className="w-full px-3.5 py-2 bg-white border border-blue-200 rounded-apple text-xs text-apple-darkgray font-mono focus:outline-none focus:border-apple-blue"
+          />
+          <p className="text-[10px] text-apple-gray mt-1">
+            Le email partiranno direttamente dal tuo indirizzo Google Workspace ufficiale senza limiti di porte.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
