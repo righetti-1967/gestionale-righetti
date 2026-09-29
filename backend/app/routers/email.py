@@ -69,13 +69,20 @@ async def test_email_endpoint(req: TestEmailRequest):
 async def invia_email_generica_endpoint(req: InviaEmailRequest):
     """Invia qualsiasi email con oggetto e corpo HTML personalizzati."""
     try:
-        if req.google_script_url or not req.host:
+        # Protezione Anti-Leak Righetti: se non e' specificato un url e non c'e' SMTP
+        if not req.google_script_url and not req.host:
+            raise HTTPException(
+                status_code=400,
+                detail="Nessun provider email configurato. Inserisci i tuoi parametri SMTP o il tuo Webhook Google in Impostazioni -> Comunicazioni."
+            )
+
+        if req.google_script_url:
             res = invia_email_google_relay(
-                script_url=req.google_script_url or "",
+                script_url=req.google_script_url,
                 destinatario=req.destinatario,
                 oggetto=req.oggetto,
                 corpo_html=req.corpo_html,
-                from_name=req.from_name or "Righetti Since 1967",
+                from_name=req.from_name or "Gestionale",
                 corpo_testo=req.corpo_testo or "",
                 allegato_base64=req.allegato_base64,
                 allegato_nome=req.allegato_nome,

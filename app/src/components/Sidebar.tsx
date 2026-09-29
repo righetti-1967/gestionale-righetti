@@ -40,6 +40,13 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
 
   function handleNavigate(id: string) {
     if (id === 'tricoai') {
+      if (getDemoStatus(user).isDemo) {
+        alert('Sei in modalità DEMO.\n\nPer provare TricoAI con i tuoi clienti, accedi a trico.righetti.club con le tue stesse credenziali DEMO.');
+      }
+      const demoStatus = getDemoStatus(user);
+      if (demoStatus.isDemo) {
+        alert('Sei in modalità DEMO.\n\nPer provare TricoAI con i tuoi clienti, accedi a trico.righetti.club con le tue stesse credenziali DEMO.');
+      }
       window.open('https://trico.righetti.club', '_blank');
       return;
     }

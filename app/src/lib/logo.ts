@@ -61,13 +61,26 @@ export function getCurrentLogoPath(): string {
 /**
  * Restituisce l'URL pubblico del logo aziendale.
  */
-export function getLogoUrl(cacheBuster = false): string {
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(_logoPathCache);
-  if (!data?.publicUrl) return LOGO_DEFAULT;
-  const baseUrl = data.publicUrl;
-  // Se richiesto esplicitamente un nuovo cache-buster (dopo upload), aggiorna
-  if (cacheBuster) _cacheBuster = Date.now();
-  return `${baseUrl}?v=${_cacheBuster}`;
+export function getLogoUrl(cacheBuster = false, userEmail?: string | null): string {
+  const isRighetti = userEmail ? userEmail.toLowerCase().trim() === RIGHETTI_EMAIL : false;
+
+  // Se utente e' Righetti
+  if (isRighetti) {
+    const { data } = supabase.storage.from(BUCKET).getPublicUrl("logo.png");
+    const baseUrl = data?.publicUrl || LOGO_DEFAULT;
+    return cacheBuster ? `${baseUrl}?v=${_cacheBuster}` : baseUrl;
+  }
+
+  // Se utente DEMO / altro salone: usa il suo logo se caricato
+  if (_logoPathCache && _logoPathCache !== "logo.png") {
+    const { data } = supabase.storage.from(BUCKET).getPublicUrl(_logoPathCache);
+    if (data?.publicUrl) {
+      return cacheBuster ? `${data.publicUrl}?v=${_cacheBuster}` : data.publicUrl;
+    }
+  }
+
+  // Se non e' Righetti e non ha caricato un logo: stringa vuota per non mostrare mai il logo Righetti
+  return "";
 }
 
 /**

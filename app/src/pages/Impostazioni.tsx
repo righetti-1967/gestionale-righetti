@@ -1,3 +1,4 @@
+const RIGHETTI_SCRIPT = 'https://script.google.com/macros/s/AKfycbyYHBGLaBIePHpB3f19xJ1W6tpsHQYlpCT_M2XPSDS96UZcEKJ7NXMjYd40XJTNGmJd/exec';
 import {
   useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
@@ -524,7 +525,7 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
   // Email State
   const [emailConfig, setEmailConfig] = useState({
     provider: 'google_relay', // google_relay | smtp
-    googleScriptUrl: 'https://script.google.com/macros/s/AKfycbyYHBGLaBIePHpB3f19xJ1W6tpsHQYlpCT_M2XPSDS96UZcEKJ7NXMjYd40XJTNGmJd/exec',
+    googleScriptUrl: '',
     host: '',
     port: '587',
     secure: false,
@@ -557,6 +558,7 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
           setWaOriginale({ token: val.token || '', phone: val.phone || '' });
         }
 
+        const isRighetti = user.email?.toLowerCase().trim() === 'righetti@righetti.club';
         const { data: dataEmail } = await supabase
           .from('impostazioni')
           .select('valore')
@@ -568,6 +570,10 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
           const val = typeof dataEmail.valore === 'string' ? JSON.parse(dataEmail.valore) : dataEmail.valore;
           setEmailConfig((prev) => ({ ...prev, ...val }));
           setEmailOriginale((prev) => ({ ...prev, ...val }));
+        } else if (isRighetti) {
+          // Solo per Righetti preimposta il relay ufficiale
+          setEmailConfig((prev) => ({ ...prev, googleScriptUrl: RIGHETTI_SCRIPT }));
+          setEmailOriginale((prev) => ({ ...prev, googleScriptUrl: RIGHETTI_SCRIPT }));
         }
       } catch (err) {
         console.warn('Errore caricamento comunicazioni:', err);
@@ -680,8 +686,10 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
               <p className="text-xs text-apple-gray">Invio sicuro tramite Google Apps Script su HTTPS (porta 443) dal tuo account righetti@righetti.club</p>
             </div>
           </div>
-          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold border bg-green-50 text-green-700 border-green-200">
-            ● Google Workspace Connesso
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+            (emailConfig.googleScriptUrl || emailConfig.host) ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+          }`}>
+            {(emailConfig.googleScriptUrl || emailConfig.host) ? '● Connesso' : '○ Non configurato'}
           </span>
         </div>
 
@@ -691,7 +699,7 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
           </label>
           <input
             type="text"
-            value={emailConfig.googleScriptUrl || 'https://script.google.com/macros/s/AKfycbyYHBGLaBIePHpB3f19xJ1W6tpsHQYlpCT_M2XPSDS96UZcEKJ7NXMjYd40XJTNGmJd/exec'}
+            value={emailConfig.googleScriptUrl || ''}
             onChange={(e) => setEmailConfig({ ...emailConfig, googleScriptUrl: e.target.value })}
             className="w-full px-3.5 py-2 bg-white border border-blue-200 rounded-apple text-xs text-apple-darkgray font-mono focus:outline-none focus:border-apple-blue"
           />
