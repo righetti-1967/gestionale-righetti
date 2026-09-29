@@ -1,154 +1,46 @@
-# STATO PROGETTO — GESTIONALE RIGHETTI 1967
-
-Ultimo aggiornamento: **28/09/2026 19:30 — Auto-Save TricoAI OK, Ponte Sync in PAUSA**
-
----
-
-## ✅ Stato attuale
-
-**Il Gestionale è compilato al 100% con 0 errori (TypeScript + Vite) e online con dominio personalizzato e SSL.**
-
-### URLs Ufficiali
-- **Piattaforma Live**: https://gestionale.righetti.club (dominio custom)
-- **Frontend Vercel (Backup)**: https://gestionale-righetti.vercel.app
-- **Backend FastAPI (Railway)**: https://gestionale-righetti-production.up.railway.app
-- **Database & Auth (Supabase)**: https://yporpszebtasalwazirz.supabase.co
-- **Repository GitHub**: https://github.com/righetti-1967/gestionale-righetti
+# STATO GESTIONALE RIGHETTI 1967
+Data ultimo aggiornamento: 29/09/2026 12:21
 
 ---
 
-## 💎 Funzionalità Rilasciate
+## 🚀 AGGIORNAMENTI RECENTI & COMPLETATI
 
-### 1. Suite di Accesso & Google Login
-- Login e Registrazione in stile Apple pulito.
-- "Continua con Google" e "Registrati con Google" (`signInWithOAuth`).
-- Pagine `/forgot-password` e `/reset-password`.
-- Fix loop login: redirect immediato post-auth.
+### 1. Agenda & Real-Time Multi-Device
+- **Sincronizzazione Realtime Istantanea (WebSocket Supabase):** Attivata su `appuntamenti`, `clienti`, `servizi`, `prodotti`, `impostazioni` e `sessioni_firma`. Qualsiasi spostamento o nuovo appuntamento su Mac si riflette su iPhone/iPad in < 1 secondo.
+- **Persistenza della Navigazione (No Reset al Reload):** Risolto il reset forzato a Dashboard. La pagina corrente viene mantenuta nell'URL e in `localStorage`, preservando l'Agenda al refresh (`Cmd+R` / pull-to-refresh).
+- **Layout Responsive Mobile (iPhone/iPad):** Header compatto su due livelli con data centrata, pillola unificata `[ ‹ Oggi › ]`, selettore viste compatto `[ G | S | M ]` e pulsanti rapidi.
+- **Risoluzione Sovrapposizione Testi su Slot da 30 Min:** Riorganizzata la visualizzazione per garantire leggibilità perfetta di orario, cliente, servizio e note inline.
+- **Sblocco Durata Personalizzata Appuntamenti:** Corretto il calcolo di `durataNum` nel form appuntamenti; la durata manuale (es. 45 min) vince sulla durata base del servizio listino senza intaccare il catalogo.
 
-### 2. Modalità DEMO 15 Giorni
-- Nuovi utenti: `ruolo: 'demo'` e `demo_scadenza` a 15 giorni.
-- Badge countdown nell'header.
-- Lock screen elegante a scadenza.
+### 2. Firma Digitale Multi-Canale & Stabilità Touch
+- **Condivisione Link per Firme a Distanza:** Aggiunti pulsanti rapidi in `FirmaPrivacy`, `FirmaDdtQR` e `FirmaFatturaQR`:
+  - 💬 **Invia WhatsApp**: apre direttamente la chat con messaggio precompilato e link sicuro.
+  - ✉️ **Invia Email**: predispone la mail con oggetto e corpo per il cliente.
+  - 📋 **Copia Link**: per incollare l'URL negli appunti con feedback visivo.
+- **Stabilizzazione Canvas iOS Safari:** Risolto il problema del doppio tocco; eliminato l'overlay bloccante che causava `pointercancel` in WebKit e reso stabile il ref del canvas (allineando Fattura e DDT alla Privacy).
 
-### 3. Isolamento Dati & Brand Neutro
-- Sidebar: "Gestionale Studio" (no Righetti).
-- Logo e Dati Aziendali: fallback pulito per utenti demo/terzi.
+### 3. Sincronizzazione Google Sheets
+- **Tab Dedicata in Impostazioni:** Inserita la scheda `Google Sheets` a tutta larghezza con salvataggio sicuro su tabella `impostazioni` (isolata per `user_id`).
+- **Auto-Sync ogni 15 Minuti:** Timer background con Smart Check all'apertura/risveglio dello schermo da sleep.
+- **Backend FastAPI (Railway):** Creato endpoint `/api/sheets/sync` con modulo `csv` nativo ad alte prestazioni e mappatura su `nome_cognome`.
 
-### 4. Agenda & Documenti
-- Cerca Cliente rapido in Agenda (nome, cellulare, email).
-- Dicitura "Note documento" (no "legale").
-- DDT Commercialista → "Documento di Competenza".
-- Fix crash Scheda Cliente → Appuntamenti | Disdette.
-
-### 5. Badge DNA Cliente (28/09/2026)
-- Campo `dna` (codice corto, max 20 caratteri) visibile come **badge verde** 🧬 sotto il nome cliente.
-- Visibile in: **tabella Clienti (desktop)**, **card mobile** (fix iPhone verticale).
-- Campo editabile nel modale cliente (sezione "🧬 DNA Cliente" con bottone "💾 Salva DNA").
-
-### 6. Storico Fatture & Scontrini in Modale Cliente (28/09/2026)
-- Nuova tab **📄 Fatture & Scontrini** nella sezione "Storico Sedute & Consegne".
-- Mostra **tutte le fatture del cliente** (indipendentemente da scarico).
-- Prodotti/Servizi filtrati per escludere EXTRA (tab **⭐ EXTRA** dedicata).
-
-### 7. Riga Cliente Cliccabile (28/09/2026)
-- Click su riga cliente → apre modale dettaglio.
-- Bottoni azione con `stopPropagation()`.
-
-### 8. Modali Anteprima Minimali DDT/Fattura (28/09/2026)
-- Click su numero DDT o Fattura → modale anteprima minimale (👁️ Anteprima + 📥 Scarica PDF + ✖️ Chiudi).
-- No azioni extra (Email, WhatsApp, Firma, Modifica, ecc.).
-
-### 9. Barra Pending/Rebooking in Agenda (28/09/2026)
-- 2 card **⏳ Pending (N)** e **🔄 Rebooking (N)** sotto le tab Giorno/Settimana/Mese.
-- Click card → modale con lista clienti e azioni: 💬 WhatsApp (messaggio differenziato pending vs rebooking), 📅 Apri in Agenda, ✏️ Dettaglio.
-- WhatsApp apre l'**app nativa** (schema `whatsapp://` con fallback web `wa.me`).
-
-### 10. Fix Responsive Mobile (28/09/2026)
-- **Sidebar mobile scrollabile** (tutta la sidebar scorre, `100dvh`, `overscroll-contain`, `WebkitOverflowScrolling`).
-- **Avatar centrato in Sidebar collapsed** (fix `lg:gap-0 lg:group-hover:gap-3`).
-- **Tab Impostazioni**: griglia 2 colonne su mobile, flex su tablet/desktop.
-- **Input date non sborda più** su iPhone (CSS globale `input[type="date"]`).
-- **Bottone "+ Aggiungi" Operatore**: full-width su mobile (no sbordi).
-- **Badge DNA** visibile su iPhone verticale (badge sotto al nome, non troncato).
-- **"Salva Note"** allineato (no sbordi su mobile).
-
-### 11. Fix Sidebar Pulsante Attivo (28/09/2026)
-- Il pulsante attivo nella Sidebar ora segue correttamente `currentPage` (prima rimaneva sempre su Dashboard per uso errato di `useLocation`).
+### 4. Nuove Sezioni Impostazioni Salone
+- **Tab Comunicazioni:**
+  - Configurazione Whatsender API Token e numero mittente per WhatsApp.
+  - Configurazione parametri server SMTP Email (Host, Porta, SSL, Username, Password, Mittente).
+  - Dati protetti e multi-tenant (compatibili con isolamento utente DEMO).
+- **Tab Promemoria & Automazioni:**
+  - Regola generale per appuntamenti Agenda (scelta canale WhatsApp/Email e anticipo 24h/48h/72h).
+  - Regola dedicata per prima visita **"Righetti Check-Up Gratuito"** con testo personalizzato.
 
 ---
 
-## 🎯 Roadmap
+## 📌 PROSSIMI PASSI IN ROADMAP
 
-### 🔴 Priorità 1 — Estendere Auto-Save Multi-Device
-**Stato attuale:** FASE 1 completata per Analisi (TricoAI). Da estendere a:
-- Prodotti & Cura, Schede Cura (TricoAI).
-- **Fatture, DDT, Appuntamenti, Clienti, Prodotti (Gestionale)**.
-
-Vedi sezione dettagliata in `STATO.md` di TricoAI.
-
-### ⚠️ Priorità 2 — Ponte Sync bidirezionale (IN PAUSA)
-**Stato:** **IN PAUSA — DA FIXARE PRIMA DI RIPRENDERE**
-
-Vedi sezione dettagliata in `STATO.md` di TricoAI. Impatta anche il Gestionale:
-- 55 clienti duplicati attribuiti erroneamente a Righetti (`user_id = 6e5f076c-...`).
-- Da fare: backup, pulizia duplicati, fix codice, riattivazione.
-
-### 🔴 Priorità 3 — Card WhatsApp & Email in Impostazioni (~4 ORE)
-**Obiettivo:** configurare parametri SMTP e API WhatsApp (Whatsender) per l'invio di documenti.
-
-**Specifiche:**
-- Card in Impostazioni Gestionale.
-- Campi per: SMTP host, porta, user, password, mittente email.
-- Campi per: API Key Whatsender, numero mittente, template messaggi.
-- **Bottone "Test invio"** per verificare le credenziali.
-- Endpoint o script Google Sheet per il salvataggio dei parametri (da definire in implementazione).
-- **Solo in Gestionale** (non in TricoAI).
-
-### 🟡 Priorità 4 — Attività Recenti Cliccabili (STIMATO ~4 ORE)
-Vedi sezione dettagliata in `STATO.md` di TricoAI.
-
-### 🟡 Priorità 5 — Nuove Funzionalità Operative
-
-**Agenda — `+ Nuovo Servizio` rapido (in verde):**
-- Sostituire `+ Aggiungi altro servizio` con pulsante verde `+ Nuovo Servizio`.
-- Permette creazione servizio al volo dalla modale appuntamento (Nome, Prezzo lordo, Durata minuti).
-
-**Avatar Utente e Foto Profilo in Sidebar:**
-- Upload foto su Supabase Storage (`avatars`).
-- Colori Apple per avatar iniziale.
-- Foto miniatura in basso a sinistra.
-
-**Link a TricoAI nella Sidebar:**
-- Voce dedicata con icona 🧬 e link diretto.
-
-### 🟢 Priorità 6 — Fisco, Cassa & Firma
-
-**Switch Fiscale: Fatture/DDT vs Scontrino Digitale:**
-- Impostazione aziendale per scegliere modalità di emissione.
-
-**Sessioni di Lavoro & Cassa Utente:**
-- Turni e apertura/chiusura cassa operatore.
-
-**Firma Accettazione & Invio WhatsApp:**
-- Firma digitale preventivi + invio link via WhatsApp (Whatsender).
-
-### 🟣 Priorità 7 — Internazionalizzazione (IT + EN)
-Traduzione sistematica (fase successiva).
-
----
-
-## 🛠️ Comandi Rapidi di Sviluppo
-- Avvio locale: `npm run dev`
-- Controllo e Build: `npm run build`
-- Deploy rapido: `git add . && git commit -m "messaggio" && git push`
-
----
-
-## 📝 Note tecniche importanti
-
-- **TricoAI e Gestionale usano DB Supabase DIVERSI**:
-  - TricoAI: `fucagtrfydacobostdoa.supabase.co`
-  - Gestionale: `yporpszebtasalwazirz.supabase.co`
-- **Ponte sync**: **IN PAUSA**. Prima di riattivare: backup + pulizia duplicati + fix codice (vedi `STATO.md` TricoAI).
-- **Auto-Save**: hook condiviso `useDraft` (lato TricoAI). Il Gestionale dovrà avere il suo `useDraft` equivalente.
-- Il campo `dna` esiste nel Gestionale. In TricoAI è stato aggiunto ma va **popolato** tramite sync (quando il Ponte sarà attivo).
+1. **Scontrini Digitali:** Configurazione e scelta provider nelle Impostazioni (collegamento registratore telematico/servizio cloud).
+2. **Automazioni Invio Promemoria:** Motore cron/worker per inviare concretamente i messaggi WhatsApp (Whatsender) ed Email secondo le regole impostate nella tab Promemoria.
+3. **Web App Cliente (PWA Dedicata):**
+   - Accesso cliente senza login complesso (link sicuro / token).
+   - Consultazione appuntamenti futuri e passati.
+   - Scheda tricologica con download report e piani di trattamento TricoAI.
+   - Storico e visualizzazione di Fatture, DDT e Scontrini Digitali.
