@@ -301,9 +301,7 @@ export function FormNuovoAppuntamento({
   const durataVoci = vociSelezionate.reduce((sum, v) => sum + (v.durata_minuti || 0), 0);
   const durataManuale = parseInt(durata, 10);
   // Se l'operatore scrive a mano la durata, vince sempre quella manuale
-  const durataNum = !isNaN(durataManuale) && durataManuale > 0 
-    ? durataManuale 
-    : (durataVoci > 0 ? durataVoci : 60);
+  const durataNum = durataVoci > 0 ? durataVoci : (parseInt(durata, 10) || 60);
   const oraFine = calcolaOraFine(oraInizio, durataNum);
   const coloreFinale = colore || coloreDefault(tipo);
 
@@ -942,10 +940,10 @@ export function FormNuovoAppuntamento({
                               </span>
                             )}
                           </div>
-                          v.tipo === 'servizio' && (
-                            <div className="flex items-center gap-1.5 mt-1">
+{v.tipo === 'servizio' && (
+                            <div className="flex items-center gap-2 mt-1.5">
                               <span className="text-xs text-apple-gray">⏱️</span>
-                              <div className="inline-flex items-center rounded-apple bg-gray-100 p-0.5 border border-gray-200">
+                              <div className="inline-flex items-center rounded-lg bg-gray-100 p-0.5 border border-gray-200 shadow-xs">
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -955,27 +953,13 @@ export function FormNuovoAppuntamento({
                                       Math.max(15, (v.durata_minuti || 30) - 15)
                                     )
                                   }
-                                  className="w-6 h-6 rounded bg-white shadow-sm flex items-center justify-center text-xs font-bold text-apple-darkgray hover:bg-gray-50 active:scale-95 transition-all"
-                                  title="Diminuisci 15 min"
+                                  className="w-6 h-6 rounded-md bg-white shadow-xs flex items-center justify-center text-xs font-bold text-apple-darkgray hover:bg-gray-50 active:scale-95 transition-all"
+                                  title="Riduci 15 min"
                                 >
                                   −
                                 </button>
-                                <input
-                                  type="number"
-                                  step="5"
-                                  min="5"
-                                  value={v.durata_minuti || 30}
-                                  onChange={(e) =>
-                                    aggiornaDurataVoce(
-                                      v.tipo,
-                                      id,
-                                      parseInt(e.target.value, 10) || 15
-                                    )
-                                  }
-                                  className="w-12 text-center bg-transparent text-xs font-bold text-apple-darkgray focus:outline-none"
-                                />
-                                <span className="text-[10px] font-semibold text-apple-gray pr-1.5">
-                                  min
+                                <span className="w-14 text-center text-xs font-bold text-apple-darkgray select-none">
+                                  {v.durata_minuti || 30} min
                                 </span>
                                 <button
                                   type="button"
@@ -986,14 +970,14 @@ export function FormNuovoAppuntamento({
                                       (v.durata_minuti || 30) + 15
                                     )
                                   }
-                                  className="w-6 h-6 rounded bg-white shadow-sm flex items-center justify-center text-xs font-bold text-apple-darkgray hover:bg-gray-50 active:scale-95 transition-all"
+                                  className="w-6 h-6 rounded-md bg-white shadow-xs flex items-center justify-center text-xs font-bold text-apple-darkgray hover:bg-gray-50 active:scale-95 transition-all"
                                   title="Aumenta 15 min"
                                 >
                                   +
                                 </button>
                               </div>
                             </div>
-                          )
+                          )}
                         </div>
                         <button
                           type="button"
