@@ -652,8 +652,23 @@ export function Agenda() {
           className="px-3 py-2.5 bg-white shadow-apple rounded-apple text-sm text-apple-darkgray font-medium focus:outline-none focus:ring-2 focus:ring-apple-blue/30 cursor-pointer shrink-0"
         />
 
+        {/* Toggle Blocco Unico Desktop */}
+        <button
+          type="button"
+          onClick={toggleRaggruppaSeduta}
+          className={`hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-apple text-xs font-semibold shadow-apple transition-all sm:ml-auto ${
+            raggruppaSeduta
+              ? 'bg-orange-500 text-white shadow-orange-500/25 ring-2 ring-orange-400/40'
+              : 'bg-white text-apple-darkgray border border-gray-200/80 hover:bg-gray-50'
+          }`}
+          title={raggruppaSeduta ? 'Disattiva Blocco Unico (mostra singoli servizi)' : 'Attiva Blocco Unico (unisce tutti i servizi del cliente)'}
+        >
+          <span>{raggruppaSeduta ? '🧩' : '🗂️'}</span>
+          <span>{raggruppaSeduta ? 'Blocco Unico' : 'Servizi Singoli'}</span>
+        </button>
+
         {/* Viste a destra */}
-        <div className="flex gap-1 bg-white rounded-apple shadow-apple p-1 sm:ml-auto">
+        <div className="flex gap-1 bg-white rounded-apple shadow-apple p-1">
           {(
             [
               { id: 'giornaliera', label: 'Giorno' },
