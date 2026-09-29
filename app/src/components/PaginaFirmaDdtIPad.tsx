@@ -48,6 +48,11 @@ export function PaginaFirmaDdtIPad({ token }: PaginaFirmaDdtIPadProps) {
     signaturePadRef.current = pad;
     canvas.style.touchAction = 'none';
 
+    pad.addEventListener('afterUpdateStroke', () => {
+      if (!firmaPresente && !pad.isEmpty()) {
+        setFirmaPresente(true);
+      }
+    });
     pad.addEventListener('endStroke', () => {
       setFirmaPresente(!pad.isEmpty());
     });
@@ -222,7 +227,7 @@ export function PaginaFirmaDdtIPad({ token }: PaginaFirmaDdtIPadProps) {
               <canvas
                 ref={canvasRef}
                 className="w-full"
-                style={{ height: '300px', touchAction: 'none' }}
+                style={{ height: '300px', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
               />
               {!firmaPresente && (
                 <div

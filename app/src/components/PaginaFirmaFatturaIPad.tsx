@@ -58,6 +58,11 @@ export function PaginaFirmaFatturaIPad({ token }: PaginaFirmaFatturaIPadProps) {
     signaturePadRef.current = pad;
     canvas.style.touchAction = 'none';
 
+    pad.addEventListener('afterUpdateStroke', () => {
+      if (!firmaPresente && !pad.isEmpty()) {
+        setFirmaPresente(true);
+      }
+    });
     pad.addEventListener('endStroke', () => {
       setFirmaPresente(!pad.isEmpty());
     });
@@ -241,7 +246,7 @@ export function PaginaFirmaFatturaIPad({ token }: PaginaFirmaFatturaIPadProps) {
               <canvas
                 ref={canvasCallback}
                 className="w-full"
-                style={{ height: '300px', touchAction: 'none' }}
+                style={{ height: '300px', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
               />
               {!firmaPresente && (
                 <div
