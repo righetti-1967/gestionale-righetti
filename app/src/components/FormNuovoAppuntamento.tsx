@@ -489,13 +489,26 @@ export function FormNuovoAppuntamento({
       setSalvando(true);
       setErrore(null);
 
+      // Ricalcola gli orari di inizio sequenziali per ogni voce partendo da oraInizio
+      let minutoProg = parseInt(oraInizio.split(':')[0], 10) * 60 + parseInt(oraInizio.split(':')[1], 10);
+      const vociConOrariAggiornati = vociSelezionate.map((v, idx) => {
+        const h = Math.floor(minutoProg / 60);
+        const m = minutoProg % 60;
+        const oraVoce = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        const dur = (vociSelezionate.length === 1 ? durataNum : (v.durata_minuti || 30));
+        minutoProg += dur;
+        return {
+          ...v,
+          ora_inizio: oraVoce,
+          durata_minuti: dur,
+        };
+      });
+
       const dati = {
         cliente_id: clienteId,
         percorso_id: tipo === 'percorso' ? percorsoId : null,
         servizio_id: tipo === 'checkup_nuovo' ? (servizioCheckupId || (vociSelezionate[0]?.servizio_id ?? null)) : null,
-        voci_selezionate: vociSelezionate.length === 1 
-          ? [{ ...vociSelezionate[0], durata_minuti: durataNum }] 
-          : vociSelezionate,
+        voci_selezionate: vociConOrariAggiornati,
         operatore,
         data,
         ora_inizio: oraInizio,
