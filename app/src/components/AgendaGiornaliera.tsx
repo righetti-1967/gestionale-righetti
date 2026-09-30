@@ -416,7 +416,14 @@ export function AgendaGiornaliera({
           ora_inizio: nuovaOra,
           operatore: nuovoOperatore,
         };
-        onUpdateAppuntamento(app.id, { voci_selezionate: vociAggiornate });
+
+        // Se sposti la prima voce (o se tutte le voci vanno allineate), aggiorna anche le colonne madri
+        const updates = {
+          voci_selezionate: vociAggiornate,
+          operatore: voceIndex === 0 ? nuovoOperatore : app.operatore,
+          ora_inizio: voceIndex === 0 && nuovaOra ? nuovaOra : app.ora_inizio,
+        };
+        onUpdateAppuntamento(app.id, updates);
       }
       setNota(`Spostato su ${OPERATORI[nuovoOperatore]?.label || nuovoOperatore} ✅`);
     } else if (tipo === 'sposta' && nuovaOra) {
@@ -442,7 +449,15 @@ export function AgendaGiornaliera({
       } else {
         const vociAggiornate = [...(app.voci_selezionate || [])];
         vociAggiornate[voceIndex] = { ...vociAggiornate[voceIndex], ora_inizio: nuovaOra };
-        onUpdateAppuntamento(app.id, { voci_selezionate: vociAggiornate });
+
+        // Trova l'orario della prima voce per aggiornare la colonna madre ora_inizio
+        const primaOra = vociAggiornate[0]?.ora_inizio || nuovaOra;
+
+        const updates = {
+          voci_selezionate: vociAggiornate,
+          ora_inizio: primaOra,
+        };
+        onUpdateAppuntamento(app.id, updates);
         setNota(`Voce spostata alle ${nuovaOra} ✅`);
       }
     } else if (tipo === 'resize' && nuovaDurata) {
