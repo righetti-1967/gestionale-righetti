@@ -28,12 +28,30 @@ const MOTIVO_CONFIG: Record<
     colore: 'bg-red-100 text-red-800',
     pallino: 'bg-red-500',
   },
+
   spostamento: {
     label: 'Spostato',
     colore: 'bg-blue-100 text-blue-800',
     pallino: 'bg-blue-500',
   },
 };
+
+/**
+ * Estrae la data di destinazione e la nota utente dalla nota del record "spostamento".
+ * Formato atteso: "Spostato a YYYY-MM-DD HH:MM" oppure "Spostato a YYYY-MM-DD HH:MM — nota utente"
+ */
+function parseSpostamentoNote(note: string | null): {
+  dataDest: string | null;
+  notaUtente: string | null;
+} {
+  if (!note) return { dataDest: null, notaUtente: null };
+  const match = note.match(/^Spostato a (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})(?:\s—\s(.*))?$/);
+  if (!match) return { dataDest: null, notaUtente: note };
+  return {
+    dataDest: `${match[1]} ${match[2]}`,
+    notaUtente: match[3] || null,
+  };
+}
 
 const STATO_CONFIG: Record<
   string,
@@ -233,9 +251,9 @@ export function ListaAppuntamentiCliente({
                   </div>
                 </div>
 
-                {/* Badge motivo cancellazione protetto da crash */}
+                {/* Badge motivo cancellazione + destinazione spostamento */}
                 {app.stato === 'cancellato' && app.motivo_cancellazione && (
-                  <div className="mt-1.5">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <span
                       className={`inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                         motivoCfg ? motivoCfg.colore : 'bg-gray-100 text-gray-700'
@@ -248,6 +266,20 @@ export function ListaAppuntamentiCliente({
                       ></span>
                       {motivoCfg ? motivoCfg.label : String(app.motivo_cancellazione)}
                     </span>
+
+                    {/* Destinazione spostamento (se applicabile) */}
+                    {app.motivo_cancellazione === 'spostamento' && (() => {
+                      const info = parseSpostamentoNote(app.note);
+                      if (!info.dataDest) return null;
+                      const parts = info.dataDest.split(' ');
+                      const dataPart = parts[0] || '';
+                      const oraPart = parts[1] || '';
+                      return (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                          📅 → {formatData(dataPart)} • {oraPart}
+                        </span>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -271,12 +303,28 @@ export function ListaAppuntamentiCliente({
                   </div>
                 )}
 
-                {/* Note */}
-                {app.note && (
-                  <p className="text-[10px] text-apple-gray italic mt-1.5 truncate">
-                    📝 {app.note}
-                  </p>
-                )}
+                {/* Note (solo nota utente per spostamenti) */}
+                {(() => {
+                  if (app.motivo_cancellazione === 'spostamento') {
+                    const info = parseSpostamentoNote(app.note);
+                    if (info.notaUtente) {
+                      return (
+                        <p className="text-[10px] text-apple-gray italic mt-1.5 truncate">
+                          📝 {info.notaUtente}
+                        </p>
+                      );
+                    }
+                    return null;
+                  }
+                  if (app.note) {
+                    return (
+                      <p className="text-[10px] text-apple-gray italic mt-1.5 truncate">
+                        📝 {app.note}
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </button>
             );
           })}
