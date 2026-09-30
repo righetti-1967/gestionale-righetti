@@ -74,10 +74,23 @@ export function AgendaGiornaliera({
   const { config: agendaConfig } = useAgendaConfig();
   const [nota, setNota] = useState<string | null>(null);
 
-  const operatoriVisibili = useMemo(
-    () => getOperatoriVisibili(),
-    [agendaConfig.operatoriVisibili, agendaConfig.operatori]
-  );
+  const operatoriVisibili = useMemo(() => {
+    const config = getOperatoriVisibili();
+    // Aggiungi operatori "orfani" (presenti negli appuntamenti ma non in config)
+    // Serve per non perdere appuntamenti quando un utente rinomina un operatore
+    const idOrfani = new Set<string>();
+    for (const app of appuntamenti) {
+      if (app.operatore && !config.includes(app.operatore)) {
+        idOrfani.add(app.operatore);
+      }
+      for (const v of app.voci_selezionate || []) {
+        if (v.operatore && !config.includes(v.operatore)) {
+          idOrfani.add(v.operatore);
+        }
+      }
+    }
+    return [...config, ...Array.from(idOrfani)];
+  }, [agendaConfig.operatoriVisibili, agendaConfig.operatori, appuntamenti]);
   const colonneCount = operatoriVisibili.length;
 
   const [altezzaDisponibile, setAltezzaDisponibile] = useState(600);
