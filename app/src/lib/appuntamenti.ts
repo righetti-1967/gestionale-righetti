@@ -283,6 +283,70 @@ export async function aggiornaAppuntamento(
   return data;
 }
 
+/**
+ * Sposta un appuntamento con tracciamento.
+ * - Se la data NON cambia (stesso giorno, solo ora) → aggiorna direttamente (no tracciamento)
+ * - Se la data CAMBIA → marca l'originale come "spostamento" e crea un nuovo appuntamento
+ */
+export async function spostaAppuntamento(
+  id: number,
+  nuovaData: string,
+  nuovaOra: string,
+  notaSpostamento?: string | null
+): Promise<{ originale: Appuntamento; nuovo: Appuntamento | null }> {
+  const originale = await getAppuntamento(id);
+  if (!originale) throw new Error('Appuntamento non trovato');
+
+  // Se la data è la stessa → aggiorna solo l'ora (no tracciamento)
+  if (originale.data === nuovaData) {
+    const aggiornato = await aggiornaAppuntamento(id, {
+      ora_inizio: nuovaOra,
+      voci_selezionate: originale.voci_selezionate?.map((v) => ({
+        ...v,
+        ora_inizio: nuovaOra,
+      })) ?? null,
+    });
+    return { originale: aggiornato, nuovo: null };
+  }
+
+  // Data cambiata → traccia spostamento
+
+  // 1. Marca originale come "spostato"
+  await aggiornaAppuntamento(id, {
+    stato: 'cancellato',
+    motivo_cancellazione: 'spostamento',
+    note: notaSpostamento ?? `Spostato a ${nuovaData} ${nuovaOra}`,
+  });
+
+  // 2. Crea nuovo appuntamento con la nuova data/ora
+  const nuovo = await creaAppuntamento({
+    cliente_id: originale.cliente_id,
+    percorso_id: originale.percorso_id,
+    operatore: originale.operatore,
+    data: nuovaData,
+    ora_inizio: nuovaOra,
+    durata_minuti: originale.durata_minuti,
+    titolo: originale.titolo,
+    tipo: originale.tipo,
+    colore: originale.colore,
+    note: null,
+    stato: 'confermato',
+    motivo_cancellazione: null,
+    servizio_id: originale.servizio_id,
+    voci_selezionate: originale.voci_selezionate?.map((v) => ({
+      ...v,
+      ora_inizio: nuovaOra,
+    })) ?? null,
+    scarico_id: null,
+    fattura_proforma_id: null,
+    rebooking_fissato: false,
+    rebooking_da_id: null,
+    is_blocco: false,
+  });
+
+  return { originale, nuovo };
+}
+
 export async function cambiaStatoAppuntamento(id: number, stato: StatoAppuntamento): Promise<Appuntamento> {
   const extra: Partial<Appuntamento> = {};
   if (stato === 'completato') {
