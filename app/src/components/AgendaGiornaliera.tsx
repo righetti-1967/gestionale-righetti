@@ -158,7 +158,11 @@ export function AgendaGiornaliera({
     const inizioGiornata = oraToMinuti(agendaConfig.oraApertura);
 
     for (const app of appuntamenti) {
-      if (app.stato === 'cancellato' && app.motivo_cancellazione !== 'rebooking') continue;
+      if (
+        app.stato === 'cancellato' &&
+        app.motivo_cancellazione !== 'rebooking' &&
+        app.motivo_cancellazione !== 'spostamento'
+      ) continue;
 
       const voci = app.voci_selezionate || [];
 
