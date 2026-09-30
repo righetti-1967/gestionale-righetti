@@ -166,12 +166,32 @@ export function AgendaGiornaliera({
 
       const voci = app.voci_selezionate || [];
 
-      // Se raggruppaSeduta è attivo oppure non ci sono voci, crea un unico blocco continuo per tutta la seduta
+      // Calcolo reale dinamico della seduta basato sui singoli servizi
       if (raggruppaSeduta || voci.length === 0) {
-        const inizioApp = oraToMinuti(app.ora_inizio.slice(0, 5));
-        const durataTotale = voci.length > 0 ? voci.reduce((s, v) => s + (v.durata_minuti || 30), 0) : (app.durata_minuti || 60);
-        const top = (inizioApp - inizioGiornata) * pxPerMinuto;
-        const height = durataTotale * pxPerMinuto;
+        let minInizioMin = oraToMinuti(app.ora_inizio.slice(0, 5));
+        let maxFineMin = minInizioMin + (app.durata_minuti || 60);
+
+        if (voci.length > 0) {
+          // Calcola l'inizio del primo servizio e la fine dell'ultimo servizio reale
+          let minutoCorrente = minInizioMin;
+          const inizi: number[] = [];
+          const fini: number[] = [];
+
+          for (const v of voci) {
+            const vIni = v.ora_inizio ? oraToMinuti(v.ora_inizio) : minutoCorrente;
+            const vDur = v.durata_minuti || 30;
+            inizi.push(vIni);
+            fini.push(vIni + vDur);
+            minutoCorrente = vIni + vDur;
+          }
+
+          minInizioMin = Math.min(...inizi);
+          maxFineMin = Math.max(...fini);
+        }
+
+        const durataEffettiva = Math.max(15, maxFineMin - minInizioMin);
+        const top = (minInizioMin - inizioGiornata) * pxPerMinuto;
+        const height = durataEffettiva * pxPerMinuto;
         const opDest = app.operatore;
 
         if (!mappa[opDest]) mappa[opDest] = [];
@@ -184,12 +204,12 @@ export function AgendaGiornaliera({
             prodotto_id: null,
             nome: voci.map(v => v.nome).join(' + '),
             quantita: 1,
-            durata_minuti: durataTotale,
+            durata_minuti: durataEffettiva,
           } : null,
           top,
           height,
-          oraInizio: app.ora_inizio.slice(0, 5),
-          oraFine: minutiToOra(inizioApp + durataTotale),
+          oraInizio: minutiToOra(minInizioMin),
+          oraFine: minutiToOra(maxFineMin),
           isFirst: true,
         });
       } else {
@@ -470,7 +490,22 @@ export function AgendaGiornaliera({
           ...vociAggiornate[voceIndex],
           durata_minuti: nuovaDurata,
         };
-        onUpdateAppuntamento(app.id, { voci_selezionate: vociAggiornate });
+
+        // Ricalcola la durata complessiva reale della seduta
+        let minInizio = oraToMinuti(app.ora_inizio.slice(0, 5));
+        let maxFine = minInizio;
+        let prog = minInizio;
+        for (const v of vociAggiornate) {
+          const vIni = v.ora_inizio ? oraToMinuti(v.ora_inizio) : prog;
+          const vDur = v.durata_minuti || 30;
+          maxFine = Math.max(maxFine, vIni + vDur);
+          prog = vIni + vDur;
+        }
+
+        onUpdateAppuntamento(app.id, {
+          voci_selezionate: vociAggiornate,
+          durata_minuti: Math.max(15, maxFine - minInizio),
+        });
         setNota(`Durata voce: ${nuovaDurata} min ✅`);
       }
     }
