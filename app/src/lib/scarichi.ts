@@ -13,7 +13,7 @@ export interface RigaScarico {
   tipo: 'servizio' | 'prodotto';
   servizio_id: number | null;
   prodotto_id: number | null;
-  prodotto_percorso_id?: number | null; // Collega allo shampoo/prodotto generico del percorso
+  prodotto_percorso_id?: number | null;
   nome: string;
   quantita: number;
   prezzo_listino_lordo: number;
@@ -130,13 +130,19 @@ export async function creaScarico(
   return data;
 }
 
+/**
+ * 🌐 FUNZIONE PUBBLICA
+ * Chiamata dalla pagina firma anonima (aperta da link QR/WhatsApp/Email).
+ * NON richiede autenticazione: il cliente che firma non ha un account.
+ *
+ * Sicurezza garantita da:
+ * - RLS Supabase: policy "Aggiornamento pubblico scarichi" (anon OK)
+ * - Chiamata solo dopo validazione del token tramite getSessioneFirmaDdt()
+ */
 export async function salvaFirmaScarico(
   id: number,
   firmaBase64: string
 ): Promise<ScaricoSeduta> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Non autenticato');
-
   const { data, error } = await supabase
     .from('scarichi_seduta')
     .update({
@@ -145,7 +151,6 @@ export async function salvaFirmaScarico(
       data_firma: new Date().toISOString(),
     })
     .eq('id', id)
-    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -182,15 +187,20 @@ export interface SessioneFirmaDdt {
   expires_at: string;
 }
 
+/**
+ * 🌐 FUNZIONE PUBBLICA
+ * Chiamata dalla pagina firma anonima (aperta da link QR/WhatsApp/Email).
+ * NON richiede autenticazione.
+ *
+ * Sicurezza garantita da:
+ * - RLS Supabase: policy "Lettura pubblica scarichi" (anon OK)
+ * - Chiamata solo dopo validazione del token tramite getSessioneFirmaDdt()
+ */
 export async function getScarico(id: number): Promise<ScaricoSeduta | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Non autenticato');
-
   const { data, error } = await supabase
     .from('scarichi_seduta')
     .select('*')
     .eq('id', id)
-    .eq('user_id', user.id)
     .single();
 
   if (error) {
