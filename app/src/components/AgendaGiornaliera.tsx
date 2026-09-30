@@ -713,7 +713,8 @@ function BloccoRnd({
   const classiStato = [
     app.stato === 'completato' ? 'opacity-60' : '',
     app.stato === 'pending' ? 'ring-2 ring-yellow-400' : '',
-    app.motivo_cancellazione === 'rebooking' ? 'opacity-40 ring-2 ring-red-500' : '',
+    app.motivo_cancellazione === 'rebooking' && app.rebooking_fissato !== true ? 'opacity-40 ring-2 ring-red-500' : '',
+    app.motivo_cancellazione === 'rebooking' && app.rebooking_fissato === true ? 'opacity-25 grayscale' : '',
   ].filter(Boolean).join(' ');
 
   return (
