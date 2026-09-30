@@ -83,18 +83,42 @@ export function DettaglioAppuntamento({
   const isCheckup = appuntamento.tipo === 'checkup_nuovo';
   const isGenericoO_Seduta = appuntamento.tipo === 'generico' || appuntamento.tipo === 'seduta';
 
-  // Calcolo coerente con le voci della seduta
+  // Calcolo arco temporale reale basato sugli orari effettivi delle voci
   const vociApp = appuntamento.voci_selezionate || [];
-  const durataVoci = vociApp.reduce((acc: number, v: any) => acc + (v.durata_minuti || 0), 0);
-  const durataEffettiva = durataVoci > 0 ? durataVoci : (appuntamento.durata_minuti || 60);
-
   const oraInizioStr = appuntamento.ora_inizio ? String(appuntamento.ora_inizio).slice(0, 5) : '09:00';
-  
-  // Calcolo reale di oraFine partendo da oraInizio + durataEffettiva
+
   const [hIni, mIni] = oraInizioStr.split(':').map(Number);
-  const minTotaliFine = (isNaN(hIni) ? 9 : hIni) * 60 + (isNaN(mIni) ? 0 : mIni) + durataEffettiva;
-  const hFine = Math.floor(minTotaliFine / 60) % 24;
-  const mFine = minTotaliFine % 60;
+  const minBaseApp = (isNaN(hIni) ? 9 : hIni) * 60 + (isNaN(mIni) ? 0 : mIni);
+
+  let minInizioReale = minBaseApp;
+  let maxFineReale = minBaseApp + (appuntamento.durata_minuti || 60);
+
+  if (vociApp.length > 0) {
+    let prog = minBaseApp;
+    const inizi: number[] = [];
+    const fini: number[] = [];
+
+    for (const v of vociApp) {
+      let vIni = prog;
+      if (v.ora_inizio) {
+        const [vh, vm] = String(v.ora_inizio).slice(0, 5).split(':').map(Number);
+        if (!isNaN(vh) && !isNaN(vm)) vIni = vh * 60 + vm;
+      }
+      const dur = Number(v.durata_minuti) || 30;
+      inizi.push(vIni);
+      fini.push(vIni + dur);
+      prog = vIni + dur;
+    }
+
+    if (inizi.length > 0 && fini.length > 0) {
+      minInizioReale = Math.min(...inizi);
+      maxFineReale = Math.max(...fini);
+    }
+  }
+
+  const durataEffettiva = Math.max(15, maxFineReale - minInizioReale);
+  const hFine = Math.floor(maxFineReale / 60) % 24;
+  const mFine = maxFineReale % 60;
   const oraFineStr = `${String(hFine).padStart(2, '0')}:${String(mFine).padStart(2, '0')}`;
 
   return (

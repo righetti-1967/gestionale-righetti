@@ -75,18 +75,38 @@ export function FormNuovoAppuntamento({
   const [oraInizio, setOraInizio] = useState(
     appuntamentoIniziale?.ora_inizio.slice(0, 5) || oraIniziale || '09:00'
   );
-  // Inizializza leggendo la somma reale delle voci se presenti, altrimenti la durata memorizzata
-  const durataInizialeVoci = (appuntamentoIniziale?.voci_selezionate || []).reduce(
-    (sum, v) => sum + (v.durata_minuti || 0), 0
-  );
+  // Calcolo iniziale arco reale della seduta per voci accavallate o sequenziali
+  const calcolaArcoIniziale = () => {
+    const voci = appuntamentoIniziale?.voci_selezionate || [];
+    if (voci.length === 0) {
+      return appuntamentoIniziale?.durata_minuti !== undefined ? String(appuntamentoIniziale.durata_minuti) : '60';
+    }
 
-  const [durata, setDurata] = useState<string>(
-    durataInizialeVoci > 0
-      ? String(durataInizialeVoci)
-      : (appuntamentoIniziale?.durata_minuti !== undefined
-          ? String(appuntamentoIniziale.durata_minuti)
-          : '60')
-  );
+    const oraBaseStr = appuntamentoIniziale?.ora_inizio ? String(appuntamentoIniziale.ora_inizio).slice(0, 5) : '09:00';
+    const [h, m] = oraBaseStr.split(':').map(Number);
+    const minBase = (isNaN(h) ? 9 : h) * 60 + (isNaN(m) ? 0 : m);
+
+    let prog = minBase;
+    const inizi = [];
+    const fini = [];
+
+    for (const v of voci) {
+      let vIni = prog;
+      if (v.ora_inizio) {
+        const [vh, vm] = String(v.ora_inizio).slice(0, 5).split(':').map(Number);
+        if (!isNaN(vh) && !isNaN(vm)) vIni = vh * 60 + vm;
+      }
+      const dur = Number(v.durata_minuti) || 30;
+      inizi.push(vIni);
+      fini.push(vIni + dur);
+      prog = vIni + dur;
+    }
+
+    const span = Math.max(15, Math.max(...fini) - Math.min(...inizi));
+    return String(span);
+  };
+
+  const [durata, setDurata] = useState<string>(calcolaArcoIniziale());
   const [tipo, setTipo] = useState<TipoAppuntamento>(
     appuntamentoIniziale?.tipo || 'generico'
   );
