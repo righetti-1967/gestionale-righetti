@@ -73,10 +73,30 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
         <div className="px-3 lg:px-2 py-6 border-b border-gray-200/60 h-[100px] flex items-center shrink-0">
           <div className="flex items-center gap-3 w-full">
             <div className="w-14 h-14 shrink-0 flex items-center justify-center">
-              <img src={getLogoUrl()} alt="Gestionale" className="w-14 h-14 object-contain mix-blend-multiply" />
+              {isUserDemo && !logoUrl ? (
+                <div className="w-14 h-14 rounded-apple bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold shadow-sm">
+                  🏢
+                </div>
+              ) : (
+                <img
+                  src={logoUrl || '/logo.png'}
+                  alt={isUserDemo ? 'Studio' : 'Gestionale'}
+                  className="w-14 h-14 object-contain mix-blend-multiply"
+                  onError={(e) => {
+                    const el = e.currentTarget as HTMLImageElement;
+                    el.style.display = 'none';
+                    el.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              )}
+              <div className="hidden w-14 h-14 rounded-apple bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">
+                🏢
+              </div>
             </div>
             <div className="min-w-0 overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
-              <h1 className="text-base font-semibold text-apple-darkgray whitespace-nowrap">Gestionale Studio</h1>
+              <h1 className="text-base font-semibold text-apple-darkgray whitespace-nowrap">
+                {isUserDemo && !logoUrl ? 'Studio' : 'Gestionale Studio'}
+              </h1>
             </div>
           </div>
         </div>
@@ -91,25 +111,17 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
           <div className="my-3 border-t border-gray-200/60" />
           {isUserDemo ? (
             <div className="relative group/trico">
-              <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-apple text-sm font-medium text-apple-gray/70 cursor-not-allowed select-none">
-                <span className="text-lg w-6 flex items-center justify-center opacity-60">🧬</span>
-                <span className="whitespace-nowrap overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity font-semibold">TricoAI 🔒</span>
-              </div>
-
-              {/* Tooltip Hover fluttuante a destra */}
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden group-hover/trico:block z-50 w-72 p-3 bg-white text-apple-darkgray rounded-apple shadow-apple-lg border border-gray-200 text-xs">
-                <p className="text-[11px] text-apple-gray leading-relaxed">
-                  <a
-                    href="https://trico.righetti.club/registrati"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-apple-blue font-bold underline hover:text-blue-700"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    Registrati qui
-                  </a>{' '}
-                  per provare il software innovativo di Analisi Tricologica.
-                </p>
+              <div 
+                onClick={() => alert('Sei in modalità DEMO.\n\nPer provare il software di Analisi Tricologica, registrati su: https://trico.righetti.club/registrati')}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-apple text-sm font-medium text-apple-gray/70 bg-gray-100/60 hover:bg-gray-200/50 cursor-pointer select-none transition-colors border border-gray-200/40"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg w-6 flex items-center justify-center opacity-60">🧬</span>
+                  <span className="whitespace-nowrap overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity font-semibold">TricoAI</span>
+                </div>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                  🔒 Pro
+                </span>
               </div>
             </div>
           ) : (
