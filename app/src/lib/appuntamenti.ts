@@ -4,7 +4,7 @@ import { AGENDA_DEFAULT, type ConfigAgenda } from './agenda-config';
 
 export type Operatore = string;
 export type StatoAppuntamento = 'pending' | 'prenotato' | 'confermato' | 'completato' | 'cancellato';
-export type MotivoCancellazione = 'rebooking' | 'disdetta' | 'definitiva';
+export type MotivoCancellazione = 'rebooking' | 'disdetta' | 'definitiva' | 'spostamento';
 export type TipoAppuntamento = 'percorso' | 'checkup_nuovo' | 'seduta' | 'generico' | 'blocco';
 
 export interface VoceSelezionata {

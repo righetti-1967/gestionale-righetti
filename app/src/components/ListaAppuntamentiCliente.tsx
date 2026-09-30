@@ -28,6 +28,11 @@ const MOTIVO_CONFIG: Record<
     colore: 'bg-red-100 text-red-800',
     pallino: 'bg-red-500',
   },
+  spostamento: {
+    label: 'Spostato',
+    colore: 'bg-blue-100 text-blue-800',
+    pallino: 'bg-blue-500',
+  },
 };
 
 const STATO_CONFIG: Record<
