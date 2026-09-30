@@ -714,7 +714,7 @@ function BloccoRnd({
     app.stato === 'completato' ? 'opacity-60' : '',
     app.stato === 'pending' ? 'ring-2 ring-yellow-400' : '',
     app.motivo_cancellazione === 'rebooking' && app.rebooking_fissato !== true ? 'opacity-40 ring-2 ring-red-500' : '',
-    app.motivo_cancellazione === 'rebooking' && app.rebooking_fissato === true ? 'opacity-25 grayscale' : '',
+    app.motivo_cancellazione === 'rebooking' && app.rebooking_fissato === true ? 'opacity-60 grayscale bg-gray-200 text-gray-600' : '',
   ].filter(Boolean).join(' ');
 
   return (
