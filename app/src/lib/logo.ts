@@ -232,25 +232,35 @@ export async function rimuoviLogo(): Promise<{ error: string | null }> {
 
 /**
  * Restituisce il logo come base64 (per i PDF).
- * Prova prima il logo custom su Supabase, poi fallback su /logo.png.
+ *
+ * Logica:
+ * - Utente con logo custom caricato → usa il suo logo
+ * - Utente Righetti → fallback su /logo.png pubblico
+ * - Altri utenti senza logo → restituisce null (NESSUN logo nel PDF, no leak Righetti)
  */
 export async function caricaLogoBase64(): Promise<string | null> {
-  // Prova prima il logo custom
+  // 1. Prova il logo custom dell'utente (solo se URL non vuoto)
   try {
     const customUrl = getLogoUrl();
-    const res = await fetch(customUrl);
-    if (res.ok) {
-      const blob = await res.blob();
-      if (blob.size > 0) {
-        return await blobToBase64(blob);
+    if (customUrl) {
+      const res = await fetch(customUrl);
+      if (res.ok) {
+        const blob = await res.blob();
+        if (blob.size > 0) {
+          return await blobToBase64(blob);
+        }
       }
     }
   } catch {
-    // ignora, prova il default
+    // ignora, passa al fallback
   }
 
-  // Fallback: /logo.png pubblico
+  // 2. Fallback /logo.png SOLO per Righetti
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const isRighetti = user?.email?.toLowerCase().trim() === RIGHETTI_EMAIL;
+    if (!isRighetti) return null;
+
     const res = await fetch(LOGO_DEFAULT);
     if (!res.ok) return null;
     const blob = await res.blob();
