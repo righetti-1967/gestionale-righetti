@@ -5,6 +5,7 @@ import { getPercorsiCliente, type Percorso } from '../lib/percorsi';
 import {
   creaAppuntamento,
   aggiornaAppuntamento,
+  spostaAppuntamento,
   getAppuntamentiGiorno,
   calcolaOraFine,
   coloreDefault,
@@ -110,6 +111,12 @@ export function FormNuovoAppuntamento({
   const [ricercaPickerServizi, setRicercaPickerServizi] = useState('');
   const [selezionatiPicker, setSelezionatiPicker] = useState<Set<number>>(new Set());
   const [appuntamentiGiorno, setAppuntamentiGiorno] = useState<AppuntamentoConCliente[]>([]);
+  // Stato modale conferma spostamento (cambio data)
+  const [mostraConfermaSpostamento, setMostraConfermaSpostamento] = useState<{
+    nuovaData: string;
+    nuovaOra: string;
+  } | null>(null);
+  const [notaSpostamento, setNotaSpostamento] = useState('');
   const operatoriVisibili = useMemo(() => getOperatoriVisibili(), []);
 
   useEffect(() => {
@@ -521,6 +528,15 @@ export function FormNuovoAppuntamento({
       };
 
       if (modifica && appuntamentoIniziale) {
+        // 🔍 Se la data è cambiata → apri modale conferma tracciamento spostamento
+        if (dati.data !== appuntamentoIniziale.data) {
+          setMostraConfermaSpostamento({
+            nuovaData: dati.data,
+            nuovaOra: dati.ora_inizio,
+          });
+          setSalvando(false);
+          return;
+        }
         await aggiornaAppuntamento(appuntamentoIniziale.id, dati);
       } else {
         await creaAppuntamento(dati);
@@ -538,6 +554,37 @@ export function FormNuovoAppuntamento({
     }
   }
 
+
+  async function confermaSpostamento(traccia: boolean) {
+    if (!appuntamentoIniziale || !mostraConfermaSpostamento) return;
+
+    try {
+      setSalvando(true);
+      setErrore(null);
+
+      if (traccia) {
+        await spostaAppuntamento(
+          appuntamentoIniziale.id,
+          mostraConfermaSpostamento.nuovaData,
+          mostraConfermaSpostamento.nuovaOra,
+          notaSpostamento.trim() || null
+        );
+      } else {
+        await aggiornaAppuntamento(appuntamentoIniziale.id, {
+          data: mostraConfermaSpostamento.nuovaData,
+          ora_inizio: mostraConfermaSpostamento.nuovaOra,
+        });
+      }
+
+      setMostraConfermaSpostamento(null);
+      setNotaSpostamento('');
+      onSuccess();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrore(msg || 'Errore nello spostamento');
+      setSalvando(false);
+    }
+  }
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
@@ -1299,6 +1346,77 @@ export function FormNuovoAppuntamento({
                 {selezionatiPicker.size === 0
                   ? 'Seleziona almeno 1'
                   : `Aggiungi ${selezionatiPicker.size} servizi`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mostraConfermaSpostamento && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[90]"
+          onClick={() => setMostraConfermaSpostamento(null)}
+        >
+          <div
+            className="bg-white rounded-apple shadow-apple-lg max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-blue-100 flex items-center justify-center text-2xl">
+                🔀
+              </div>
+              <h3 className="text-lg font-bold text-apple-darkgray mb-2">
+                Sposta appuntamento?
+              </h3>
+              <p className="text-xs text-apple-gray mb-3">
+                Stai spostando questo appuntamento:
+              </p>
+              <div className="bg-gray-50 rounded-apple p-3 text-xs text-left space-y-1">
+                <p><strong>Da:</strong> {appuntamentoIniziale?.data} {appuntamentoIniziale?.ora_inizio.slice(0, 5)}</p>
+                <p><strong>A:</strong> {mostraConfermaSpostamento.nuovaData} {mostraConfermaSpostamento.nuovaOra}</p>
+              </div>
+              <p className="text-xs text-apple-gray mt-3">
+                Vuoi tenere traccia dello spostamento nello storico cliente?
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-apple-gray mb-1.5">
+                Nota spostamento (opzionale)
+              </label>
+              <textarea
+                value={notaSpostamento}
+                onChange={(e) => setNotaSpostamento(e.target.value)}
+                placeholder="Es. Cliente ha chiesto cambio per motivi familiari..."
+                rows={2}
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-apple text-xs text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/30 resize-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => confermaSpostamento(true)}
+                disabled={salvando}
+                className="w-full px-4 py-2.5 bg-apple-blue text-white rounded-apple font-medium text-sm hover:bg-blue-600 transition-colors disabled:opacity-50"
+              >
+                {salvando ? 'Salvataggio...' : '🔀 Sì, traccia spostamento'}
+              </button>
+              <button
+                type="button"
+                onClick={() => confermaSpostamento(false)}
+                disabled={salvando}
+                className="w-full px-4 py-2.5 bg-gray-100 text-apple-darkgray rounded-apple font-medium text-sm hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Sposta senza tracciare
+              </button>
+              <button
+                type="button"
+                onClick={() => setMostraConfermaSpostamento(null)}
+                disabled={salvando}
+                className="w-full px-4 py-2.5 text-apple-gray text-xs font-medium hover:text-apple-darkgray transition-colors"
+              >
+                Annulla
               </button>
             </div>
           </div>
