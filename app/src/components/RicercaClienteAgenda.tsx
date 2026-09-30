@@ -288,42 +288,37 @@ export function RicercaClienteAgenda({ onVaiAAppuntamento }: RicercaClienteAgend
                   {appuntamenti.map((app) => {
                     const futuro = isFuturo(app.data);
                     const isSpostamento = app.motivo_cancellazione === 'spostamento';
+                    const isDefinitiva = app.motivo_cancellazione === 'definitiva';
+                    const isRebooking = app.motivo_cancellazione === 'rebooking';
+                    const isDisdetta = app.motivo_cancellazione === 'disdetta';
+                    const isCancellato = app.stato === 'cancellato';
                     return (
                       <button
                         key={app.id}
                         type="button"
                         onClick={() => handleClickAppuntamento(app)}
-                        className={`w-full text-left px-5 py-3 transition-colors ${
-            isSpostamento
-              ? 'bg-amber-50/60 hover:bg-amber-100'
-              : futuro
-                            ? 'bg-blue-50/40 hover:bg-blue-100'
-                            : 'bg-gray-50/60 hover:bg-gray-100'
-                        }`}
+                        className={`w-full text-left px-5 py-3 transition-colors ${isDefinitiva ? 'bg-red-50/60 hover:bg-red-100' : isRebooking ? 'bg-orange-50/60 hover:bg-orange-100' : isDisdetta ? 'bg-yellow-50/60 hover:bg-yellow-100' : isSpostamento ? 'bg-amber-50/60 hover:bg-amber-100' : futuro ? 'bg-blue-50/40 hover:bg-blue-100' : 'bg-gray-50/60 hover:bg-gray-100'}`}
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <p
-                              className={`text-sm font-semibold ${
-                                isSpostamento ? 'text-amber-700' : futuro ? 'text-apple-blue' : 'text-apple-gray'
-                              }`}
+                              className={`text-sm font-semibold ${isDefinitiva ? 'text-red-700' : isRebooking ? 'text-orange-700' : isDisdetta ? 'text-yellow-700' : isSpostamento ? 'text-amber-700' : futuro ? 'text-apple-blue' : 'text-apple-gray'}`}
                             >
                               {formattaData(app.data)} · {app.ora_inizio.slice(0, 5)}
+                              {isDefinitiva && ' 🔴 Cancellato'}
+                              {isRebooking && ' 🟠 Rebooking'}
+                              {isDisdetta && ' 🟡 Disdetta'}
                               {isSpostamento && ' 🔄 Spostato'}
                             </p>
                             <p
-                              className={`text-xs truncate ${
-                                isSpostamento ? 'text-amber-700' : futuro ? 'text-apple-darkgray' : 'text-apple-gray'
-                              }`}
+                              className={`text-xs truncate ${isDefinitiva ? 'text-red-700' : isRebooking ? 'text-orange-700' : isDisdetta ? 'text-yellow-700' : isSpostamento ? 'text-amber-700' : futuro ? 'text-apple-darkgray' : 'text-apple-gray'}`}
                             >
                               {app.titolo || 'Appuntamento'}
                               {app.operatore && ` · ${app.operatore}`}
                             </p>
                           </div>
                           <span
-                            className={`text-lg shrink-0 ${
-                              isSpostamento ? 'text-amber-600' : futuro ? 'text-apple-blue' : 'text-apple-gray/60'
-                            }`}
+                            className={`text-lg shrink-0 ${isDefinitiva ? 'text-red-500' : isRebooking ? 'text-orange-500' : isDisdetta ? 'text-yellow-500' : isSpostamento ? 'text-amber-600' : futuro ? 'text-apple-blue' : 'text-apple-gray/60'}`}
                           >
                             →
                           </span>
