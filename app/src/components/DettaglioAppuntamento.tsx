@@ -83,8 +83,19 @@ export function DettaglioAppuntamento({
   const isCheckup = appuntamento.tipo === 'checkup_nuovo';
   const isGenericoO_Seduta = appuntamento.tipo === 'generico' || appuntamento.tipo === 'seduta';
 
+  // Calcolo coerente con le voci della seduta
+  const vociApp = appuntamento.voci_selezionate || [];
+  const durataVoci = vociApp.reduce((acc: number, v: any) => acc + (v.durata_minuti || 0), 0);
+  const durataEffettiva = durataVoci > 0 ? durataVoci : (appuntamento.durata_minuti || 60);
+
   const oraInizioStr = appuntamento.ora_inizio ? String(appuntamento.ora_inizio).slice(0, 5) : '09:00';
-  const oraFineStr = (appuntamento as any).ora_fine ? String((appuntamento as any).ora_fine).slice(0, 5) : '10:00';
+  
+  // Calcolo reale di oraFine partendo da oraInizio + durataEffettiva
+  const [hIni, mIni] = oraInizioStr.split(':').map(Number);
+  const minTotaliFine = (isNaN(hIni) ? 9 : hIni) * 60 + (isNaN(mIni) ? 0 : mIni) + durataEffettiva;
+  const hFine = Math.floor(minTotaliFine / 60) % 24;
+  const mFine = minTotaliFine % 60;
+  const oraFineStr = `${String(hFine).padStart(2, '0')}:${String(mFine).padStart(2, '0')}`;
 
   return (
     <>
@@ -131,7 +142,7 @@ export function DettaglioAppuntamento({
             <div className="flex justify-between">
               <span className="text-apple-gray">⏰ Orario</span>
               <span className="font-medium text-apple-darkgray">
-                {oraInizioStr} – {oraFineStr} ({appuntamento.durata_minuti || 60} min)
+                {oraInizioStr} – {oraFineStr} ({durataEffettiva} min)
               </span>
             </div>
             <div className="flex justify-between">
