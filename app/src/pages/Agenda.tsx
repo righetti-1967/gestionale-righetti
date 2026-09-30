@@ -7,6 +7,7 @@ import {
   getProssimi3GiorniLavorativi,
   isGiornoLavorativo,
   aggiornaAppuntamento,
+  getAppuntamento,
   type AppuntamentoConCliente,
   type Operatore,
 } from '../lib/appuntamenti';
@@ -316,8 +317,14 @@ export function Agenda() {
   ) {
     try {
       await aggiornaAppuntamento(id, updates);
+      await ricarica();
+      if (dettaglio?.id === id) {
+        try {
+          const fresco = await getAppuntamento(id);
+          if (fresco) setDettaglio(fresco);
+        } catch { /* ignora */ }
+      }
       setToast({ message: 'Appuntamento aggiornato', tipo: 'success' });
-      ricarica();
     } catch (err) {
       setToast({
         message: err instanceof Error ? err.message : 'Errore',
@@ -326,8 +333,14 @@ export function Agenda() {
     }
   }
 
-  function clickAppuntamento(app: AppuntamentoConCliente) {
-    setDettaglio(app);
+  async function clickAppuntamento(app: AppuntamentoConCliente) {
+    // Ricarica fresco dal DB per evitare dati stantii dopo drag&drop
+    try {
+      const fresco = await getAppuntamento(app.id);
+      setDettaglio(fresco || app);
+    } catch {
+      setDettaglio(app);
+    }
   }
 
   function modificaAppuntamento(app: AppuntamentoConCliente) {
