@@ -48,7 +48,7 @@ Data ultimo aggiornamento: 30/09/2026
 - ✅ **Rebooking aperto** → trasparente + bordo rosso
 - ✅ **Rebooking chiuso** → grigio scuro archiviato
 - ✅ **Spostamento** → trasparente + blu chiaro (`!bg-blue-100`)
-- ✅ **Operatori orfani** → mostra anche operatori non in config (fix appuntamenti persi dopo rinomina)
+- ✅ **Operatori orfani** → mostra anche operatori non in config
 
 ### 5. Spostamenti con Tracciamento
 - ✅ Funzione `spostaAppuntamento` in `appuntamenti.ts`
@@ -60,10 +60,7 @@ Data ultimo aggiornamento: 30/09/2026
 
 ### 6. Fix CRITICO: Drag&Drop Agenda
 - ✅ **Bug risolto:** trascinando un appuntamento in agenda, l'orario/operatore non veniva salvato su Supabase
-- ✅ **Effetto:** aprendo modale dettaglio o attivando Blocco Unico, gli orari "saltavano" indietro
 - ✅ **Fix:** il drag&drop ora esegue UPDATE reale su Supabase + aggiorna lo stato locale
-- ✅ Fix accessorio: `handleUpdateAppuntamento` aspetta `ricarica()` + aggiorna modale dettaglio
-- ✅ Fix accessorio: `clickAppuntamento` ricarica dati freschi dal DB
 
 ### 7. Firma DDT Anonima Ripristinata
 - ✅ Fix bug introdotto da `feat(security): isolamento White-Label` che richiedeva auth su `getScarico`/`salvaFirmaScarico`
@@ -74,28 +71,39 @@ Data ultimo aggiornamento: 30/09/2026
 - ✅ Operatori DEMO riassegnati (`luca` → `op1`, `lorenzo` → `op2`)
 - ✅ Dati DEMO percorsi con prezzi corretti
 
-### 9. Motore Comunicazioni Email & Allegati PDF (già completato)
+### 9. 🆕 PWA — Progressive Web App (Gestionale + TricoAI v2)
+- ✅ Installato `vite-plugin-pwa` su entrambi i progetti
+- ✅ Configurato `vite.config.ts` con manifest + service worker
+- ✅ Generati `sw.js`, `manifest.webmanifest`, `registerSW.js`
+- ✅ Aggiunto `apple-touch-icon` in `index.html` (iOS compatibile)
+- ✅ Aggiunto meta iOS: `apple-mobile-web-app-capable`, `apple-mobile-web-app-title`, `theme-color`
+- ✅ Icone dedicate:
+  - **Gestionale:** logo RIGHETTI Since 1967 (1080x1080 → 192px + 512px)
+  - **TricoAI v2:** monologo "R" nera (distinta, per riconoscibilità)
+- ✅ Installabile su iPhone (Safari → Aggiungi a Home), iPad, Mac (Chrome), Android
+- ✅ Funziona anche offline (Service Worker cache)
+- ✅ Aggiornamenti automatici (basta il deploy)
+
+### 10. Motore Comunicazioni Email & Allegati PDF (già completato)
 - Google Workspace HTTPS Relay su porta 443
 - Supporto allegati PDF reali
 - Email commercialista configurabile
-- Rimozione termine "salone"
 
-### 10. Agenda Reattiva & Drag and Drop Avanzato (già completato)
+### 11. Agenda Reattiva & Drag and Drop Avanzato (già completato)
 - Realtime WebSocket Supabase
 - Risoluzione sovrapposizioni a colonne
 - Modalità Blocco Unico
 - Persistenza pagina al reload
-- Header responsive mobile
 
-### 11. Sincronizzazione Google Sheets (già completato)
+### 12. Sincronizzazione Google Sheets (già completato)
 - Auto-sync globale ogni 15 minuti
 - Backend Railway `/api/sheets/sync` operativo
 
-### 12. Firma Digitale Touch-Friendly (già completato)
+### 13. Firma Digitale Touch-Friendly (già completato)
 - Condivisione link firma via WhatsApp, Email, Copia Link
 - Stabilizzazione canvas iOS
 
-### 13. TricoAI v2 — Pulsante Gestionale
+### 14. TricoAI v2 — Pulsante Gestionale
 - ✅ Aggiunto pulsante "📊 Gestionale" in Sidebar TricoAI
 - ✅ Bloccato per utenti DEMO con badge 🔒 Pro
 - ✅ Utenti reali/Righetti: link diretto a `gestionale.righetti.club`
@@ -105,23 +113,17 @@ Data ultimo aggiornamento: 30/09/2026
 ## 📌 PROSSIMI PASSI IN ROADMAP
 
 ### 🟡 Priorità Media
-1. **PWA (Progressive Web App) — Gestionale + TricoAI**
-   - Installazione `vite-plugin-pwa` su entrambi i progetti
-   - Manifest + Service Worker + Icone
-   - Vantaggio: app installabile su iPhone/iPad/Mac senza App Store
-   - **Stato:** iniziato (installazione `vite-plugin-pwa` avviata), da completare
-
-2. **Motore Promemoria e Automazioni**
+1. **Motore Promemoria e Automazioni**
    - Invio reminder WhatsApp ed Email automatici
    - Configurazione anticipo (24h/48h/72h), canale, testo personalizzabile
    - Regola specifica per Check-Up Gratuito nuovo cliente
 
-3. **Cassa Fiscale e Scontrini**
+2. **Cassa Fiscale e Scontrini**
    - Tab Cassa Fiscale in sidebar visibile solo se attivo il regime scontrini
    - Scontrino Madre (incasso + IVA immediata) e Scontrino Figlio a 0 euro
    - Supporto scontrino digitale cloud e stampanti fisiche RCH ed Epson 80mm
 
-4. **🌐 WEB APP CLIENTE (PWA)**
+3. **🌐 WEB APP CLIENTE (PWA)**
    - **Obiettivo:** portale dedicato dove il cliente vede i suoi dati, senza accesso al Gestionale
    - **Architettura consigliata:** sotto-dominio separato `cliente.righetti.club` (Vercel)
    - **Stack:** Vite + React + TypeScript + Tailwind (riusa Supabase)
@@ -132,13 +134,11 @@ Data ultimo aggiornamento: 30/09/2026
      - 🧬 Scheda tricologica (foto, analisi, note)
      - 📄 PDF scaricabili (report tricologico, cura domiciliare, grafico)
    - **Controllo permessi:** tabella Supabase `permessi_cliente` con flag booleani per ogni sezione
-   - **Pulsante/Tab nel Gestionale:** per generare link di accesso al cliente (token univoco) + gestire permessi
    - **Punti di forza:** isolamento totale, codice separato, riuso di PDF/Auth/DB esistenti
-   - **Nota:** fattibile. Decisione finale su cosa mostrare è dell'admin (tu)
 
 ### 🟢 Priorità Bassa
-5. **Migrazione storage PDF su Supabase Storage**
-   - Attualmente i PDF sono generati al volo lato client
+4. **Migrazione storage PDF su Supabase Storage**
+   - Attualmente PDF generati al volo lato client
    - Spostare su Storage per accesso storico dal cliente
 
 ---
@@ -156,6 +156,12 @@ Data ultimo aggiornamento: 30/09/2026
 - `gestionale.righetti.club` → Gestionale
 - `trico.righetti.club` → TricoAI v2
 - `cliente.righetti.club` → **Web App Cliente (futura)**
+
+### PWA
+- **Gestionale:** icona RIGHETTI, nome "Gestionale", theme #007AFF
+- **TricoAI:** icona "R" nera, nome "TricoAI", theme #007AFF
+- **Installazione iPhone:** Safari → Condividi → Aggiungi a Home
+- **Installazione Mac:** Chrome → icona "Installa" nella barra indirizzi
 
 ### File di stato correlati
 - **TricoAI v2:** `/Users/luca/Desktop/Tricolab_v2/STATO.md`
