@@ -277,7 +277,7 @@ export async function generaPdfFattura(
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(120, 120, 130);
-    doc.text(normalizza('DICITURA LEGALE'), margineSinistro, y);
+    doc.text(normalizza('DICITURA'), margineSinistro, y);
     y += 4;
 
     doc.setFont('helvetica', 'normal');
