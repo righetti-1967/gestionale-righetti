@@ -315,7 +315,7 @@ export async function spostaAppuntamento(
   await aggiornaAppuntamento(id, {
     stato: 'cancellato',
     motivo_cancellazione: 'spostamento',
-    note: `Spostato a ${nuovaData} ${nuovaOra}${notaSpostamento ? ` — ${notaSpostamento}` : ''}`,
+    note: `Spostato a ${new Date(nuovaData + 'T00:00:00').toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })} ${nuovaOra}${notaSpostamento ? ` — ${notaSpostamento}` : ''}`,
   });
 
   // 2. Crea nuovo appuntamento con la nuova data/ora

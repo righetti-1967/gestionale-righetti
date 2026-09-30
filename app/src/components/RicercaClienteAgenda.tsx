@@ -287,13 +287,16 @@ export function RicercaClienteAgenda({ onVaiAAppuntamento }: RicercaClienteAgend
                 <div className="divide-y divide-gray-100">
                   {appuntamenti.map((app) => {
                     const futuro = isFuturo(app.data);
+                    const isSpostamento = app.motivo_cancellazione === 'spostamento';
                     return (
                       <button
                         key={app.id}
                         type="button"
                         onClick={() => handleClickAppuntamento(app)}
                         className={`w-full text-left px-5 py-3 transition-colors ${
-                          futuro
+            isSpostamento
+              ? 'bg-amber-50/60 hover:bg-amber-100'
+              : futuro
                             ? 'bg-blue-50/40 hover:bg-blue-100'
                             : 'bg-gray-50/60 hover:bg-gray-100'
                         }`}
@@ -302,14 +305,15 @@ export function RicercaClienteAgenda({ onVaiAAppuntamento }: RicercaClienteAgend
                           <div className="min-w-0 flex-1">
                             <p
                               className={`text-sm font-semibold ${
-                                futuro ? 'text-apple-blue' : 'text-apple-gray'
+                                isSpostamento ? 'text-amber-700' : futuro ? 'text-apple-blue' : 'text-apple-gray'
                               }`}
                             >
                               {formattaData(app.data)} · {app.ora_inizio.slice(0, 5)}
+                              {isSpostamento && ' 🔄 Spostato'}
                             </p>
                             <p
                               className={`text-xs truncate ${
-                                futuro ? 'text-apple-darkgray' : 'text-apple-gray'
+                                isSpostamento ? 'text-amber-700' : futuro ? 'text-apple-darkgray' : 'text-apple-gray'
                               }`}
                             >
                               {app.titolo || 'Appuntamento'}
@@ -318,7 +322,7 @@ export function RicercaClienteAgenda({ onVaiAAppuntamento }: RicercaClienteAgend
                           </div>
                           <span
                             className={`text-lg shrink-0 ${
-                              futuro ? 'text-apple-blue' : 'text-apple-gray/60'
+                              isSpostamento ? 'text-amber-600' : futuro ? 'text-apple-blue' : 'text-apple-gray/60'
                             }`}
                           >
                             →
