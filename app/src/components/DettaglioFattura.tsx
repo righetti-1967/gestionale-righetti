@@ -176,9 +176,9 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
 
       await inviaEmail({
         destinatario: emailDest,
-        oggetto: `Documento Contabile ${numDoc} — Righetti Since 1967`,
+        oggetto: `Documento Contabile ${numDoc}`,
         corpo_html: corpoHtml,
-        from_name: 'Righetti Since 1967',
+        from_name: nomeCliente ? `Studio - ${nomeCliente}` : 'Studio',
         allegato_base64: pdfB64,
         allegato_nome: pdfB64 ? nomeFile : undefined,
       });

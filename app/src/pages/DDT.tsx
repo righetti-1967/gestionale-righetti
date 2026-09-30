@@ -107,7 +107,7 @@ export function DDT() {
       const numPulito = telDest.replace(/\D/g, '');
       const prefisso = numPulito.startsWith('39') ? '' : '39';
       const numeroFinale = numPulito ? `${prefisso}${numPulito}` : '';
-      const testo = `Gentile ${nomeCliente}, le inviamo il Documento di Trasporto / Seduta ${numDdt} registrato presso lo Righetti Since 1967.`;
+      const testo = `Gentile ${nomeCliente}, le inviamo il Documento di Trasporto / Seduta ${numDdt} registrato presso lo Studio.`;
       const waUrl = numeroFinale
         ? `https://wa.me/${numeroFinale}?text=${encodeURIComponent(testo)}`
         : `https://wa.me/?text=${encodeURIComponent(testo)}`;
@@ -150,9 +150,9 @@ export function DDT() {
 
       await inviaEmail({
         destinatario: emailDest,
-        oggetto: `Documento di Trasporto ${numDdt} — Righetti Since 1967`,
+        oggetto: `Documento di Trasporto ${numDdt}`,
         corpo_html: corpoHtml,
-        from_name: 'Righetti Since 1967',
+        from_name: 'Studio',
         allegato_base64: pdfB64,
         allegato_nome: pdfB64 ? nomeFile : undefined,
       });
@@ -279,9 +279,9 @@ export function DDT() {
 
       await inviaEmail({
         destinatario: emailComm,
-        oggetto: `Report Mensile DDT ${nomeMeseStr} — Righetti Since 1967`,
+        oggetto: `Report Mensile DDT ${nomeMeseStr}`,
         corpo_html: corpoHtml,
-        from_name: 'Righetti Since 1967',
+        from_name: 'Studio',
         allegato_base64: pdfB64,
         allegato_nome: nomeReport,
       });
@@ -342,9 +342,9 @@ export function DDT() {
 
         await inviaEmail({
           destinatario: emailComm,
-          oggetto: `Report Mensile DDT ${nomeMeseStr} — Righetti Since 1967`,
+          oggetto: `Report Mensile DDT ${nomeMeseStr}`,
           corpo_html: corpoHtml,
-          from_name: 'Righetti Since 1967',
+          from_name: 'Studio',
           allegato_base64: undefined,
           allegato_nome: undefined,
         });

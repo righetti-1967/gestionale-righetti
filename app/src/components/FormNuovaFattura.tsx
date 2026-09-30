@@ -91,7 +91,7 @@ export function FormNuovaFattura({
 
   const [dicituraLegale, setDicituraLegale] = useState(
     checkupIniziale
-      ? 'Valutazione Tricologica Iniziale con Check-up Gratuito | Protocollo Righetti Since 1967'
+      ? 'Valutazione Tricologica Iniziale con Check-up Gratuito'
       : isGenericoDaAgenda
       ? DICITURA_GENERICO
       : DICITURA_PERCORSO

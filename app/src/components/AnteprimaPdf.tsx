@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useDatiAziendali } from '../lib/useDatiAziendali';
 import { formatSede } from '../lib/studio';
 import { getLogoUrl } from '../lib/logo';
+import { useAuth } from '../lib/auth';
 
 interface AnteprimaPdfProps {
   titolo: string;
@@ -83,10 +84,12 @@ export function AnteprimaPdf({
 
 export function IntestazionePdf() {
   const { dati } = useDatiAziendali();
+  const { user } = useAuth();
+  const logoUrl = getLogoUrl(false, user?.email);
 
   return (
     <div className="flex justify-between items-start mb-6">
-      <img src={getLogoUrl()} alt="Logo" className="h-20" />
+      {logoUrl && <img src={logoUrl} alt="Logo" className="h-16 object-contain" />}
       <div className="text-right text-xs text-gray-600">
         <p className="font-bold text-gray-900 text-sm">{dati.ragioneSociale}</p>
         <p>Sede operativa: {formatSede(dati.sedeOperativa)}</p>

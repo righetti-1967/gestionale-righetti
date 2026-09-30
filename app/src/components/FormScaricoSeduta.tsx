@@ -361,9 +361,9 @@ export function FormScaricoSeduta({
       }
 
       onSuccess(nuovoScarico);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setErrore(msg || 'Errore nel salvataggio');
+    } catch (err: any) {
+      const msg = err?.message || err?.error_description || err?.details || (typeof err === 'object' ? JSON.stringify(err) : String(err));
+      setErrore(msg || 'Errore nel salvataggio della seduta');
     } finally {
       setSalvando(false);
     }
