@@ -46,6 +46,11 @@ interface PercorsoAttivo {
 export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { config: privacy } = usePrivacy();
   const { dati: azienda } = useDatiAziendali();
+  const luogoPrivacy = azienda.sedeOperativa?.citta
+    ? (azienda.sedeOperativa.provincia ? azienda.sedeOperativa.citta + ' (' + azienda.sedeOperativa.provincia + ')' : azienda.sedeOperativa.citta)
+    : azienda.sedeLegale?.citta
+    ? (azienda.sedeLegale.provincia ? azienda.sedeLegale.citta + ' (' + azienda.sedeLegale.provincia + ')' : azienda.sedeLegale.citta)
+    : 'Milano';
   const placeholder = "[Verrà compilato automaticamente con la ragione sociale e la sede legale dell'azienda]";
   const datiTitolare = `${azienda.ragioneSociale}, Sede Legale: ${formatSede(azienda.sedeLegale)}, nella persona del suo legale rappresentante.`;
   const testoInformativaFinale = privacy.testoInformativa.includes(placeholder)
@@ -1424,7 +1429,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
               Il/La sottoscritto/a dichiara di aver ricevuto e letto la presente informativa sul trattamento dei dati personali ai sensi dell'art. 13 del Regolamento UE 2016/679 (GDPR).
             </p>
             <p className="text-xs text-gray-700 mb-3">
-              Luogo: Talamona (SO)
+              Luogo: {luogoPrivacy}
               {clienteSelezionato.privacy_data_firma && (
                 <>
                   {' | '}
@@ -1450,7 +1455,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
               Il/La sottoscritto/a, essendo stato/a informato/a dell'identità del Titolare del trattamento, delle modalità e delle finalità del trattamento, del diritto di revoca del consenso, così come indicato nell'informativa sottoscritta ai sensi dell'art. 13 del GDPR, con la sottoscrizione del presente modulo <strong>ACCONSENTE</strong> al trattamento dei propri dati personali, anche particolari (dati sanitari), secondo le modalità descritte nella presente informativa.
             </p>
             <p className="text-xs text-gray-700 mb-3">
-              Luogo: Talamona (SO)
+              Luogo: {luogoPrivacy}
               {clienteSelezionato.privacy_data_firma && (
                 <>
                   {' | '}
