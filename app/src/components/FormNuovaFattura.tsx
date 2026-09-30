@@ -3,6 +3,7 @@ import { getClienti, type Cliente } from '../lib/clienti';
 import { getPercorsiCliente, aggiornaPercorso, type Percorso } from '../lib/percorsi';
 import { getProdotti, type Prodotto } from '../lib/prodotti';
 import { getServizi, type Servizio } from '../lib/servizi';
+import { getDatiAziendaliSync } from '../lib/datiAziendali';
 import {
   getProssimoNumeroFattura,
   creaFattura,
@@ -25,12 +26,14 @@ interface FormNuovaFatturaProps {
   onClose: () => void;
   onSuccess: (fatturaId: number) => void;
 }
+function getDicituraPercorso(nomeStudio: string): string {
+  return `Percorso Tricologico Personalizzato | Protocollo ${nomeStudio} | Rif. Contratto Interno`;
+}
 
-const DICITURA_PERCORSO =
-  'Percorso Tricologico Personalizzato | Protocollo Righetti Since 1967 | Rif. Contratto Interno';
+function getDicituraGenerico(nomeStudio: string): string {
+  return `Studio Tricologico | ${nomeStudio} | Rif. Appuntamento Agenda`;
+}
 
-const DICITURA_GENERICO =
-  'Studio Tricologico | Righetti Since 1967 | Rif. Appuntamento Agenda';
 
 const NOME_CHECKUP_ESATTO = 'righetti check-up gratuito';
 
@@ -89,12 +92,14 @@ export function FormNuovaFattura({
   // Se arriva da appuntamento generico (vociIniziali presenti ma non checkup) usa DICITURA_GENERICO
   const isGenericoDaAgenda = Boolean(vociIniziali && vociIniziali.length > 0 && !checkupIniziale);
 
-  const [dicituraLegale, setDicituraLegale] = useState(
+  const nomeStudio = getDatiAziendaliSync().ragioneSociale || 'Studio';
+
+  const [dicitura, setDicitura] = useState(
     checkupIniziale
       ? 'Valutazione Tricologica Iniziale con Check-up Gratuito'
       : isGenericoDaAgenda
-      ? DICITURA_GENERICO
-      : DICITURA_PERCORSO
+      ? getDicituraGenerico(nomeStudio)
+      : getDicituraPercorso(nomeStudio)
   );
 
   const [noteInterne, setNoteInterne] = useState(
@@ -471,7 +476,7 @@ export function FormNuovaFattura({
         netto_imponibile: importi.netto,
         iva_importo: importi.iva,
         righe,
-        dicitura_legale: dicituraLegale.trim() || null,
+        dicitura_legale: dicitura.trim() || null,
         note_interne: noteInterne.trim() || null,
         inviato_sdi: false,
         firmato: false,
@@ -866,8 +871,8 @@ export function FormNuovaFattura({
           <div>
             <Label>Note documento</Label>
             <textarea
-              value={dicituraLegale}
-              onChange={(e) => setDicituraLegale(e.target.value)}
+              value={dicitura}
+              onChange={(e) => setDicitura(e.target.value)}
               placeholder="Note documento..."
               rows={2}
               className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-apple text-sm text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/30 resize-none"
