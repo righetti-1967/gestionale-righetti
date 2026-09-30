@@ -145,7 +145,7 @@ export function AgendaGiornaliera({
     const inizioGiornata = oraToMinuti(agendaConfig.oraApertura);
 
     for (const app of appuntamenti) {
-      if (app.stato === 'cancellato') continue;
+      if (app.stato === 'cancellato' && app.motivo_cancellazione !== 'rebooking') continue;
 
       const voci = app.voci_selezionate || [];
 
@@ -710,6 +710,12 @@ function BloccoRnd({
     ? 'h-full w-full bg-gray-50 text-gray-700 border-2 border-dashed border-gray-400 rounded-md overflow-hidden px-1.5 py-0.5 cursor-grab active:cursor-grabbing'
     : `h-full w-full ${cfg.bg} ${cfg.text} ${cfg.border} rounded-md overflow-hidden px-1.5 py-0.5 cursor-grab active:cursor-grabbing`;
 
+  const classiStato = [
+    app.stato === 'completato' ? 'opacity-60' : '',
+    app.stato === 'pending' ? 'ring-2 ring-yellow-400' : '',
+    app.motivo_cancellazione === 'rebooking' ? 'opacity-40 ring-2 ring-red-500' : '',
+  ].filter(Boolean).join(' ');
+
   return (
     <Rnd
       default={{ x: posX, y: top, width: larghezzaSingola, height: height }}
@@ -774,9 +780,7 @@ function BloccoRnd({
           }
           onClick();
         }}
-        className={`${classeBase} ${
-          app.stato === 'completato' ? 'opacity-60' : ''
-        } ${isLive ? 'ring-2 ring-blue-500 shadow-lg' : 'hover:shadow-md'} ${
+        className={`${classeBase} ${classiStato} ${isLive ? 'ring-2 ring-blue-500 shadow-lg' : 'hover:shadow-md'} ${
           isHighlighted ? 'ring-4 ring-yellow-400 ring-offset-2 shadow-xl animate-pulse' : ''
         } transition-shadow`}
         style={{ touchAction: 'manipulation' }}
