@@ -75,10 +75,17 @@ export function FormNuovoAppuntamento({
   const [oraInizio, setOraInizio] = useState(
     appuntamentoIniziale?.ora_inizio.slice(0, 5) || oraIniziale || '09:00'
   );
+  // Inizializza leggendo la somma reale delle voci se presenti, altrimenti la durata memorizzata
+  const durataInizialeVoci = (appuntamentoIniziale?.voci_selezionate || []).reduce(
+    (sum, v) => sum + (v.durata_minuti || 0), 0
+  );
+
   const [durata, setDurata] = useState<string>(
-    appuntamentoIniziale?.durata_minuti !== undefined
-      ? String(appuntamentoIniziale.durata_minuti)
-      : '60'
+    durataInizialeVoci > 0
+      ? String(durataInizialeVoci)
+      : (appuntamentoIniziale?.durata_minuti !== undefined
+          ? String(appuntamentoIniziale.durata_minuti)
+          : '60')
   );
   const [tipo, setTipo] = useState<TipoAppuntamento>(
     appuntamentoIniziale?.tipo || 'generico'
