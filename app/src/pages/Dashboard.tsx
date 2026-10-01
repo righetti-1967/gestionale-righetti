@@ -1,4 +1,12 @@
 import { useEffect, useState } from 'react';
+import type { Fattura } from '../lib/fatture';
+import type { Cliente } from '../lib/clienti';
+
+const MESI_NOMI = [
+  'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
+];
+const ANNI_DISPONIBILI = [2024, 2025, 2026, 2027];
 import { getFatture } from '../lib/fatture';
 import { getClienti } from '../lib/clienti';
 import { getTuttiPercorsi } from '../lib/percorsi';
@@ -23,6 +31,22 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   // Statistiche
   const [fatturatoMese, setFatturatoMese] = useState(0);
+  const [tutteFatture, setTutteFatture] = useState<Fattura[]>([]);
+  const [tuttiClienti, setTuttiClienti] = useState<Cliente[]>([]);
+  const [modaleFatturatoAperta, setModaleFatturatoAperta] = useState(false);
+  const [meseFatturato, setMeseFatturato] = useState<number>(new Date().getMonth());
+  const [annoFatturato, setAnnoFatturato] = useState<number>(new Date().getFullYear());
+
+  const fattureMeseSelezionato = tutteFatture.filter((f) => {
+    if (!f.data_incasso) return false;
+    const d = new Date(f.data_incasso);
+    return d.getFullYear() === annoFatturato && d.getMonth() === meseFatturato;
+  });
+
+  const totaleMeseSelezionato = fattureMeseSelezionato.reduce(
+    (sum, f) => sum + Number(f.lordo_ivato || 0),
+    0
+  );
   const [proformaInAttesa, setProformaInAttesa] = useState(0);
   const [proformaTotale, setProformaTotale] = useState(0);
   const [clientiTotali, setClientiTotali] = useState(0);
@@ -70,6 +94,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           })
           .reduce((sum, f) => sum + Number(f.lordo_ivato || 0), 0);
         setFatturatoMese(fatturatoMeseCalc);
+        setTutteFatture(fatture);
+        setTuttiClienti(clienti);
 
         // 2) Proforma in attesa
         const proforma = fatture.filter((f) => !f.data_incasso);
@@ -275,11 +301,14 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
         {/* Fatturato Mese */}
         <button
-          onClick={() => onNavigate?.('fatture')}
-          className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all"
+          onClick={() => setModaleFatturatoAperta(true)}
+          className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all group cursor-pointer"
         >
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl">💰</span>
+            <span className="text-2xl group-hover:scale-110 transition-transform">💰</span>
+            <span className="text-[10px] font-semibold text-apple-blue bg-blue-50 px-2 py-0.5 rounded-full">
+              Scegli periodo ▾
+            </span>
           </div>
           <p className="text-xs text-apple-gray mb-1">Fatturato Mese</p>
           <p className="text-xl font-bold text-green-600">{formatEuro(fatturatoMese)}</p>
@@ -365,6 +394,146 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </div>
         )}
       </div>
+
+      {/* Modale Dettaglio Fatturato Mese e Anno */}
+      {modaleFatturatoAperta && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+          onClick={() => setModaleFatturatoAperta(false)}
+        >
+          <div
+            className="bg-white rounded-apple shadow-apple-lg border border-gray-200/80 w-full max-w-2xl overflow-hidden my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header Modale */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="text-lg font-bold text-apple-darkgray">
+                  Dettaglio Fatturato
+                </h3>
+                <p className="text-xs text-apple-gray mt-0.5">
+                  Analisi incassi e fatture per periodo selezionato
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModaleFatturatoAperta(false)}
+                className="w-8 h-8 rounded-apple flex items-center justify-center text-apple-gray hover:bg-apple-lightgray hover:text-apple-darkgray transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Contenuto */}
+            <div className="p-5 space-y-4">
+              {/* Selettori Mese e Anno */}
+              <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-apple-lightgray/50 p-4 rounded-apple border border-gray-200">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <span className="text-xs font-semibold text-apple-gray uppercase tracking-wider shrink-0">
+                    Periodo:
+                  </span>
+                  <select
+                    value={meseFatturato}
+                    onChange={(e) => setMeseFatturato(Number(e.target.value))}
+                    className="px-3 py-1.5 rounded-apple bg-white border border-gray-300 text-xs font-semibold text-apple-darkgray focus:outline-none focus:border-apple-blue shadow-sm"
+                  >
+                    {MESI_NOMI.map((nome, idx) => (
+                      <option key={idx} value={idx}>
+                        {nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={annoFatturato}
+                    onChange={(e) => setAnnoFatturato(Number(e.target.value))}
+                    className="px-3 py-1.5 rounded-apple bg-white border border-gray-300 text-xs font-semibold text-apple-darkgray focus:outline-none focus:border-apple-blue shadow-sm"
+                  >
+                    {ANNI_DISPONIBILI.map((a) => (
+                      <option key={a} value={a}>
+                        {a}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Totale incassato */}
+                <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                  <span className="text-xs text-apple-gray">Totale incassato:</span>
+                  <span className="text-xl font-bold text-green-600">
+                    {formatEuro(totaleMeseSelezionato)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Elenco delle fatture incassate */}
+              <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
+                {fattureMeseSelezionato.length === 0 ? (
+                  <div className="py-12 text-center text-apple-gray text-xs">
+                    Nessuna fattura incassata nel periodo selezionato ({MESI_NOMI[meseFatturato]} {annoFatturato}).
+                  </div>
+                ) : (
+                  fattureMeseSelezionato.map((f) => {
+                    const cliente = tuttiClienti.find((c) => c.id === f.cliente_id);
+                    const dataIncasso = f.data_incasso
+                      ? new Date(f.data_incasso).toLocaleDateString('it-IT')
+                      : '—';
+                    return (
+                      <div
+                        key={f.id}
+                        className="p-3.5 rounded-apple bg-white border border-gray-200/80 flex items-center justify-between gap-3 shadow-sm hover:border-apple-blue/40 transition-all"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-apple bg-green-50 text-green-700 font-bold flex items-center justify-center text-xs shrink-0">
+                            ✓
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-apple-darkgray truncate">
+                              {cliente?.nome_cognome || f.numero_fattura || `Fattura #${f.id}`}
+                            </p>
+                            <p className="text-xs text-apple-gray mt-0.5 truncate">
+                              {f.numero_fattura ? `Fattura ${f.numero_fattura}` : 'Fattura'} · Incasso: {dataIncasso}
+                              {f.metodo_pagamento ? ` · ${f.metodo_pagamento}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold text-apple-darkgray">
+                            {formatEuro(Number(f.lordo_ivato || 0))}
+                          </p>
+                          <span className="text-[10px] font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                            Incassata
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Footer Modale */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setModaleFatturatoAperta(false);
+                  onNavigate?.('fatture');
+                }}
+                className="text-xs text-apple-blue font-semibold hover:underline flex items-center gap-1"
+              >
+                Vai alla sezione Fatture →
+              </button>
+              <button
+                type="button"
+                onClick={() => setModaleFatturatoAperta(false)}
+                className="px-4 py-2 rounded-apple bg-apple-blue text-white text-sm font-medium hover:bg-blue-600 transition-colors shadow-apple"
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
