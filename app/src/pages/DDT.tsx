@@ -81,11 +81,11 @@ export function DDT() {
     try {
       const doc = await generaPdfDdtCliente(scarico, null, cl as any, false);
       const pdfB64 = doc.output('datauristring').split(',')[1];
-      const corpoHtml = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#fff;border-radius:12px;border:1px solid #eee;"><div style="text-align:center;margin-bottom:20px;"><img src="https://yporpszebtasalwazirz.supabase.co/storage/v1/object/public/azienda/logo.png" style="height:48px;"/></div><p>Gentile <strong>${nomeC}</strong>,</p><p>in allegato il <strong>${numDdt}</strong> relativo alla seduta odierna.</p><p style="font-size:11px;color:#888;margin-top:20px;border-top:1px solid #eee;padding-top:10px;">Documento generato da Gestionale Righetti.</p></div>`;
+      const corpoHtml = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#fff;border-radius:12px;border:1px solid #eee;"><div style="text-align:center;margin-bottom:20px;"><img src="https://yporpszebtasalwazirz.supabase.co/storage/v1/object/public/azienda/logo.png" style="height:48px;"/></div><p>Gentile <strong>${nomeC}</strong>,</p><p>in allegato il <strong>${numDdt}</strong> relativo alla seduta.</p></div>`;
 
       await inviaEmail({ destinatario: emailDest, oggetto: numDdt, corpo_html: corpoHtml, from_name: 'Studio Righetti', allegato_base64: pdfB64, allegato_nome: numDdt + '.pdf' });
-      setToast({ message: '✅ Inviato con successo!', tipo: 'success' });
-    } catch (err: any) { setToast({ message: 'Errore invio email', tipo: 'error' }); }
+      setToast({ message: '✅ Inviato!', tipo: 'success' });
+    } catch (err: any) { setToast({ message: 'Errore: ' + err.message, tipo: 'error' }); }
   }
 
   async function handleScaricaReport() {
@@ -93,33 +93,30 @@ export function DDT() {
     try {
       setGenerandoReport(true);
       await generaPdfReportDdtCommercialista(scarichiMese, filtroMeseIso);
-      setToast({ message: '✅ Report scaricato', tipo: 'success' });
-    } catch (err: any) { setToast({ message: 'Errore generazione', tipo: 'error' }); } finally { setGenerandoReport(false); }
+    } catch (err: any) { setToast({ message: 'Errore', tipo: 'error' }); } finally { setGenerandoReport(false); }
   }
 
   async function handleInviaEmailReport() {
     if (!filtroMeseIso) return;
     const config = await caricaFatturazione();
     const email = config.emailCommercialista?.trim();
-    if (!email) { setToast({ message: 'Configura email commercialista nelle impostazioni', tipo: 'error' }); return; }
+    if (!email) { setToast({ message: 'Configura email commercialista', tipo: 'error' }); return; }
     try {
       setGenerandoReport(true);
       const doc = await generaPdfReportDdtCommercialista(scarichiMese, filtroMeseIso, false);
       const nomeMeseStr = MESI[Number(filtroMese)] + ' ' + filtroAnno;
-      const corpoHtml = `<div style="font-family:sans-serif;padding:24px;border:1px solid #eee;border-radius:12px;"><div style="text-align:center;margin-bottom:20px;"><img src="https://yporpszebtasalwazirz.supabase.co/storage/v1/object/public/azienda/logo.png" style="height:48px;"/></div><p>Gentile Studio,</p><p>in allegato il <strong>Report Mensile DDT per il mese di ${nomeMeseStr}</strong>.</p><p style="font-size:11px;color:#888;margin-top:20px;border-top:1px solid #eee;padding-top:10px;">Documento generato da Gestionale Righetti.</p></div>`;
-
-      await inviaEmail({ destinatario: email, oggetto: `Report Mensile DDT ${nomeMeseStr}`, corpo_html: corpoHtml, from_name: 'Studio Righetti', allegato_base64: doc.output('datauristring').split(',')[1], allegato_nome: `Report_DDT_${filtroMeseIso}.pdf` });
+      await inviaEmail({ destinatario: email, oggetto: `Report DDT ${nomeMeseStr}`, corpo_html: `<h2>Report DDT ${nomeMeseStr}</h2>`, from_name: 'Studio Righetti', allegato_base64: doc.output('datauristring').split(',')[1], allegato_nome: `Report_DDT_${filtroMeseIso}.pdf` });
       await segnaReportCommercialistaInviato(scarichiMese.map(s => s.id));
       await caricaScarichi();
-      setToast({ message: '✅ Inviato a ' + email, tipo: 'success' });
-    } catch (err: any) { setToast({ message: 'Errore invio report', tipo: 'error' }); } finally { setGenerandoReport(false); }
+      setToast({ message: '✅ Inviato!', tipo: 'success' });
+    } catch (err: any) { setToast({ message: 'Errore', tipo: 'error' }); } finally { setGenerandoReport(false); }
   }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 text-left">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-apple-darkgray mb-1">Documenti di Trasporto</h1>
-        <p className="text-sm text-apple-gray">{scarichiMostrati.length} DDT trovati nel periodo</p>
+        <p className="text-sm text-apple-gray">{scarichiMostrati.length} DDT trovati</p>
       </div>
 
       <div className="flex gap-1 bg-white rounded-apple shadow-apple p-1 mb-6 w-fit">
@@ -129,7 +126,7 @@ export function DDT() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-apple shadow-apple p-5">
-          <p className="text-xs text-apple-gray mb-1">{tab === 'cliente' ? '📄 DDT emessi' : '📊 DDT emessi'}</p>
+          <p className="text-xs text-apple-gray mb-1">📄 DDT emessi</p>
           <p className="text-2xl font-bold text-apple-darkgray">{scarichiMostrati.length}</p>
         </div>
         {tab === 'cliente' ? (
@@ -161,31 +158,29 @@ export function DDT() {
           <input type="text" placeholder="Cerca..." value={ricerca} onChange={(e) => setRicerca(e.target.value)}
             className="w-full pl-12 pr-4 py-3.5 bg-white rounded-apple shadow-apple text-sm text-apple-darkgray focus:outline-none border border-gray-100" />
         </div>
-        <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-1 no-scrollbar">
+        <div className="flex items-center gap-2 w-full lg:w-auto">
           <div className="flex items-center bg-white rounded-apple shadow-apple border border-gray-100 p-1 gap-1">
             <select value={filtroMese} onChange={(e) => setFiltroMese(e.target.value === 'tutti' ? 'tutti' : Number(e.target.value))}
-              className="pl-3 pr-8 py-2 bg-apple-lightgray/40 hover:bg-apple-lightgray/60 border-none rounded-apple text-[11px] font-bold text-apple-darkgray focus:outline-none cursor-pointer appearance-none transition-colors"
+              className="pl-3 pr-8 py-2 bg-apple-lightgray/40 hover:bg-apple-lightgray/60 border-none rounded-apple text-[11px] font-bold text-apple-darkgray cursor-pointer appearance-none transition-colors"
               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7' /%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", backgroundSize: "12px" }}>
               <option value="tutti">Tutti i mesi</option>
               {MESI.map((m, i) => <option key={i} value={i}>{m}</option>)}
             </select>
             <select value={filtroAnno} onChange={(e) => setFiltroAnno(e.target.value === 'tutti' ? 'tutti' : Number(e.target.value))}
-              className="pl-3 pr-8 py-2 bg-apple-lightgray/40 hover:bg-apple-lightgray/60 border-none rounded-apple text-[11px] font-bold text-apple-darkgray focus:outline-none cursor-pointer appearance-none transition-colors"
+              className="pl-3 pr-8 py-2 bg-apple-lightgray/40 hover:bg-apple-lightgray/60 border-none rounded-apple text-[11px] font-bold text-apple-darkgray cursor-pointer appearance-none transition-colors"
               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7' /%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", backgroundSize: "12px" }}>
               <option value="tutti">Tutti gli anni</option>
               {ANNI.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
-          {(filtroMese !== 'tutti' || filtroAnno !== 'tutti' || filtroFirma !== 'tutti') && (
-            <button onClick={() => { setFiltroMese('tutti'); setFiltroAnno('tutti'); setFiltroFirma('tutti'); }} className="px-4 py-2.5 text-[11px] font-bold text-red-500 hover:text-red-600 transition-colors whitespace-nowrap">✕ Reset</button>
-          )}
+          <button onClick={() => { setFiltroMese('tutti'); setFiltroAnno('tutti'); setFiltroFirma('tutti'); }} className="px-4 py-2.5 text-[11px] font-bold text-red-500">✕ Reset</button>
         </div>
       </div>
 
       {!loading && !errore && (
-        <div className="bg-white rounded-apple shadow-apple overflow-hidden">
-          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50/80 border-b border-gray-200/60 text-xs font-semibold text-apple-gray uppercase text-left">
-            <div className="col-span-3">Numero DDT</div><div className="col-span-3">Cliente</div><div className="col-span-2">Data</div><div className="col-span-2 text-right">Importo</div><div className="col-span-2 text-center">Stato</div>
+        <div className="bg-white rounded-apple shadow-apple overflow-hidden text-left">
+          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50/80 border-b border-gray-200/60 text-xs font-semibold text-apple-gray uppercase">
+            <div className="col-span-3 text-left">Numero DDT</div><div className="col-span-3 text-left">Cliente</div><div className="col-span-2 text-left">Data</div><div className="col-span-2 text-right">Importo</div><div className="col-span-2 text-center">Stato</div>
           </div>
           <div className="divide-y divide-gray-100">
             {scarichiMostrati.map((s) => (
@@ -196,7 +191,8 @@ export function DDT() {
                 <div className="md:col-span-2 text-sm font-bold text-apple-darkgray md:text-right">{formatEuro(Number(s.totale_lordo_scontato || 0))}</div>
                 <div className="md:col-span-2 flex justify-center">
                   <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${s.firmato ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                    {s.firmato ? '✓ Firmato' : '⏳ Da firmare'}
+                    <span className={`w-2 h-2 rounded-full ${s.firmato ? 'bg-green-500' : 'bg-orange-500'}`}></span>
+                    {s.firmato ? 'Firmato' : 'Da firmare'}
                   </span>
                 </div>
               </button>
