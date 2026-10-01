@@ -2,10 +2,9 @@ import { inviaEmail } from '../lib/api';
 import { getCliente } from '../lib/clienti';
 import { caricaFatturazione } from '../lib/fatturazione';
 import { useEffect, useMemo, useState } from 'react';
-import { getTuttiScarichi, type ScaricoConCliente } from '../lib/scarichi';
+import { getTuttiScarichi, type ScaricoConCliente, segnaReportCommercialistaInviato } from '../lib/scarichi';
 import { generaPdfDdtCliente, generaPdfDdtCommercialista } from '../lib/pdfDdt';
 import { generaPdfReportDdtCommercialista } from '../lib/pdfReportDdtCommercialista';
-import { segnaReportCommercialistaInviato } from '../lib/scarichi';
 import { formatEuro } from '../lib/percorsi-helper';
 import { Toast, type ToastTipo } from '../components/Toast';
 import { FirmaDdtQR } from '../components/FirmaDdtQR';
@@ -56,6 +55,11 @@ export function DDT() {
     });
   }, [scarichi, filtroMese, filtroAnno]);
 
+  const filtroMeseIso = useMemo(() => {
+    if (filtroMese === 'tutti' || filtroAnno === 'tutti') return '';
+    return `${filtroAnno}-${String(Number(filtroMese) + 1).padStart(2, '0')}`;
+  }, [filtroMese, filtroAnno]);
+
   const formatData = (d: string | null) => d ? new Date(d).toLocaleDateString('it-IT') : '—';
   const formatNumeroDdt = (n: number, d: string) => `DDT-${String(n).padStart(3, '0')}-${new Date(d).getFullYear()}`;
 
@@ -77,9 +81,39 @@ export function DDT() {
     } catch (err: any) { setToast({ message: 'Errore invio', tipo: 'error' }); }
   }
 
+  async function handleScaricaReport() {
+    if (!filtroMeseIso) return;
+    try {
+      setGenerandoReport(true);
+      await generaPdfReportDdtCommercialista(scarichiMese, filtroMeseIso);
+    } catch (err: any) { setToast({ message: 'Errore generazione', tipo: 'error' }); } finally { setGenerandoReport(false); }
+  }
+
+  async function handleInviaEmailReport() {
+    if (!filtroMeseIso) return;
+    const config = await caricaFatturazione();
+    const email = config.emailCommercialista?.trim();
+    if (!email) { setToast({ message: 'Configura email commercialista nelle impostazioni', tipo: 'error' }); return; }
+    try {
+      setGenerandoReport(true);
+      const doc = await generaPdfReportDdtCommercialista(scarichiMese, filtroMeseIso, false);
+      await inviaEmail({
+        destinatario: email,
+        oggetto: `Report Mensile DDT ${MESI[Number(filtroMese)]} ${filtroAnno}`,
+        corpo_html: `<div style="font-family:sans-serif;padding:20px;"><h2>Report DDT</h2><p>In allegato il report mensile.</p></div>`,
+        from_name: 'Studio',
+        allegato_base64: doc.output('datauristring').split(',')[1],
+        allegato_nome: `Report_DDT_${filtroMeseIso}.pdf`
+      });
+      await segnaReportCommercialistaInviato(scarichiMese.map(s => s.id));
+      await caricaScarichi();
+      setToast({ message: '✅ Inviato!', tipo: 'success' });
+    } catch (err: any) { setToast({ message: 'Errore invio', tipo: 'error' }); } finally { setGenerandoReport(false); }
+  }
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="mb-6 text-left">
+    <div className="p-4 sm:p-6 lg:p-8 text-left">
+      <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-apple-darkgray mb-1">Documenti di Trasporto</h1>
         <p className="text-sm text-apple-gray">{scarichiMostrati.length} DDT trovati</p>
       </div>
@@ -107,14 +141,18 @@ export function DDT() {
           </>
         ) : (
           <div className="col-span-2 bg-white rounded-apple shadow-apple p-5 flex items-center justify-between">
-            <div><p className="text-xs text-apple-gray">📤 Report mensile</p><p className="text-sm font-bold text-apple-darkgray">{scarichiMese.length} DDT nel mese</p></div>
-            <button onClick={() => setShowAnteprimaReport(true)} disabled={filtroMese === 'tutti' || scarichiMese.length === 0} className="px-4 py-2 bg-apple-darkgray text-white rounded-apple text-xs font-bold disabled:opacity-50">👁️ Anteprima Report</button>
+            <div><p className="text-xs text-apple-gray mb-1">📤 Report mensile</p><p className="text-sm font-bold text-apple-darkgray">{filtroMese === 'tutti' ? 'Scegli mese' : `${scarichiMese.length} DDT nel mese`}</p></div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowAnteprimaReport(true)} disabled={filtroMese === 'tutti' || scarichiMese.length === 0} className="px-3 py-2 bg-apple-darkgray text-white rounded-apple text-[10px] font-bold">👁️ Anteprima</button>
+              <button onClick={handleInviaEmailReport} disabled={generandoReport || filtroMese === 'tutti' || scarichiMese.length === 0} className="px-3 py-2 bg-green-600 text-white rounded-apple text-[10px] font-bold">✉️ Invia Email</button>
+              <button onClick={handleScaricaReport} disabled={generandoReport || filtroMese === 'tutti' || scarichiMese.length === 0} className="px-3 py-2 bg-gray-100 text-apple-darkgray rounded-apple text-[10px] font-bold">💾 Scarica PDF</button>
+            </div>
           </div>
         )}
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 mb-8 items-center text-left">
-        <div className="relative flex-1 w-full text-left">
+      <div className="flex flex-col lg:flex-row gap-4 mb-8 items-center">
+        <div className="relative flex-1 w-full">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-apple-gray text-lg">🔍</span>
           <input type="text" placeholder="Cerca..." value={ricerca} onChange={(e) => setRicerca(e.target.value)}
             className="w-full pl-12 pr-4 py-3.5 bg-white rounded-apple shadow-apple text-sm text-apple-darkgray focus:outline-none border border-gray-100" />
@@ -134,7 +172,7 @@ export function DDT() {
               {ANNI.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
-          <button onClick={() => { setFiltroMese('tutti'); setFiltroAnno('tutti'); setFiltroFirma('tutti'); }} className="px-4 py-2.5 text-[11px] font-bold text-red-500 hover:text-red-600">✕ Reset</button>
+          <button onClick={() => { setFiltroMese('tutti'); setFiltroAnno('tutti'); setFiltroFirma('tutti'); }} className="px-4 py-2.5 text-[11px] font-bold text-red-500 hover:text-red-600 transition-colors whitespace-nowrap">✕ Reset</button>
         </div>
       </div>
 
@@ -161,10 +199,31 @@ export function DDT() {
         </div>
       )}
 
+      {showAnteprimaReport && (
+        <AnteprimaPdf titolo="Anteprima Report Commercialista" sottotitolo={`Mese: ${MESI[Number(filtroMese)]} ${filtroAnno}`} onScarica={handleScaricaReport} labelScarica="💾 Scarica PDF Report" coloreScarica="amber" onClose={() => setShowAnteprimaReport(false)}>
+          <div className="text-[10px] text-apple-darkgray">
+            <h2 className="text-base font-bold text-center mb-4 uppercase">Riepilogo Mensile DDT</h2>
+            <table className="w-full border-collapse">
+              <thead><tr className="bg-gray-100"><th className="border p-1 text-left">N. DDT</th><th className="border p-1 text-left">Data</th><th className="border p-1 text-left">Cliente</th><th className="border p-1 text-right">Imponibile</th></tr></thead>
+              <tbody>
+                {scarichiMese.map(s => (
+                  <tr key={s.id}>
+                    <td className="border p-1">{formatNumeroDdt(s.numero_ddt, s.data_seduta)}</td>
+                    <td className="border p-1">{formatData(s.data_seduta)}</td>
+                    <td className="border p-1">{s.cliente?.nome_cognome || '—'}</td>
+                    <td className="border p-1 text-right">{formatEuro(s.totale_netto_iva)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AnteprimaPdf>
+      )}
+
       {ddtSelezionato && (
-        <DettaglioDdt
-          scarico={ddtSelezionato}
-          onClose={() => setDdtSelezionato(null)}
+        <DettaglioDdt 
+          scarico={ddtSelezionato} 
+          onClose={() => setDdtSelezionato(null)} 
           onFirma={() => { const s = ddtSelezionato; setDdtSelezionato(null); setDdtDaFirmare(s); }}
           onInvia={(canale) => handleInviaDdt(ddtSelezionato, canale)}
           onScaricaPdf={(tipo) => {
