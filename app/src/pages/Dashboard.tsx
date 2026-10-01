@@ -1,19 +1,17 @@
-import { useEffect, useState } from 'react';
-import type { Fattura } from '../lib/fatture';
-import type { Cliente } from '../lib/clienti';
+import { useEffect, useState } from "react";
+import { getFatture } from "../lib/fatture";
+import { getClienti } from "../lib/clienti";
+import { getTuttiPercorsi } from "../lib/percorsi";
+import { getProdotti } from "../lib/prodotti";
+import { getTuttiScarichi } from "../lib/scarichi";
+import { getAppuntamenti } from "../lib/appuntamenti";
+import { formatEuro } from "../lib/percorsi-helper";
 
 const MESI_NOMI = [
-  'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
-  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
+  "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
 ];
 const ANNI_DISPONIBILI = [2024, 2025, 2026, 2027];
-import { getFatture } from '../lib/fatture';
-import { getClienti } from '../lib/clienti';
-import { getTuttiPercorsi } from '../lib/percorsi';
-import { getProdotti } from '../lib/prodotti';
-import { getTuttiScarichi } from '../lib/scarichi';
-import { getAppuntamenti } from '../lib/appuntamenti';
-import { formatEuro } from '../lib/percorsi-helper';
 
 interface DashboardProps {
   onNavigate?: (page: string) => void;
@@ -30,23 +28,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const [errore, setErrore] = useState<string | null>(null);
 
   // Statistiche
-  const [fatturatoMese, setFatturatoMese] = useState(0);
-  const [tutteFatture, setTutteFatture] = useState<Fattura[]>([]);
-  const [tuttiClienti, setTuttiClienti] = useState<Cliente[]>([]);
-  const [modaleFatturatoAperta, setModaleFatturatoAperta] = useState(false);
+  const [tutteFatture, setTutteFatture] = useState<any[]>([]);
   const [meseFatturato, setMeseFatturato] = useState<number>(new Date().getMonth());
   const [annoFatturato, setAnnoFatturato] = useState<number>(new Date().getFullYear());
 
-  const fattureMeseSelezionato = tutteFatture.filter((f) => {
-    if (!f.data_incasso) return false;
-    const d = new Date(f.data_incasso);
-    return d.getFullYear() === annoFatturato && d.getMonth() === meseFatturato;
-  });
-
-  const totaleMeseSelezionato = fattureMeseSelezionato.reduce(
-    (sum, f) => sum + Number(f.lordo_ivato || 0),
-    0
-  );
   const [proformaInAttesa, setProformaInAttesa] = useState(0);
   const [proformaTotale, setProformaTotale] = useState(0);
   const [clientiTotali, setClientiTotali] = useState(0);
@@ -57,6 +42,24 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   // Attività
   const [attivita, setAttivita] = useState<Attivita[]>([]);
+
+  // Calcolo dinamico fatturato mese selezionato
+  const fatturatoPeriodoSelezionato = tutteFatture
+    .filter((f) => {
+      if (!f.data_incasso) return false;
+      const d = new Date(f.data_incasso);
+      return d.getFullYear() === annoFatturato && d.getMonth() === meseFatturato;
+    })
+    .reduce((sum, f) => sum + Number(f.lordo_ivato || 0), 0);
+
+  // Calcolo dinamico fatturato anno selezionato
+  const fatturatoAnnoSelezionato = tutteFatture
+    .filter((f) => {
+      if (!f.data_incasso) return false;
+      const d = new Date(f.data_incasso);
+      return d.getFullYear() === annoFatturato;
+    })
+    .reduce((sum, f) => sum + Number(f.lordo_ivato || 0), 0);
 
   useEffect(() => {
     async function carica() {
@@ -80,22 +83,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
         // Mese corrente
         const oggi = new Date();
-        const inizioMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
         const inizioMeseScorso = new Date(oggi.getFullYear(), oggi.getMonth() - 1, 1);
 
-        // === STATISTICHE ===
-
-        // 1) Fatturato mese: somma fatture con data_incasso nel mese corrente
-        const fatturatoMeseCalc = fatture
-          .filter((f) => {
-            if (!f.data_incasso) return false;
-            const d = new Date(f.data_incasso);
-            return d >= inizioMese;
-          })
-          .reduce((sum, f) => sum + Number(f.lordo_ivato || 0), 0);
-        setFatturatoMese(fatturatoMeseCalc);
+        // Salva tutte le fatture scaricate per i calcoli dinamici
         setTutteFatture(fatture);
-        setTuttiClienti(clienti);
 
         // 2) Proforma in attesa
         const proforma = fatture.filter((f) => !f.data_incasso);
@@ -245,9 +236,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         </div>
       )}
 
-      {/* Card statistiche cliccabili */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
-        {/* Card Pending (sempre visibile) */}
+      {/* Card statistiche */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-8 gap-4 mb-8">
+        {/* Card Pending */}
         <button
           onClick={() => {
             if (appuntamentiPending > 0) {
@@ -273,7 +264,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </p>
         </button>
 
-        {/* Card Rebooking (sempre visibile) */}
+        {/* Card Rebooking */}
         <button
           onClick={() => {
             if (appuntamentiDaRiprogrammare > 0) {
@@ -299,21 +290,59 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </p>
         </button>
 
-        {/* Fatturato Mese */}
+        {/* Card Fatturato Mese con selettori */}
+        <div className="bg-white rounded-apple shadow-apple p-5 text-left flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-2xl">💰</span>
+            <div className="flex items-center gap-1">
+              <select
+                value={meseFatturato}
+                onChange={(e) => setMeseFatturato(Number(e.target.value))}
+                className="text-[10px] font-semibold bg-apple-lightgray border border-gray-200 rounded px-1.5 py-0.5 text-apple-darkgray focus:outline-none cursor-pointer"
+              >
+                {MESI_NOMI.map((m, idx) => (
+                  <option key={idx} value={idx}>{m}</option>
+                ))}
+              </select>
+              <select
+                value={annoFatturato}
+                onChange={(e) => setAnnoFatturato(Number(e.target.value))}
+                className="text-[10px] font-semibold bg-apple-lightgray border border-gray-200 rounded px-1 py-0.5 text-apple-darkgray focus:outline-none cursor-pointer"
+              >
+                {ANNI_DISPONIBILI.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-apple-gray mb-1">
+              Fatturato {MESI_NOMI[meseFatturato]}
+            </p>
+            <p className="text-xl font-bold text-green-600">
+              {formatEuro(fatturatoPeriodoSelezionato)}
+            </p>
+          </div>
+        </div>
+
+        {/* Card Fatturato Anno */}
         <button
-          onClick={() => setModaleFatturatoAperta(true)}
-          className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all group cursor-pointer"
+          onClick={() => onNavigate?.("fatture")}
+          className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all cursor-pointer flex flex-col justify-between"
         >
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl group-hover:scale-110 transition-transform">💰</span>
-            <span className="text-[10px] font-semibold text-apple-blue bg-blue-50 px-2 py-0.5 rounded-full">
-              Scegli periodo ▾
+            <span className="text-2xl">📈</span>
+            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+              Anno {annoFatturato}
             </span>
           </div>
-          <p className="text-xs text-apple-gray mb-1">Fatturato Mese</p>
-          <p className="text-xl font-bold text-green-600">{formatEuro(fatturatoMese)}</p>
+          <div>
+            <p className="text-xs text-apple-gray mb-1">Totale Anno {annoFatturato}</p>
+            <p className="text-xl font-bold text-apple-blue">{formatEuro(fatturatoAnnoSelezionato)}</p>
+          </div>
         </button>
 
+        {/* Card Proforma in attesa */}
         <button
           onClick={() => onNavigate?.('fatture')}
           className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all"
@@ -328,6 +357,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           <p className="text-xs text-apple-gray mt-1">{formatEuro(proformaTotale)}</p>
         </button>
 
+        {/* Card Clienti Totali */}
         <button
           onClick={() => onNavigate?.('clienti')}
           className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all"
@@ -339,6 +369,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           <p className="text-xl font-bold text-apple-darkgray">{clientiTotali}</p>
         </button>
 
+        {/* Card Percorsi Attivi */}
         <button
           onClick={() => onNavigate?.('percorsi')}
           className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all"
@@ -350,9 +381,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           <p className="text-xl font-bold text-apple-darkgray">{percorsiAttivi}</p>
         </button>
 
+        {/* Card Sotto scorta */}
         <button
           onClick={() => onNavigate?.('prodotti')}
-          className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all col-span-2 lg:col-span-1"
+          className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all"
         >
           <div className="flex items-start justify-between mb-3">
             <span className="text-2xl">⚠️</span>
@@ -394,146 +426,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </div>
         )}
       </div>
-
-      {/* Modale Dettaglio Fatturato Mese e Anno */}
-      {modaleFatturatoAperta && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
-          onClick={() => setModaleFatturatoAperta(false)}
-        >
-          <div
-            className="bg-white rounded-apple shadow-apple-lg border border-gray-200/80 w-full max-w-2xl overflow-hidden my-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header Modale */}
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <div>
-                <h3 className="text-lg font-bold text-apple-darkgray">
-                  Dettaglio Fatturato
-                </h3>
-                <p className="text-xs text-apple-gray mt-0.5">
-                  Analisi incassi e fatture per periodo selezionato
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setModaleFatturatoAperta(false)}
-                className="w-8 h-8 rounded-apple flex items-center justify-center text-apple-gray hover:bg-apple-lightgray hover:text-apple-darkgray transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Contenuto */}
-            <div className="p-5 space-y-4">
-              {/* Selettori Mese e Anno */}
-              <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-apple-lightgray/50 p-4 rounded-apple border border-gray-200">
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <span className="text-xs font-semibold text-apple-gray uppercase tracking-wider shrink-0">
-                    Periodo:
-                  </span>
-                  <select
-                    value={meseFatturato}
-                    onChange={(e) => setMeseFatturato(Number(e.target.value))}
-                    className="px-3 py-1.5 rounded-apple bg-white border border-gray-300 text-xs font-semibold text-apple-darkgray focus:outline-none focus:border-apple-blue shadow-sm"
-                  >
-                    {MESI_NOMI.map((nome, idx) => (
-                      <option key={idx} value={idx}>
-                        {nome}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={annoFatturato}
-                    onChange={(e) => setAnnoFatturato(Number(e.target.value))}
-                    className="px-3 py-1.5 rounded-apple bg-white border border-gray-300 text-xs font-semibold text-apple-darkgray focus:outline-none focus:border-apple-blue shadow-sm"
-                  >
-                    {ANNI_DISPONIBILI.map((a) => (
-                      <option key={a} value={a}>
-                        {a}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Totale incassato */}
-                <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-                  <span className="text-xs text-apple-gray">Totale incassato:</span>
-                  <span className="text-xl font-bold text-green-600">
-                    {formatEuro(totaleMeseSelezionato)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Elenco delle fatture incassate */}
-              <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
-                {fattureMeseSelezionato.length === 0 ? (
-                  <div className="py-12 text-center text-apple-gray text-xs">
-                    Nessuna fattura incassata nel periodo selezionato ({MESI_NOMI[meseFatturato]} {annoFatturato}).
-                  </div>
-                ) : (
-                  fattureMeseSelezionato.map((f) => {
-                    const cliente = tuttiClienti.find((c) => c.id === f.cliente_id);
-                    const dataIncasso = f.data_incasso
-                      ? new Date(f.data_incasso).toLocaleDateString('it-IT')
-                      : '—';
-                    return (
-                      <div
-                        key={f.id}
-                        className="p-3.5 rounded-apple bg-white border border-gray-200/80 flex items-center justify-between gap-3 shadow-sm hover:border-apple-blue/40 transition-all"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-apple bg-green-50 text-green-700 font-bold flex items-center justify-center text-xs shrink-0">
-                            ✓
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-apple-darkgray truncate">
-                              {cliente?.nome_cognome || f.numero_fattura || `Fattura #${f.id}`}
-                            </p>
-                            <p className="text-xs text-apple-gray mt-0.5 truncate">
-                              {f.numero_fattura ? `Fattura ${f.numero_fattura}` : 'Fattura'} · Incasso: {dataIncasso}
-                              {f.metodo_pagamento ? ` · ${f.metodo_pagamento}` : ''}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-sm font-bold text-apple-darkgray">
-                            {formatEuro(Number(f.lordo_ivato || 0))}
-                          </p>
-                          <span className="text-[10px] font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                            Incassata
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* Footer Modale */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={() => {
-                  setModaleFatturatoAperta(false);
-                  onNavigate?.('fatture');
-                }}
-                className="text-xs text-apple-blue font-semibold hover:underline flex items-center gap-1"
-              >
-                Vai alla sezione Fatture →
-              </button>
-              <button
-                type="button"
-                onClick={() => setModaleFatturatoAperta(false)}
-                className="px-4 py-2 rounded-apple bg-apple-blue text-white text-sm font-medium hover:bg-blue-600 transition-colors shadow-apple"
-              >
-                Chiudi
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
