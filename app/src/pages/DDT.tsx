@@ -67,45 +67,27 @@ export function DDT() {
   async function handleInviaDdt(scarico: ScaricoConCliente, canale: 'email' | 'whatsapp') {
     const cl = await getCliente(scarico.cliente_id);
     const nomeC = cl?.nome_cognome || scarico.cliente?.nome_cognome || 'Cliente';
-    const emailDest = cl?.email?.trim();
     const numDdt = formatNumeroDdt(scarico.numero_ddt, scarico.data_seduta);
-
-    if (canale === 'whatsapp') {
-      const waUrl = `https://wa.me/${(cl?.cellulare || '').replace(/\D/g, '')}?text=${encodeURIComponent('Gentile ' + nomeC + ', le inviamo il ' + numDdt)}`;
-      window.open(waUrl, '_blank');
-      return;
-    }
-    if (!emailDest) { setToast({ message: 'Nessuna email per ' + nomeC, tipo: 'error' }); return; }
-
-    setToast({ message: 'Invio email in corso...', tipo: 'info' });
+    if (canale === 'whatsapp') { window.open(`https://wa.me/${(cl?.cellulare || '').replace(/\D/g, '')}?text=${encodeURIComponent('Gentile ' + nomeC + ', le inviamo il ' + numDdt)}`, '_blank'); return; }
+    if (!cl?.email) { setToast({ message: 'Email mancante', tipo: 'error' }); return; }
+    setToast({ message: 'Invio email...', tipo: 'info' });
     try {
       const doc = await generaPdfDdtCliente(scarico, null, cl as any, false);
-      const pdfB64 = doc.output('datauristring').split(',')[1];
-      const corpoHtml = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#fff;border-radius:12px;border:1px solid #eee;"><div style="text-align:center;margin-bottom:20px;"><img src="https://yporpszebtasalwazirz.supabase.co/storage/v1/object/public/azienda/logo.png" style="height:48px;"/></div><p>Gentile <strong>${nomeC}</strong>,</p><p>in allegato il <strong>${numDdt}</strong> relativo alla seduta.</p></div>`;
-
-      await inviaEmail({ destinatario: emailDest, oggetto: numDdt, corpo_html: corpoHtml, from_name: 'Studio Righetti', allegato_base64: pdfB64, allegato_nome: numDdt + '.pdf' });
+      await inviaEmail({ destinatario: cl.email, oggetto: numDdt, corpo_html: `<p>Gentile <strong>${nomeC}</strong>, in allegato il <strong>${numDdt}</strong>.</p>`, from_name: 'Studio Righetti', allegato_base64: doc.output('datauristring').split(',')[1], allegato_nome: numDdt + '.pdf' });
       setToast({ message: '✅ Inviato!', tipo: 'success' });
-    } catch (err: any) { setToast({ message: 'Errore: ' + err.message, tipo: 'error' }); }
-  }
-
-  async function handleScaricaReport() {
-    if (!filtroMeseIso) return;
-    try {
-      setGenerandoReport(true);
-      await generaPdfReportDdtCommercialista(scarichiMese, filtroMeseIso);
-    } catch (err: any) { setToast({ message: 'Errore', tipo: 'error' }); } finally { setGenerandoReport(false); }
+    } catch (err: any) { setToast({ message: 'Errore', tipo: 'error' }); }
   }
 
   async function handleInviaEmailReport() {
     if (!filtroMeseIso) return;
     const config = await caricaFatturazione();
     const email = config.emailCommercialista?.trim();
-    if (!email) { setToast({ message: 'Configura email commercialista', tipo: 'error' }); return; }
+    if (!email) { setToast({ message: 'Email commercialista non configurata', tipo: 'error' }); return; }
     try {
       setGenerandoReport(true);
       const doc = await generaPdfReportDdtCommercialista(scarichiMese, filtroMeseIso, false);
-      const nomeMeseStr = MESI[Number(filtroMese)] + ' ' + filtroAnno;
-      await inviaEmail({ destinatario: email, oggetto: `Report DDT ${nomeMeseStr}`, corpo_html: `<h2>Report DDT ${nomeMeseStr}</h2>`, from_name: 'Studio Righetti', allegato_base64: doc.output('datauristring').split(',')[1], allegato_nome: `Report_DDT_${filtroMeseIso}.pdf` });
+      const nomeMese = MESI[Number(filtroMese)] + ' ' + filtroAnno;
+      await inviaEmail({ destinatario: email, oggetto: `Report DDT ${nomeMese}`, corpo_html: `<h2>Report DDT</h2><p>Mese: ${nomeMese}</p>`, from_name: 'Studio Righetti', allegato_base64: doc.output('datauristring').split(',')[1], allegato_nome: `Report_DDT_${filtroMeseIso}.pdf` });
       await segnaReportCommercialistaInviato(scarichiMese.map(s => s.id));
       await caricaScarichi();
       setToast({ message: '✅ Inviato!', tipo: 'success' });
@@ -125,62 +107,43 @@ export function DDT() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-apple shadow-apple p-5">
-          <p className="text-xs text-apple-gray mb-1">📄 DDT emessi</p>
-          <p className="text-2xl font-bold text-apple-darkgray">{scarichiMostrati.length}</p>
-        </div>
+        <div className="bg-white rounded-apple shadow-apple p-5 text-left"><p className="text-xs text-apple-gray mb-1">📄 DDT emessi</p><p className="text-2xl font-bold text-apple-darkgray">{scarichiMostrati.length}</p></div>
         {tab === 'cliente' ? (
-          <>
-            <button onClick={() => setFiltroFirma('firmati')} className={`p-5 rounded-apple shadow-apple text-left transition-all ${filtroFirma === 'firmati' ? 'bg-green-600 text-white' : 'bg-white'}`}>
-              <p className="text-xs mb-1 opacity-80">✍️ Firmati</p>
-              <p className="text-2xl font-bold">{scarichiMostrati.filter(s => s.firmato).length}</p>
-            </button>
-            <button onClick={() => setFiltroFirma('da-firmare')} className={`p-5 rounded-apple shadow-apple text-left transition-all ${filtroFirma === 'da-firmare' ? 'bg-amber-500 text-white' : 'bg-white'}`}>
-              <p className="text-xs mb-1 opacity-80">⏳ Da firmare</p>
-              <p className="text-2xl font-bold">{scarichiMostrati.filter(s => !s.firmato).length}</p>
-            </button>
-          </>
+          <><button onClick={() => setFiltroFirma('firmati')} className={`p-5 rounded-apple shadow-apple text-left transition-all ${filtroFirma === 'firmati' ? 'bg-green-600 text-white' : 'bg-white'}`}><p className="text-xs mb-1 opacity-80">✍️ Firmati</p><p className="text-2xl font-bold">{scarichiMostrati.filter(s => s.firmato).length}</p></button>
+            <button onClick={() => setFiltroFirma('da-firmare')} className={`p-5 rounded-apple shadow-apple text-left transition-all ${filtroFirma === 'da-firmare' ? 'bg-amber-500 text-white' : 'bg-white'}`}><p className="text-xs mb-1 opacity-80">⏳ Da firmare</p><p className="text-2xl font-bold">{scarichiMostrati.filter(s => !s.firmato).length}</p></button></>
         ) : (
           <div className="col-span-2 bg-white rounded-apple shadow-apple p-5 flex items-center justify-between">
             <div><p className="text-xs text-apple-gray mb-1">📤 Report mensile</p><p className="text-sm font-bold text-apple-darkgray">{filtroMese === 'tutti' ? 'Scegli mese' : `${scarichiMese.length} DDT nel mese`}</p></div>
             <div className="flex gap-2">
               <button onClick={() => setShowAnteprimaReport(true)} disabled={filtroMese === 'tutti' || scarichiMese.length === 0} className="px-3 py-2 bg-apple-darkgray text-white rounded-apple text-[10px] font-bold">👁️ Anteprima</button>
               <button onClick={handleInviaEmailReport} disabled={generandoReport || filtroMese === 'tutti' || scarichiMese.length === 0} className="px-3 py-2 bg-green-600 text-white rounded-apple text-[10px] font-bold">✉️ Invia Email</button>
-              <button onClick={handleScaricaReport} disabled={generandoReport || filtroMese === 'tutti' || scarichiMese.length === 0} className="px-3 py-2 bg-gray-100 text-apple-darkgray rounded-apple text-[10px] font-bold">💾 Scarica PDF</button>
+              <button onClick={async () => { setGenerandoReport(true); await generaPdfReportDdtCommercialista(scarichiMese, filtroMeseIso); setGenerandoReport(false); }} disabled={generandoReport || filtroMese === 'tutti' || scarichiMese.length === 0} className="px-3 py-2 bg-gray-100 text-apple-darkgray rounded-apple text-[10px] font-bold">💾 Scarica PDF</button>
             </div>
           </div>
         )}
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 mb-8 items-center">
-        <div className="relative flex-1 w-full text-left">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-apple-gray text-lg">🔍</span>
-          <input type="text" placeholder="Cerca..." value={ricerca} onChange={(e) => setRicerca(e.target.value)}
-            className="w-full pl-12 pr-4 py-3.5 bg-white rounded-apple shadow-apple text-sm text-apple-darkgray focus:outline-none border border-gray-100" />
-        </div>
-        <div className="flex items-center gap-2 w-full lg:w-auto">
+      <div className="flex flex-col lg:flex-row gap-4 mb-8 items-center text-left">
+        <div className="relative flex-1 w-full text-left"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-apple-gray text-lg">🔍</span><input type="text" placeholder="Cerca..." value={ricerca} onChange={(e) => setRicerca(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-white rounded-apple shadow-apple text-sm focus:outline-none border border-gray-100" /></div>
+        <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-1 no-scrollbar">
           <div className="flex items-center bg-white rounded-apple shadow-apple border border-gray-100 p-1 gap-1">
-            <select value={filtroMese} onChange={(e) => setFiltroMese(e.target.value === 'tutti' ? 'tutti' : Number(e.target.value))}
-              className="pl-3 pr-8 py-2 bg-apple-lightgray/40 hover:bg-apple-lightgray/60 border-none rounded-apple text-[11px] font-bold text-apple-darkgray cursor-pointer appearance-none transition-colors"
+            <select value={filtroMese} onChange={(e) => setFiltroMese(e.target.value === 'tutti' ? 'tutti' : Number(e.target.value))} className="pl-3 pr-8 py-2 bg-apple-lightgray/40 border-none rounded-apple text-[11px] font-bold text-apple-darkgray appearance-none cursor-pointer"
               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7' /%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", backgroundSize: "12px" }}>
-              <option value="tutti">Tutti i mesi</option>
-              {MESI.map((m, i) => <option key={i} value={i}>{m}</option>)}
+              <option value="tutti">Tutti i mesi</option>{MESI.map((m, i) => <option key={i} value={i}>{m}</option>)}
             </select>
-            <select value={filtroAnno} onChange={(e) => setFiltroAnno(e.target.value === 'tutti' ? 'tutti' : Number(e.target.value))}
-              className="pl-3 pr-8 py-2 bg-apple-lightgray/40 hover:bg-apple-lightgray/60 border-none rounded-apple text-[11px] font-bold text-apple-darkgray cursor-pointer appearance-none transition-colors"
+            <select value={filtroAnno} onChange={(e) => setFiltroAnno(e.target.value === 'tutti' ? 'tutti' : Number(e.target.value))} className="pl-3 pr-8 py-2 bg-apple-lightgray/40 border-none rounded-apple text-[11px] font-bold text-apple-darkgray appearance-none cursor-pointer"
               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7' /%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", backgroundSize: "12px" }}>
-              <option value="tutti">Tutti gli anni</option>
-              {ANNI.map((a) => <option key={a} value={a}>{a}</option>)}
+              <option value="tutti">Tutti gli anni</option>{ANNI.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
-          <button onClick={() => { setFiltroMese('tutti'); setFiltroAnno('tutti'); setFiltroFirma('tutti'); }} className="px-4 py-2.5 text-[11px] font-bold text-red-500">✕ Reset</button>
+          {(filtroMese !== 'tutti' || filtroAnno !== 'tutti' || filtroFirma !== 'tutti') && <button onClick={() => { setFiltroMese('tutti'); setFiltroAnno('tutti'); setFiltroFirma('tutti'); }} className="px-4 py-2.5 text-[11px] font-bold text-red-500">✕ Reset</button>}
         </div>
       </div>
 
       {!loading && !errore && (
-        <div className="bg-white rounded-apple shadow-apple overflow-hidden text-left">
-          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50/80 border-b border-gray-200/60 text-xs font-semibold text-apple-gray uppercase">
-            <div className="col-span-3 text-left">Numero DDT</div><div className="col-span-3 text-left">Cliente</div><div className="col-span-2 text-left">Data</div><div className="col-span-2 text-right">Importo</div><div className="col-span-2 text-center">Stato</div>
+        <div className="bg-white rounded-apple shadow-apple overflow-hidden">
+          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50/80 border-b border-gray-200/60 text-xs font-semibold text-apple-gray uppercase text-left">
+            <div className="col-span-3">Numero DDT</div><div className="col-span-3">Cliente</div><div className="col-span-2">Data</div><div className="col-span-2 text-right">Importo</div><div className="col-span-2 text-center">Stato</div>
           </div>
           <div className="divide-y divide-gray-100">
             {scarichiMostrati.map((s) => (
@@ -189,12 +152,7 @@ export function DDT() {
                 <div className="md:col-span-3 text-sm text-apple-darkgray truncate">{s.cliente?.nome_cognome || '—'}</div>
                 <div className="md:col-span-2 text-sm text-apple-gray">{formatData(s.data_seduta)}</div>
                 <div className="md:col-span-2 text-sm font-bold text-apple-darkgray md:text-right">{formatEuro(Number(s.totale_lordo_scontato || 0))}</div>
-                <div className="md:col-span-2 flex justify-center">
-                  <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${s.firmato ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                    <span className={`w-2 h-2 rounded-full ${s.firmato ? 'bg-green-500' : 'bg-orange-500'}`}></span>
-                    {s.firmato ? 'Firmato' : 'Da firmare'}
-                  </span>
-                </div>
+                <div className="md:col-span-2 flex justify-center"><span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${s.firmato ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}><span className={`w-2 h-2 rounded-full ${s.firmato ? 'bg-green-500' : 'bg-orange-500'}`}></span>{s.firmato ? 'Firmato' : 'Da firmare'}</span></div>
               </button>
             ))}
           </div>
@@ -202,8 +160,8 @@ export function DDT() {
       )}
 
       {showAnteprimaReport && (
-        <AnteprimaPdf titolo="Anteprima Report Commercialista" sottotitolo={`Mese: ${MESI[Number(filtroMese)]} ${filtroAnno}`} onScarica={handleScaricaReport} labelScarica="💾 Scarica PDF Report" coloreScarica="amber" onClose={() => setShowAnteprimaReport(false)}>
-          <div className="text-[10px] text-apple-darkgray">
+        <AnteprimaPdf titolo="Anteprima Report Commercialista" sottotitolo={`Mese: ${MESI[Number(filtroMese)]} ${filtroAnno}`} onScarica={async () => await generaPdfReportDdtCommercialista(scarichiMese, filtroMeseIso)} labelScarica="💾 Scarica PDF Report" coloreScarica="amber" onClose={() => setShowAnteprimaReport(false)}>
+          <div className="text-[10px] text-apple-darkgray text-left">
             <h2 className="text-base font-bold text-center mb-4 uppercase">RIEPILOGO MENSILE DDT</h2>
             <table className="w-full border-collapse">
               <thead><tr className="bg-gray-100"><th className="border p-1 text-left">N. DDT</th><th className="border p-1 text-left">Data</th><th className="border p-1 text-left">Cliente</th><th className="border p-1 text-right">Imponibile</th></tr></thead>
@@ -224,8 +182,9 @@ export function DDT() {
           onFirma={() => { const s = ddtSelezionato; setDdtSelezionato(null); setDdtDaFirmare(s); }}
           onInvia={(canale) => handleInviaDdt(ddtSelezionato, canale)}
           onScaricaPdf={(tipo) => {
-            if (tipo === 'cliente') generaPdfDdtCliente(ddtSelezionato, null as any, ddtSelezionato.cliente as any);
-            else generaPdfDdtCommercialista(ddtSelezionato, null as any, ddtSelezionato.cliente as any);
+            const s = ddtSelezionato;
+            if (tipo === 'cliente') generaPdfDdtCliente(s, null as any, s.cliente as any);
+            else generaPdfDdtCommercialista(s, null as any, s.cliente as any);
           }}
           onEliminato={() => { setDdtSelezionato(null); caricaScarichi(); }}
         />
