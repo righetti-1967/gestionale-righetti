@@ -3,6 +3,7 @@ import { getCliente } from '../lib/clienti';
 import { caricaFatturazione } from '../lib/fatturazione';
 import { useEffect, useMemo, useState } from 'react';
 import { getTuttiScarichi, type ScaricoConCliente, segnaReportCommercialistaInviato } from '../lib/scarichi';
+import type { Percorso } from '../lib/percorsi';
 import { generaPdfDdtCliente, generaPdfDdtCommercialista } from '../lib/pdfDdt';
 import { generaPdfReportDdtCommercialista } from '../lib/pdfReportDdtCommercialista';
 import { formatEuro } from '../lib/percorsi-helper';
@@ -66,19 +67,25 @@ export function DDT() {
   async function handleInviaDdt(scarico: ScaricoConCliente, canale: 'email' | 'whatsapp') {
     const cl = await getCliente(scarico.cliente_id);
     const nomeC = cl?.nome_cognome || scarico.cliente?.nome_cognome || 'Cliente';
+    const emailDest = cl?.email?.trim();
     const numDdt = formatNumeroDdt(scarico.numero_ddt, scarico.data_seduta);
 
     if (canale === 'whatsapp') {
-      const waUrl = `https://wa.me/${(cl?.cellulare || '').replace(/\D/g, '')}?text=${encodeURIComponent('Le inviamo il ' + numDdt)}`;
+      const waUrl = `https://wa.me/${(cl?.cellulare || '').replace(/\D/g, '')}?text=${encodeURIComponent('Gentile ' + nomeC + ', le inviamo il ' + numDdt)}`;
       window.open(waUrl, '_blank');
       return;
     }
+    if (!emailDest) { setToast({ message: 'Nessuna email per ' + nomeC, tipo: 'error' }); return; }
+
     setToast({ message: 'Invio email in corso...', tipo: 'info' });
     try {
       const doc = await generaPdfDdtCliente(scarico, null, cl as any, false);
-      await inviaEmail({ destinatario: cl?.email || '', oggetto: numDdt, corpo_html: '<p>In allegato il DDT</p>', from_name: 'Studio', allegato_base64: doc.output('datauristring').split(',')[1], allegato_nome: numDdt + '.pdf' });
-      setToast({ message: '✅ Inviato!', tipo: 'success' });
-    } catch (err: any) { setToast({ message: 'Errore invio', tipo: 'error' }); }
+      const pdfB64 = doc.output('datauristring').split(',')[1];
+      const corpoHtml = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#fff;border-radius:12px;border:1px solid #eee;"><div style="text-align:center;margin-bottom:20px;"><img src="https://yporpszebtasalwazirz.supabase.co/storage/v1/object/public/azienda/logo.png" style="height:48px;"/></div><p>Gentile <strong>${nomeC}</strong>,</p><p>in allegato il <strong>${numDdt}</strong> relativo alla seduta odierna.</p><p style="font-size:11px;color:#888;margin-top:20px;border-top:1px solid #eee;padding-top:10px;">Documento generato da Gestionale Righetti.</p></div>`;
+
+      await inviaEmail({ destinatario: emailDest, oggetto: numDdt, corpo_html: corpoHtml, from_name: 'Studio Righetti', allegato_base64: pdfB64, allegato_nome: numDdt + '.pdf' });
+      setToast({ message: '✅ Inviato con successo!', tipo: 'success' });
+    } catch (err: any) { setToast({ message: 'Errore invio email', tipo: 'error' }); }
   }
 
   async function handleScaricaReport() {
@@ -86,6 +93,7 @@ export function DDT() {
     try {
       setGenerandoReport(true);
       await generaPdfReportDdtCommercialista(scarichiMese, filtroMeseIso);
+      setToast({ message: '✅ Report scaricato', tipo: 'success' });
     } catch (err: any) { setToast({ message: 'Errore generazione', tipo: 'error' }); } finally { setGenerandoReport(false); }
   }
 
@@ -97,25 +105,21 @@ export function DDT() {
     try {
       setGenerandoReport(true);
       const doc = await generaPdfReportDdtCommercialista(scarichiMese, filtroMeseIso, false);
-      await inviaEmail({
-        destinatario: email,
-        oggetto: `Report Mensile DDT ${MESI[Number(filtroMese)]} ${filtroAnno}`,
-        corpo_html: `<div style="font-family:sans-serif;padding:20px;"><h2>Report DDT</h2><p>In allegato il report mensile.</p></div>`,
-        from_name: 'Studio',
-        allegato_base64: doc.output('datauristring').split(',')[1],
-        allegato_nome: `Report_DDT_${filtroMeseIso}.pdf`
-      });
+      const nomeMeseStr = MESI[Number(filtroMese)] + ' ' + filtroAnno;
+      const corpoHtml = `<div style="font-family:sans-serif;padding:24px;border:1px solid #eee;border-radius:12px;"><div style="text-align:center;margin-bottom:20px;"><img src="https://yporpszebtasalwazirz.supabase.co/storage/v1/object/public/azienda/logo.png" style="height:48px;"/></div><p>Gentile Studio,</p><p>in allegato il <strong>Report Mensile DDT per il mese di ${nomeMeseStr}</strong>.</p><p style="font-size:11px;color:#888;margin-top:20px;border-top:1px solid #eee;padding-top:10px;">Documento generato da Gestionale Righetti.</p></div>`;
+
+      await inviaEmail({ destinatario: email, oggetto: `Report Mensile DDT ${nomeMeseStr}`, corpo_html: corpoHtml, from_name: 'Studio Righetti', allegato_base64: doc.output('datauristring').split(',')[1], allegato_nome: `Report_DDT_${filtroMeseIso}.pdf` });
       await segnaReportCommercialistaInviato(scarichiMese.map(s => s.id));
       await caricaScarichi();
-      setToast({ message: '✅ Inviato!', tipo: 'success' });
-    } catch (err: any) { setToast({ message: 'Errore invio', tipo: 'error' }); } finally { setGenerandoReport(false); }
+      setToast({ message: '✅ Inviato a ' + email, tipo: 'success' });
+    } catch (err: any) { setToast({ message: 'Errore invio report', tipo: 'error' }); } finally { setGenerandoReport(false); }
   }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 text-left">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-apple-darkgray mb-1">Documenti di Trasporto</h1>
-        <p className="text-sm text-apple-gray">{scarichiMostrati.length} DDT trovati</p>
+        <p className="text-sm text-apple-gray">{scarichiMostrati.length} DDT trovati nel periodo</p>
       </div>
 
       <div className="flex gap-1 bg-white rounded-apple shadow-apple p-1 mb-6 w-fit">
@@ -124,8 +128,8 @@ export function DDT() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-apple shadow-apple p-5 text-left">
-          <p className="text-xs text-apple-gray mb-1">📄 DDT emessi</p>
+        <div className="bg-white rounded-apple shadow-apple p-5">
+          <p className="text-xs text-apple-gray mb-1">{tab === 'cliente' ? '📄 DDT emessi' : '📊 DDT emessi'}</p>
           <p className="text-2xl font-bold text-apple-darkgray">{scarichiMostrati.length}</p>
         </div>
         {tab === 'cliente' ? (
@@ -152,12 +156,12 @@ export function DDT() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 mb-8 items-center">
-        <div className="relative flex-1 w-full">
+        <div className="relative flex-1 w-full text-left">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-apple-gray text-lg">🔍</span>
           <input type="text" placeholder="Cerca..." value={ricerca} onChange={(e) => setRicerca(e.target.value)}
             className="w-full pl-12 pr-4 py-3.5 bg-white rounded-apple shadow-apple text-sm text-apple-darkgray focus:outline-none border border-gray-100" />
         </div>
-        <div className="flex items-center gap-2 w-full lg:w-auto">
+        <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-1 no-scrollbar">
           <div className="flex items-center bg-white rounded-apple shadow-apple border border-gray-100 p-1 gap-1">
             <select value={filtroMese} onChange={(e) => setFiltroMese(e.target.value === 'tutti' ? 'tutti' : Number(e.target.value))}
               className="pl-3 pr-8 py-2 bg-apple-lightgray/40 hover:bg-apple-lightgray/60 border-none rounded-apple text-[11px] font-bold text-apple-darkgray focus:outline-none cursor-pointer appearance-none transition-colors"
@@ -172,7 +176,9 @@ export function DDT() {
               {ANNI.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
-          <button onClick={() => { setFiltroMese('tutti'); setFiltroAnno('tutti'); setFiltroFirma('tutti'); }} className="px-4 py-2.5 text-[11px] font-bold text-red-500 hover:text-red-600 transition-colors whitespace-nowrap">✕ Reset</button>
+          {(filtroMese !== 'tutti' || filtroAnno !== 'tutti' || filtroFirma !== 'tutti') && (
+            <button onClick={() => { setFiltroMese('tutti'); setFiltroAnno('tutti'); setFiltroFirma('tutti'); }} className="px-4 py-2.5 text-[11px] font-bold text-red-500 hover:text-red-600 transition-colors whitespace-nowrap">✕ Reset</button>
+          )}
         </div>
       </div>
 
@@ -202,17 +208,12 @@ export function DDT() {
       {showAnteprimaReport && (
         <AnteprimaPdf titolo="Anteprima Report Commercialista" sottotitolo={`Mese: ${MESI[Number(filtroMese)]} ${filtroAnno}`} onScarica={handleScaricaReport} labelScarica="💾 Scarica PDF Report" coloreScarica="amber" onClose={() => setShowAnteprimaReport(false)}>
           <div className="text-[10px] text-apple-darkgray">
-            <h2 className="text-base font-bold text-center mb-4 uppercase">Riepilogo Mensile DDT</h2>
+            <h2 className="text-base font-bold text-center mb-4 uppercase">RIEPILOGO MENSILE DDT</h2>
             <table className="w-full border-collapse">
               <thead><tr className="bg-gray-100"><th className="border p-1 text-left">N. DDT</th><th className="border p-1 text-left">Data</th><th className="border p-1 text-left">Cliente</th><th className="border p-1 text-right">Imponibile</th></tr></thead>
               <tbody>
                 {scarichiMese.map(s => (
-                  <tr key={s.id}>
-                    <td className="border p-1">{formatNumeroDdt(s.numero_ddt, s.data_seduta)}</td>
-                    <td className="border p-1">{formatData(s.data_seduta)}</td>
-                    <td className="border p-1">{s.cliente?.nome_cognome || '—'}</td>
-                    <td className="border p-1 text-right">{formatEuro(s.totale_netto_iva)}</td>
-                  </tr>
+                  <tr key={s.id}><td className="border p-1">{formatNumeroDdt(s.numero_ddt, s.data_seduta)}</td><td className="border p-1">{formatData(s.data_seduta)}</td><td className="border p-1">{s.cliente?.nome_cognome || '—'}</td><td className="border p-1 text-right">{formatEuro(s.totale_netto_iva)}</td></tr>
                 ))}
               </tbody>
             </table>
