@@ -18,7 +18,20 @@ export function Fatture() {
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState<string | null>(null);
   const [ricerca, setRicerca] = useState('');
+  const MESI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+  const ANNI = [2024, 2025, 2026, 2027];
+
+  const fattureMostrate = fatture.filter((f) => {
+    const matchRicerca = f.cliente?.nome_cognome?.toLowerCase().includes(ricerca.toLowerCase()) || f.numero_fattura.toLowerCase().includes(ricerca.toLowerCase());
+    const matchStato = filtroStato === 'tutte' || (filtroStato === 'pagate' ? !!f.data_incasso : !f.data_incasso);
+    const d = f.data_incasso ? new Date(f.data_incasso) : null;
+    const matchMese = filtroMese === 'tutti' || (d && d.getMonth() === filtroMese);
+    const matchAnno = filtroAnno === 'tutti' || (d && d.getFullYear() === filtroAnno);
+    return matchRicerca && matchStato && matchMese && matchAnno;
+  });
   const [filtroStato, setFiltroStato] = useState<FiltroStato>('tutte');
+  const [filtroMese, setFiltroMese] = useState<number | 'tutti'>('tutti');
+  const [filtroAnno, setFiltroAnno] = useState<number | 'tutti'>('tutti');
   const [fatturaSelezionata, setFatturaSelezionata] = useState<FatturaConCliente | null>(null);
   const [showFormNuova, setShowFormNuova] = useState(false);
   const [toast, setToast] = useState<{ message: string; tipo: ToastTipo } | null>(null);
