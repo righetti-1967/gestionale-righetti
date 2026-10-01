@@ -59,15 +59,18 @@ function AppGestionale() {
         const url = data?.valore;
         if (!url || typeof url !== 'string' || !url.trim()) return;
 
-        const salvato = localStorage.getItem('gestionale_sheets_last_sync');
-        const last = salvato ? new Date(salvato).getTime() : 0;
-        const adesso = Date.now();
-        const QUINDICI_MINUTI = 15 * 60 * 1000;
+        // 🔄 Auto-sync quotidiano: 1 volta al giorno alle 08:00 (o primo accesso dopo)
+        const oggi = new Date();
+        const oggiData = oggi.toDateString();
+        const oraAttuale = oggi.getHours();
 
-        if (adesso - last >= QUINDICI_MINUTI) {
+        const ultimoSync = localStorage.getItem('gestionale_sheets_last_sync');
+        const ultimoSyncData = ultimoSync ? new Date(ultimoSync).toDateString() : null;
+
+        // Sync solo se: ora >= 08:00 E non è già stato fatto oggi
+        if (oraAttuale >= 8 && ultimoSyncData !== oggiData) {
           await syncGoogleSheets(url.trim(), userId);
-          const now = new Date();
-          localStorage.setItem('gestionale_sheets_last_sync', now.toISOString());
+          localStorage.setItem('gestionale_sheets_last_sync', new Date().toISOString());
         }
       } catch (err) {
         console.warn('Auto-sync background:', err);
@@ -76,21 +79,12 @@ function AppGestionale() {
 
     checkAndSync();
 
-    const QUINDICI_MINUTI = 15 * 60 * 1000;
-    const interval = setInterval(checkAndSync, QUINDICI_MINUTI);
-
-    function onVisibile() {
-      if (document.visibilityState === 'visible') {
-        checkAndSync();
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibile);
-    window.addEventListener('focus', onVisibile);
+    // Check ogni 60 secondi: leggero, sync reale solo se è il momento
+    const UN_MINUTO = 60 * 1000;
+    const interval = setInterval(checkAndSync, UN_MINUTO);
 
     return () => {
       clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVisibile);
-      window.removeEventListener('focus', onVisibile);
     };
   }, [user?.id]);
 

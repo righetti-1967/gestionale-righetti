@@ -217,7 +217,7 @@ function FormSede({
 
 
 // ============================================================
-// TAB GOOGLE SHEETS (Con Auto-Sync ogni 15 minuti)
+// TAB GOOGLE SHEETS (Con Auto-Sync giornaliero alle 08:00)
 // ============================================================
 function TabGoogleSheets({ registraSalva }: { registraSalva: (fn: () => void, s: boolean) => void }) {
   const { user } = useAuth();
@@ -284,46 +284,6 @@ function TabGoogleSheets({ registraSalva }: { registraSalva: (fn: () => void, s:
     }
   }, [url, urlOriginale]);
 
-  // ⏱️ SMART SYNC: Controlla subito al mount/risveglio e poi ogni 15 minuti
-  useEffect(() => {
-    if (!urlOriginale) return;
-
-    const QUINDICI_MINUTI = 15 * 60 * 1000;
-
-    // Controlla se sono già passati 15 minuti dall'ultimo sync
-    function verificaESincronizza(silenzioso = true) {
-      const salvato = localStorage.getItem('gestionale_sheets_last_sync');
-      const last = salvato ? new Date(salvato).getTime() : 0;
-      const adesso = Date.now();
-      if (adesso - last >= QUINDICI_MINUTI) {
-        eseguiSync(silenzioso);
-      }
-    }
-
-    // 1. Controllo immediato appena apri la pagina
-    verificaESincronizza(true);
-
-    // 2. Controllo ogni volta che il Mac si risveglia dallo stop o torni sulla scheda
-    function onVisibile() {
-      if (document.visibilityState === 'visible') {
-        verificaESincronizza(true);
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibile);
-    window.addEventListener('focus', onVisibile);
-
-    // 3. Timer periodico standard
-    const interval = setInterval(() => {
-      eseguiSync(true);
-    }, QUINDICI_MINUTI);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVisibile);
-      window.removeEventListener('focus', onVisibile);
-    };
-  }, [urlOriginale, eseguiSync]);
-
   // Salvataggio URL
   async function handleSalva() {
     if (!user?.id || !url.trim()) return;
@@ -366,7 +326,7 @@ function TabGoogleSheets({ registraSalva }: { registraSalva: (fn: () => void, s:
             <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
             <div>
               <p className="text-xs font-bold text-green-900">
-                Sincronizzazione automatica attiva (ogni 15 minuti)
+                Sincronizzazione automatica attiva (ogni giorno alle 08:00)
               </p>
               <p className="text-[11px] text-green-700">
                 {ultimoSyncAt
@@ -432,7 +392,7 @@ function TabGoogleSheets({ registraSalva }: { registraSalva: (fn: () => void, s:
             <p className="font-semibold text-apple-darkgray">ℹ️ Come funziona l'integrazione:</p>
             <p>• Il foglio deve avere l'accesso impostato su <strong>"Chiunque abbia il link può visualizzare"</strong>.</p>
             <p>• Rileva in automatico i nuovi clienti e aggiorna numeri di cellulare, email e anagrafiche già esistenti.</p>
-            <p>• Se sei fuori sede e aggiungi un cliente nel foglio da telefono, entro 15 minuti lo trovi già sincronizzato nel Gestionale.</p>
+            <p>• Se sei fuori sede e aggiungi un cliente nel foglio da telefono, entro il giorno dopo alle 08:00 lo trovi già sincronizzato. In alternativa, premi 🔄 Sincronizza ora.</p>
           </div>
         </div>
 
