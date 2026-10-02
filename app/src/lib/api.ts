@@ -276,7 +276,7 @@ export async function inviaEmailConConfig(payload: {
     oggetto: payload.oggetto,
     corpo_html: payload.corpo_html,
     corpo_testo: payload.corpo_testo,
-    from_name: payload.from_name,
+    from_name: config.fromName || config.from_name || payload.from_name,
     google_script_url: googleScriptUrl || undefined,
     allegato_base64: payload.allegato_base64,
     allegato_nome: payload.allegato_nome,
