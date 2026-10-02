@@ -28,6 +28,9 @@ const DATI_AZIENDALI_VUOTI: DatiAziendali = {
   sitoWeb: '',
   regimeFiscale: 'ordinario',
   regimeDocumenti: 'fatture',
+  cassaModalita: 'digitale',
+  cassaGestioneGiornaliera: false,
+  cassaFondoIniziale: 0,
 
 };
 
@@ -67,6 +70,9 @@ function adatta(raw: unknown, isRighetti: boolean, nomeAziendaUser?: string): Da
 
     regimeFiscale: r.regimeFiscale === 'forfettario' ? 'forfettario' : 'ordinario',
     regimeDocumenti: r.regimeDocumenti === 'scontrini' ? 'scontrini' : 'fatture',
+    cassaModalita: r.cassaModalita === 'fisico' ? 'fisico' : 'digitale',
+    cassaGestioneGiornaliera: r.cassaGestioneGiornaliera === true,
+    cassaFondoIniziale: typeof r.cassaFondoIniziale === 'number' ? r.cassaFondoIniziale : 0,
   };
 }
 
@@ -131,4 +137,20 @@ export async function salvaDatiAziendali(dati: DatiAziendali): Promise<void> {
     );
   if (error) throw error;
   cache = dati;
+
+  // 🔔 Notifica tutti gli ascoltatori che i dati sono cambiati
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('datiAziendali-aggiornati', { detail: dati }));
+  }
 }
+
+// ============================================================
+// EVENT SYSTEM — Notifica cambi dati aziendali
+// ============================================================
+
+/**
+ * Nome dell'evento custom dispatchato dopo salvaDatiAziendali.
+ * Componenti possono ascoltarlo con:
+ *   window.addEventListener('datiAziendali-aggiornati', handler as EventListener);
+ */
+export const EVENT_DATI_AZIENDALI_AGGIORNATI = 'datiAziendali-aggiornati';

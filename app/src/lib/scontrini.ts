@@ -1,0 +1,379 @@
+/**
+ * Cassa Fiscale — Gestione scontrini (Madre + Figlio) e chiusure giornaliere.
+ *
+ * Regole fiscali:
+ * - IVA 22% fissa (regime ordinario)
+ * - Scontrino MADRE: incasso + IVA immediata
+ * - Scontrino FIGLIO: 0€, riferimento al Madre (dicitura di legge)
+ * - Annullamento: soft delete (flag `annullato`), tracciato
+ * - Numerazione: progressiva per anno (per utente)
+ */
+import { supabase } from './supabase';
+
+// ============================================================
+// TIPI
+// ============================================================
+
+export type TipoScontrino = 'madre' | 'figlio';
+export type ModalitaCassa = 'digitale' | 'fisico';
+export type MetodoPagamento = 'Contanti' | 'Carta' | 'Bancomat' | 'Altro';
+
+export interface RigaScontrino {
+  id?: number;
+  scontrino_id?: number;
+  tipo: 'prodotto' | 'servizio';
+  prodotto_id: number | null;
+  servizio_id: number | null;
+  nome: string;
+  quantita: number;
+  prezzo_unitario_lordo: number;
+  iva_percentuale: number;
+  created_at?: string;
+}
+
+export interface Scontrino {
+  id: number;
+  user_id: string;
+  numero_progressivo: number;
+  anno: number;
+  numero_scontrino: string;
+  data_emissione: string;
+  ora_emissione: string;
+  cliente_id: number | null;
+  totale_lordo: number;
+  totale_netto: number;
+  iva_importo: number;
+  metodo_pagamento: MetodoPagamento | null;
+  scontrino_madre_id: number | null;
+  tipo: TipoScontrino;
+  note: string | null;
+  annullato: boolean;
+  modalita_cassa: ModalitaCassa;
+  chiusura_id: number | null;
+  created_at: string;
+  righe?: RigaScontrino[];
+  cliente?: {
+    id: number;
+    nome_cognome: string;
+    codice_fiscale: string | null;
+  } | null;
+}
+
+export interface NuovoScontrino {
+  data_emissione: string;
+  ora_emissione: string;
+  cliente_id: number | null;
+  totale_lordo: number;
+  totale_netto: number;
+  iva_importo: number;
+  metodo_pagamento: MetodoPagamento;
+  tipo: TipoScontrino;
+  note: string | null;
+  modalita_cassa: ModalitaCassa;
+  scontrino_madre_id?: number | null;
+  righe: RigaScontrino[];
+}
+
+export interface ChiusuraCassa {
+  id: number;
+  user_id: string;
+  data_chiusura: string;
+  totale_contanti: number;
+  totale_carta: number;
+  totale_altro: number;
+  totale_generale: number;
+  numero_scontrini: number;
+  fondo_cassa_iniziale: number;
+  contanti_attesi: number;
+  note: string | null;
+  aperta_at: string | null;
+  chiusa_at: string | null;
+  created_at: string;
+}
+
+// ============================================================
+// COSTANTI
+// ============================================================
+
+export const IVA_DEFAULT = 22;
+export const DICITURA_FIGLIO = 'Documento di cortesia - Riferimento scontrino madre n.';
+
+// ============================================================
+// CRUD SCONTRINI
+// ============================================================
+
+export async function getScontrini(filtri?: {
+  dataInizio?: string;
+  dataFine?: string;
+  soloAttivi?: boolean;
+}): Promise<Scontrino[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  let query = supabase
+    .from('scontrini')
+    .select('*, righe:scontrini_righe(*), cliente:clienti(id, nome_cognome, codice_fiscale)')
+    .eq('user_id', user.id)
+    .order('data_emissione', { ascending: false })
+    .order('ora_emissione', { ascending: false });
+
+  if (filtri?.dataInizio) query = query.gte('data_emissione', filtri.dataInizio);
+  if (filtri?.dataFine) query = query.lte('data_emissione', filtri.dataFine);
+  if (filtri?.soloAttivi) query = query.eq('annullato', false);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('❌ Errore nel recupero scontrini:', error);
+    throw error;
+  }
+  return data || [];
+}
+
+export async function getScontrino(id: number): Promise<Scontrino | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const { data, error } = await supabase
+    .from('scontrini')
+    .select('*, righe:scontrini_righe(*), cliente:clienti(id, nome_cognome, codice_fiscale)')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .single();
+
+  if (error) return null;
+  return data;
+}
+
+export async function getProssimoNumeroScontrino(anno?: number): Promise<number> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const annoCorrente = anno ?? new Date().getFullYear();
+
+  const { data, error } = await supabase
+    .from('scontrini')
+    .select('numero_progressivo')
+    .eq('user_id', user.id)
+    .eq('anno', annoCorrente)
+    .order('numero_progressivo', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return 1;
+  return (data.numero_progressivo || 0) + 1;
+}
+
+export async function creaScontrino(scontrino: NuovoScontrino): Promise<Scontrino> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const anno = new Date(scontrino.data_emissione).getFullYear();
+  const prossimoNumero = await getProssimoNumeroScontrino(anno);
+  const numero_scontrino = `SC-${String(prossimoNumero).padStart(5, '0')}/${anno}`;
+
+  // 1. Crea scontrino
+  const { data: nuovo, error } = await supabase
+    .from('scontrini')
+    .insert({
+      user_id: user.id,
+      numero_progressivo: prossimoNumero,
+      anno,
+      numero_scontrino,
+      data_emissione: scontrino.data_emissione,
+      ora_emissione: scontrino.ora_emissione,
+      cliente_id: scontrino.cliente_id,
+      totale_lordo: scontrino.totale_lordo,
+      totale_netto: scontrino.totale_netto,
+      iva_importo: scontrino.iva_importo,
+      metodo_pagamento: scontrino.metodo_pagamento,
+      tipo: scontrino.tipo,
+      note: scontrino.note,
+      modalita_cassa: scontrino.modalita_cassa,
+      scontrino_madre_id: scontrino.scontrino_madre_id ?? null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ Errore creazione scontrino:', error);
+    throw error;
+  }
+
+  // 2. Crea righe
+  if (scontrino.righe.length > 0) {
+    const righeConId = scontrino.righe.map((r) => ({
+      scontrino_id: nuovo.id,
+      tipo: r.tipo,
+      prodotto_id: r.prodotto_id,
+      servizio_id: r.servizio_id,
+      nome: r.nome,
+      quantita: r.quantita,
+      prezzo_unitario_lordo: r.prezzo_unitario_lordo,
+      iva_percentuale: r.iva_percentuale,
+    }));
+
+    const { error: errRighe } = await supabase
+      .from('scontrini_righe')
+      .insert(righeConId);
+
+    if (errRighe) {
+      console.error('❌ Errore inserimento righe scontrino:', errRighe);
+      throw errRighe;
+    }
+  }
+
+  return nuovo;
+}
+
+export async function annullaScontrino(id: number, motivo?: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const { error } = await supabase
+    .from('scontrini')
+    .update({
+      annullato: true,
+      note: motivo ? `ANNULLATO: ${motivo}` : 'ANNULLATO',
+    })
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('❌ Errore annullamento scontrino:', error);
+    throw error;
+  }
+}
+
+// ============================================================
+// CHIUSURA CASSA
+// ============================================================
+
+export async function getChiusuraGiornaliera(data: string): Promise<ChiusuraCassa | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const { data: chiusura, error } = await supabase
+    .from('chiusure_cassa')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('data_chiusura', data)
+    .maybeSingle();
+
+  if (error) return null;
+  return chiusura;
+}
+
+export async function calcolaTotaliGiorno(data: string): Promise<{
+  contanti: number;
+  carta: number;
+  altro: number;
+  totale: number;
+  numeroScontrini: number;
+}> {
+  const scontrini = await getScontrini({
+    dataInizio: data,
+    dataFine: data,
+    soloAttivi: true,
+  });
+
+  // Filtra solo scontrini "madre" (i figli sono 0€)
+  const madri = scontrini.filter((s) => s.tipo === 'madre');
+
+  let contanti = 0;
+  let carta = 0;
+  let altro = 0;
+
+  for (const s of madri) {
+    const importo = Number(s.totale_lordo || 0);
+    switch (s.metodo_pagamento) {
+      case 'Contanti':
+        contanti += importo;
+        break;
+      case 'Carta':
+      case 'Bancomat':
+        carta += importo;
+        break;
+      default:
+        altro += importo;
+    }
+  }
+
+  return {
+    contanti: Number(contanti.toFixed(2)),
+    carta: Number(carta.toFixed(2)),
+    altro: Number(altro.toFixed(2)),
+    totale: Number((contanti + carta + altro).toFixed(2)),
+    numeroScontrini: madri.length,
+  };
+}
+
+export async function salvaChiusuraCassa(params: {
+  data: string;
+  fondoIniziale: number;
+  note?: string | null;
+}): Promise<ChiusuraCassa> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const totali = await calcolaTotaliGiorno(params.data);
+
+  const { data, error } = await supabase
+    .from('chiusure_cassa')
+    .upsert(
+      {
+        user_id: user.id,
+        data_chiusura: params.data,
+        totale_contanti: totali.contanti,
+        totale_carta: totali.carta,
+        totale_altro: totali.altro,
+        totale_generale: totali.totale,
+        numero_scontrini: totali.numeroScontrini,
+        fondo_cassa_iniziale: params.fondoIniziale,
+        contanti_attesi: Number((totali.contanti + params.fondoIniziale).toFixed(2)),
+        note: params.note ?? null,
+        chiusa_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,data_chiusura' }
+    )
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ Errore salvataggio chiusura:', error);
+    throw error;
+  }
+  return data;
+}
+
+// ============================================================
+// HELPER
+// ============================================================
+
+/**
+ * Calcola netto + IVA da un totale lordo (IVA 22%).
+ */
+export function calcolaTotaliDaListino(totaleLordo: number): {
+  lordo: number;
+  netto: number;
+  iva: number;
+} {
+  const lordo = Number(totaleLordo.toFixed(2));
+  const netto = Number((lordo / (1 + IVA_DEFAULT / 100)).toFixed(2));
+  const iva = Number((lordo - netto).toFixed(2));
+  return { lordo, netto, iva };
+}
+
+/**
+ * Data odierna in formato YYYY-MM-DD.
+ */
+export function dataOggi(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+/**
+ * Ora corrente in formato HH:MM.
+ */
+export function oraAdesso(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}

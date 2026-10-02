@@ -26,6 +26,10 @@ export interface DatiAziendali {
   sitoWeb: string;
   regimeFiscale: 'ordinario' | 'forfettario';
   regimeDocumenti: 'fatture' | 'scontrini';
+  // Configurazione Cassa Fiscale
+  cassaModalita: 'digitale' | 'fisico';
+  cassaGestioneGiornaliera: boolean;
+  cassaFondoIniziale: number;
   logo_url?: string;
 }
 
@@ -53,6 +57,9 @@ export const DATI_AZIENDALI_DEFAULT: DatiAziendali = {
   sitoWeb: '',
   regimeFiscale: 'ordinario',
   regimeDocumenti: 'fatture',
+  cassaModalita: 'digitale',
+  cassaGestioneGiornaliera: false,
+  cassaFondoIniziale: 0,
   logo_url: '',
 };
 
