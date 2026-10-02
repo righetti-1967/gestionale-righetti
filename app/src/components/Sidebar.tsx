@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { caricaDatiAziendali } from '../lib/datiAziendali';
+import type { DatiAziendali } from '../lib/studio';
 import { getLogoUrl } from '../lib/logo';
 import { getDemoStatus } from '../lib/demo';
 
@@ -12,12 +13,20 @@ interface SidebarProps {
   onCloseMobile: () => void;
 }
 
-const menuItems = [
+interface MenuItem {
+  id: string;
+  label: string;
+  icon: string;
+  soloRegime?: 'fatture' | 'scontrini';
+}
+
+const menuItems: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
   { id: 'clienti', label: 'Clienti', icon: '👥' },
   { id: 'percorsi', label: 'Percorsi', icon: '🎯' },
-  { id: 'fatture', label: 'Fatture', icon: '📄' },
-  { id: 'ddt', label: 'DDT', icon: '📋' },
+  { id: 'fatture', label: 'Fatture', icon: '📄', soloRegime: 'fatture' },
+  { id: 'ddt', label: 'DDT', icon: '📋', soloRegime: 'fatture' },
+  { id: 'cassa_fiscale', label: 'Cassa Fiscale', icon: '🧾', soloRegime: 'scontrini' },
   { id: 'prodotti', label: 'Prodotti', icon: '📦' },
   { id: 'servizi', label: 'Servizi', icon: '🛠️' },
   { id: 'agenda', label: 'Agenda', icon: '📅' },
@@ -30,15 +39,27 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
   const { user, signOut } = useAuth();
   const [confermaLogout, setConfermaLogout] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string>('');
+  const [datiAziendali, setDatiAziendali] = useState<DatiAziendali | null>(null);
   const demoStatus = getDemoStatus(user);
 
   useEffect(() => {
-    caricaDatiAziendali().then((d) => setLogoUrl(d.logo_url ?? '')).catch(console.error);
+    caricaDatiAziendali()
+      .then((d) => {
+        setLogoUrl(d.logo_url ?? '');
+        setDatiAziendali(d);
+      })
+      .catch(console.error);
   }, []);
 
   const currentPageId = currentPage;
-
   const isUserDemo = getDemoStatus(user).isDemo;
+
+  // Filtro menu in base al regime documenti
+  const regimeDocumenti = datiAziendali?.regimeDocumenti ?? 'fatture';
+  const menuFiltrato = menuItems.filter((item) => {
+    if (!item.soloRegime) return true; // voci sempre visibili
+    return item.soloRegime === regimeDocumenti;
+  });
 
   function handleNavigate(id: string) {
     if (id === 'tricoai') {
@@ -102,7 +123,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
         </div>
 
         <nav className="px-2 py-4 space-y-1 shrink-0">
-          {menuItems.map((item) => (
+          {menuFiltrato.map((item) => (
             <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-apple text-sm font-medium transition-all ${currentPageId === item.id ? 'bg-apple-blue text-white shadow-apple' : 'text-apple-darkgray hover:bg-white/60'}`}>
               <span className="text-lg w-6 flex items-center justify-center">{item.icon}</span>
               <span className="whitespace-nowrap overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">{item.label}</span>
