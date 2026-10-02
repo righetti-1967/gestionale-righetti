@@ -1,4 +1,4 @@
-import { inviaEmail } from '../lib/api';
+import { inviaEmailConConfig } from '../lib/api';
 import { getCliente } from '../lib/clienti';
 import { caricaFatturazione } from '../lib/fatturazione';
 import { useEffect, useMemo, useState } from 'react';
@@ -73,7 +73,7 @@ export function DDT() {
     setToast({ message: 'Invio email...', tipo: 'info' });
     try {
       const doc = await generaPdfDdtCliente(scarico, null, cl as any, false);
-      await inviaEmail({ destinatario: cl.email, oggetto: numDdt, corpo_html: `<p>Gentile <strong>${nomeC}</strong>, in allegato il <strong>${numDdt}</strong>.</p>`, from_name: 'Studio Righetti', allegato_base64: doc.output('datauristring').split(',')[1], allegato_nome: numDdt + '.pdf' });
+      await inviaEmailConConfig({ destinatario: cl.email, oggetto: numDdt, corpo_html: `<p>Gentile <strong>${nomeC}</strong>, in allegato il <strong>${numDdt}</strong>.</p>`, from_name: 'Studio Righetti', allegato_base64: doc.output('datauristring').split(',')[1], allegato_nome: numDdt + '.pdf' });
       setToast({ message: '✅ Inviato!', tipo: 'success' });
     } catch (err: any) { setToast({ message: 'Errore', tipo: 'error' }); }
   }
@@ -87,7 +87,7 @@ export function DDT() {
       setGenerandoReport(true);
       const doc = await generaPdfReportDdtCommercialista(scarichiMese, filtroMeseIso, false);
       const nomeMese = MESI[Number(filtroMese)] + ' ' + filtroAnno;
-      await inviaEmail({ destinatario: email, oggetto: `Report DDT ${nomeMese}`, corpo_html: `<h2>Report DDT</h2><p>Mese: ${nomeMese}</p>`, from_name: 'Studio Righetti', allegato_base64: doc.output('datauristring').split(',')[1], allegato_nome: `Report_DDT_${filtroMeseIso}.pdf` });
+      await inviaEmailConConfig({ destinatario: email, oggetto: `Report DDT ${nomeMese}`, corpo_html: `<h2>Report DDT</h2><p>Mese: ${nomeMese}</p>`, from_name: 'Studio Righetti', allegato_base64: doc.output('datauristring').split(',')[1], allegato_nome: `Report_DDT_${filtroMeseIso}.pdf` });
       await segnaReportCommercialistaInviato(scarichiMese.map(s => s.id));
       await caricaScarichi();
       setToast({ message: '✅ Inviato!', tipo: 'success' });

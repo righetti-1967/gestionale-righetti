@@ -1,6 +1,6 @@
 import { getBrandInfo } from '../lib/brand';
 import jsPDF from 'jspdf';
-import { inviaEmail, inviaEmailTest } from '../lib/api';
+import { inviaEmailConConfig, inviaEmailTest } from '../lib/api';
 import { useEffect, useState } from 'react';
 import {
   getClienti,
@@ -422,7 +422,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
         console.error('Errore generazione PDF privacy ufficiale:', errPdf);
       }
 
-      await inviaEmail({
+      await inviaEmailConConfig({
         destinatario: cliente.email.trim(),
         oggetto: 'Informativa Privacy GDPR — Righetti Since 1967',
         corpo_html: corpoHtml,

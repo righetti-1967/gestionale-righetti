@@ -1,5 +1,5 @@
 import { getBrandInfo } from '../lib/brand';
-import { inviaEmail } from '../lib/api';
+import { inviaEmailConConfig } from '../lib/api';
 import { getCliente } from '../lib/clienti';
 import { useState } from 'react';
 import { generaPdfFattura } from '../lib/pdfFattura';
@@ -174,7 +174,7 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
       </div>
       `;
 
-      await inviaEmail({
+      await inviaEmailConConfig({
         destinatario: emailDest,
         oggetto: `Documento Contabile ${numDoc}`,
         corpo_html: corpoHtml,

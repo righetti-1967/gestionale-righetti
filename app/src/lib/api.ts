@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 /**
  * Client API per il backend FastAPI su Railway.
  * Usato per operazioni admin (licenze, popola DEMO) e future (email, WhatsApp, sync).
@@ -228,4 +230,55 @@ export async function inviaEmail(payload: InviaEmailPayload): Promise<{ success:
     throw new Error(dettaglio || `Errore ${res.status}`);
   }
   return res.json();
+}
+
+// ============================================================
+// HELPER: INVIO EMAIL CON CONFIG AUTOMATICA
+// Carica la config dal DB dell'utente loggato e invia.
+// ============================================================
+
+export async function inviaEmailConConfig(payload: {
+  destinatario: string;
+  oggetto: string;
+  corpo_html: string;
+  corpo_testo?: string;
+  from_name?: string;
+  allegato_base64?: string;
+  allegato_nome?: string;
+}): Promise<{ success: boolean; messaggio: string }> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('Utente non autenticato');
+  }
+
+  const { data } = await supabase
+    .from('impostazioni')
+    .select('valore')
+    .eq('user_id', user.id)
+    .eq('chiave', 'config_email')
+    .maybeSingle();
+
+  const config = data?.valore as Record<string, any> | null;
+
+  if (!config) {
+    throw new Error('Configurazione email non trovata. Vai in Impostazioni → Comunicazioni.');
+  }
+
+  const googleScriptUrl = config.googleScriptUrl || config.google_script_url || '';
+  const host = config.host || '';
+
+  if (!googleScriptUrl && !host) {
+    throw new Error('Nessun provider email configurato. Vai in Impostazioni → Comunicazioni.');
+  }
+
+  return inviaEmail({
+    destinatario: payload.destinatario,
+    oggetto: payload.oggetto,
+    corpo_html: payload.corpo_html,
+    corpo_testo: payload.corpo_testo,
+    from_name: payload.from_name,
+    google_script_url: googleScriptUrl || undefined,
+    allegato_base64: payload.allegato_base64,
+    allegato_nome: payload.allegato_nome,
+  });
 }
