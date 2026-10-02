@@ -1,0 +1,31 @@
+Ciao, riprendo il progetto Gestionale Righetti 1967.
+
+📁 Percorso progetto: /Users/luca/Desktop/Tricolab/GESTIONALE
+📁 Percorso backend Railway: /Users/luca/Desktop/Tricolab/GESTIONALE/backend
+📁 Percorso TricoAI v2: /Users/luca/Desktop/Tricolab_v2
+
+📄 Documenti di stato (leggili prima di iniziare):
+- /Users/luca/Desktop/Tricolab/GESTIONALE/STATO-GESTIONALE.md
+- /Users/luca/Desktop/Tricolab_v2/STATO.md
+
+🎯 Task di oggi: implementare Cassa Fiscale e Scontrini
+
+📋 Contesto tecnico:
+- Frontend Gestionale: Vite + React + TypeScript + Tailwind (deploy Railway)
+- Frontend TricoAI v2: Vite + React + TypeScript + Tailwind (deploy Vercel)
+- Backend Python FastAPI (Railway)
+- DB: Supabase (PostgreSQL)
+- Email: Google Workspace HTTPS Relay
+
+📌 Roadmap Cassa Fiscale (da STATO-GESTIONALE.md):
+- Tab Cassa Fiscale in sidebar visibile solo se attivo il regime scontrini
+- Scontrino Madre (incasso + IVA immediata) e Scontrino Figlio a 0 euro
+- Supporto scontrino digitale cloud e stampanti fisiche RCH ed Epson 80mm
+
+📋 Convenzioni:
+- Quando chiedi file, usa sempre pbcopy (es. `pbcopy < /percorso/file`)
+- Procedi una cosa alla volta (no fix simultanei)
+- Testa sempre con `npm run build` prima di committare
+- Se serve interagire con Supabase, chiedi screenshot SQL Editor
+
+Per iniziare: leggiti STATO-GESTIONALE.md con `pbcopy < ...` e proponimi un piano step-by-step per la Cassa Fiscale.

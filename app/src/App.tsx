@@ -12,6 +12,7 @@ import { Magazzino } from './pages/Magazzino';
 import { Ordini } from './pages/Ordini';
 import { Agenda } from './pages/Agenda';
 import { Prodotti } from './pages/Prodotti';
+import { CassaFiscale } from './pages/CassaFiscale';
 import { Percorsi } from './pages/Percorsi';
 import { Impostazioni } from './pages/Impostazioni';
 import { PaginaFirmaiPad } from './components/PaginaFirmaiPad';
@@ -175,6 +176,7 @@ function AppGestionale() {
           {currentPage === 'servizi' && <Servizi />}
           {currentPage === 'prodotti' && <Prodotti />}
           {currentPage === 'percorsi' && <Percorsi />}
+          {currentPage === 'cassa_fiscale' && <CassaFiscale />}
           {currentPage === 'impostazioni' && <Impostazioni />}
         </main>
       </div>

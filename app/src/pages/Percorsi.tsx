@@ -67,7 +67,7 @@ export function Percorsi() {
       const [tuttiPercorsi, tuttiClienti, tutteFatture] = await Promise.all([
         getTuttiPercorsi(),
         getClienti(),
-        getFatture(),
+        getFatture().catch(() => []),
       ]);
 
       const clientiById = new Map(tuttiClienti.map((c) => [c.id, c]));

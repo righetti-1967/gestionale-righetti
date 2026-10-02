@@ -4,9 +4,11 @@ import { getServizi, type Servizio } from '../lib/servizi';
 import { getProdotti, type Prodotto } from '../lib/prodotti';
 import { creaPercorso } from '../lib/percorsi';
 import { calcolaPercorso, formatEuro } from '../lib/percorsi-helper';
+import { creaScontrino, IVA_DEFAULT, dataOggi, oraAdesso, type RigaScontrino } from '../lib/scontrini';
 
 interface FormNuovoPercorsoProps {
   clienteIniziale?: Cliente | null;
+  regime?: 'fatture' | 'scontrini';
   onClose: () => void;
   onSuccess: (percorsoId: number) => void;
 }
@@ -32,6 +34,7 @@ function aggiungiMesi(dataStr: string, mesi: number): string {
 
 export function FormNuovoPercorso({
   clienteIniziale,
+  regime = 'fatture',
   onClose,
   onSuccess,
 }: FormNuovoPercorsoProps) {
@@ -217,6 +220,63 @@ export function FormNuovoPercorso({
         note: note.trim() || null,
       });
 
+      // === Se regime scontrini, crea automaticamente lo scontrino MADRE ===
+      if (regime === 'scontrini') {
+        // Genera righe scontrino: riga principale "Percorso [nome]" + sotto-righe per ogni voce
+        const righeScontrino: RigaScontrino[] = [];
+
+        // Riga principale (descrittiva, importo 0)
+        righeScontrino.push({
+          tipo: 'servizio',
+          prodotto_id: null,
+          servizio_id: null,
+          nome: `Percorso ${nome.trim()}`,
+          quantita: 1,
+          prezzo_unitario_lordo: 0,
+          iva_percentuale: IVA_DEFAULT,
+        });
+
+        // Sotto-righe: una per ogni voce del percorso, con prezzo SCONTATO
+        for (const r of calcolato.righe) {
+          righeScontrino.push({
+            tipo: r.tipo,
+            prodotto_id: r.prodotto_id,
+            servizio_id: r.servizio_id,
+            nome: r.nome,
+            quantita: r.quantita,
+            prezzo_unitario_lordo: r.prezzo_scontato_lordo,
+            iva_percentuale: IVA_DEFAULT,
+          });
+        }
+
+        const totaleLordoMadre = calcolato.totale_finale;
+        const totaleNettoMadre = Number(
+          (totaleLordoMadre / (1 + IVA_DEFAULT / 100)).toFixed(2)
+        );
+        const totaleIvaMadre = Number((totaleLordoMadre - totaleNettoMadre).toFixed(2));
+
+        const scontrinoMadre = await creaScontrino({
+          data_emissione: dataOggi(),
+          ora_emissione: oraAdesso(),
+          cliente_id: clienteId,
+          totale_lordo: totaleLordoMadre,
+          totale_netto: totaleNettoMadre,
+          iva_importo: totaleIvaMadre,
+          metodo_pagamento: 'Contanti',
+          tipo: 'madre',
+          note: note.trim() || `Percorso: ${nome.trim()}`,
+          modalita_cassa: 'digitale',
+          righe: righeScontrino,
+        });
+
+        // Collega percorso ↔ scontrino madre
+        const { supabase } = await import('../lib/supabase');
+        await supabase
+          .from('percorsi')
+          .update({ scontrino_madre_id: scontrinoMadre.id })
+          .eq('id', percorso.id);
+      }
+
       onSuccess(percorso.id);
     } catch (err: any) {
       setErrore(err.message || 'Errore nel salvataggio');
@@ -244,26 +304,25 @@ export function FormNuovoPercorso({
         className="bg-white sm:rounded-apple rounded-t-3xl shadow-apple-lg w-full sm:max-w-3xl max-h-[95vh] sm:my-8 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-200/60 shrink-0">
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-apple-darkgray">
               Nuovo Percorso
             </h2>
             <p className="text-xs text-apple-gray">
-              Crea un percorso personalizzato per il cliente
+              {regime === 'scontrini'
+                ? 'Crea percorso + scontrino madre collegato'
+                : 'Crea un percorso personalizzato per il cliente'}
             </p>
           </div>
           <button
             onClick={onClose}
             className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-apple-gray transition-colors shrink-0"
-            aria-label="Chiudi"
           >
             ✕
           </button>
         </div>
 
-        {/* Corpo */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -271,7 +330,6 @@ export function FormNuovoPercorso({
           }}
           className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6"
         >
-          {/* Info base */}
           <div>
             <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-3">
               Informazioni Base
@@ -318,7 +376,6 @@ export function FormNuovoPercorso({
                 <Input type="date" value={dataFine} onChange={setDataFine} />
               </div>
 
-              {/* Pulsanti selezione rapida durata */}
               <div className="sm:col-span-2 pt-1">
                 <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2">
                   ⏱️ Durata Percorso (calcola automaticamente la Data Fine):
@@ -343,7 +400,6 @@ export function FormNuovoPercorso({
             </div>
           </div>
 
-          {/* Servizi */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide">
@@ -380,7 +436,6 @@ export function FormNuovoPercorso({
             </div>
           </div>
 
-          {/* Prodotti */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide">
@@ -417,7 +472,6 @@ export function FormNuovoPercorso({
             </div>
           </div>
 
-          {/* Riepilogo */}
           <div className="bg-blue-50 border border-blue-200 rounded-apple p-4 space-y-3">
             <h3 className="text-xs font-semibold text-apple-blue uppercase tracking-wide">
               💰 Riepilogo Economico
@@ -450,7 +504,6 @@ export function FormNuovoPercorso({
             )}
           </div>
 
-          {/* Note */}
           <div>
             <Label>Note interne (opzionali)</Label>
             <textarea
@@ -469,7 +522,6 @@ export function FormNuovoPercorso({
           )}
         </form>
 
-        {/* Footer */}
         <div className="flex gap-3 px-5 sm:px-6 py-4 border-t border-gray-200/60 bg-gray-50/50 shrink-0">
           <button
             type="button"
@@ -482,13 +534,16 @@ export function FormNuovoPercorso({
             type="button"
             onClick={handleSubmit}
             disabled={salvando}
-            className="flex-1 px-4 py-3 sm:py-2.5 bg-apple-blue text-white rounded-apple font-medium text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-3 sm:py-2.5 bg-purple-600 text-white rounded-apple font-medium text-sm hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {salvando ? 'Salvataggio...' : 'Salva Percorso'}
+            {salvando
+              ? 'Salvataggio...'
+              : regime === 'scontrini'
+              ? '🎫 Crea Percorso + Scontrino Madre'
+              : 'Salva Percorso'}
           </button>
         </div>
 
-        {/* Picker Servizi */}
         {showServiziPicker && (
           <PickerMultiplo
             titolo="Aggiungi Servizi"
@@ -503,7 +558,6 @@ export function FormNuovoPercorso({
           />
         )}
 
-        {/* Picker Prodotti */}
         {showProdottiPicker && (
           <PickerMultiplo
             titolo="Aggiungi Prodotti"

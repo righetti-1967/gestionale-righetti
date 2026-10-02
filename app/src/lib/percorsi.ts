@@ -15,6 +15,7 @@ export interface Percorso {
   id: number;
   cliente_id: number;
   fattura_id: number | null;
+  scontrino_madre_id?: number | null;
   nome: string;
   data_inizio: string;
   data_fine: string;

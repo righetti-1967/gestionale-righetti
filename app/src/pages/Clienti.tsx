@@ -214,7 +214,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
       const [data, tuttiPercorsi, tutteFatture] = await Promise.all([
         getClienti(),
         getTuttiPercorsi(),
-        getFatture(),
+        getFatture().catch(() => []),
       ]);
 
       setClienti(data);

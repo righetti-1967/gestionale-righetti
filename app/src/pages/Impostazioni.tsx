@@ -1227,6 +1227,9 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
   const [salvando, setSalvando] = useState(false);
   const [messaggio, setMessaggio] = useState<{ tipo: 'ok' | 'errore'; testo: string } | null>(null);
   const [regimeDocumenti, setRegimeDocumenti] = useState<'fatture' | 'scontrini'>('fatture');
+  const [cassaModalita, setCassaModalita] = useState<'digitale' | 'fisico'>('digitale');
+  const [cassaGestioneGiornaliera, setCassaGestioneGiornaliera] = useState<boolean>(false);
+  const [cassaFondoIniziale, setCassaFondoIniziale] = useState<number>(0);
 
   useEffect(() => {
     async function carica() {
@@ -1237,6 +1240,9 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
         ]);
         setConfig(c);
         setRegimeDocumenti(d.regimeDocumenti || 'fatture');
+        setCassaModalita(d.cassaModalita || 'digitale');
+        setCassaGestioneGiornaliera(d.cassaGestioneGiornaliera || false);
+        setCassaFondoIniziale(d.cassaFondoIniziale || 0);
       } catch (err) {
         console.error('Errore caricamento fatturazione:', err);
         setMessaggio({ tipo: 'errore', testo: 'Errore nel caricamento.' });
@@ -1255,7 +1261,13 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
 
       // Salva anche il regime documenti nei dati aziendali
       const datiAttuali = await caricaDatiAziendali();
-      await salvaDatiAziendali({ ...datiAttuali, regimeDocumenti });
+      await salvaDatiAziendali({
+        ...datiAttuali,
+        regimeDocumenti,
+        cassaModalita,
+        cassaGestioneGiornaliera,
+        cassaFondoIniziale,
+      });
       invalidaCacheDatiAziendali();
 
       setMessaggio({ tipo: 'ok', testo: 'Configurazione salvata.' });
@@ -1266,7 +1278,7 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
     } finally {
       setSalvando(false);
     }
-  }, [config, regimeDocumenti]);
+  }, [config, regimeDocumenti, cassaModalita, cassaGestioneGiornaliera, cassaFondoIniziale]);
 
   useEffect(() => {
     if (registraSalva) {
@@ -1363,6 +1375,118 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
           </div>
         </div>
       </Card>
+
+      {regimeDocumenti === 'scontrini' && (
+        <Card
+          title="🧾 Modalità Cassa"
+          subtitle="Come emetti gli scontrini: digitale (cloud) o fisico (RT RCH/Epson)."
+        >
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => setCassaModalita('digitale')}
+              className={`w-full text-left px-4 py-3 rounded-apple border-2 transition-all ${
+                cassaModalita === 'digitale'
+                  ? 'bg-blue-50 border-apple-blue shadow-sm'
+                  : 'bg-white border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-apple-darkgray">
+                    📱 Scontrino Digitale (Cloud)
+                  </p>
+                  <p className="text-xs text-apple-gray mt-0.5">
+                    Nessun hardware. PDF via email/WhatsApp. Chiusura giornaliera opzionale.
+                  </p>
+                </div>
+                {cassaModalita === 'digitale' && (
+                  <span className="text-apple-blue text-xl shrink-0">✓</span>
+                )}
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCassaModalita('fisico');
+                setCassaGestioneGiornaliera(true);
+              }}
+              className={`w-full text-left px-4 py-3 rounded-apple border-2 transition-all ${
+                cassaModalita === 'fisico'
+                  ? 'bg-amber-50 border-amber-500 shadow-sm'
+                  : 'bg-white border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-apple-darkgray">
+                    🖨️ Scontrino Fisico (RT RCH/Epson)
+                  </p>
+                  <p className="text-xs text-apple-gray mt-0.5">
+                    Richiede stampante fiscale in rete. Apertura/chiusura giornaliera obbligatoria.
+                  </p>
+                </div>
+                {cassaModalita === 'fisico' && (
+                  <span className="text-amber-500 text-xl shrink-0">✓</span>
+                )}
+              </div>
+            </button>
+
+            {cassaModalita === 'fisico' && (
+              <div className="mt-3 space-y-3 p-3 rounded-apple bg-amber-50/60 border border-amber-200">
+                <div className="flex items-start justify-between gap-4 py-1">
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-apple-darkgray">
+                      Apertura/Chiusura giornaliera
+                    </p>
+                    <p className="text-[11px] text-apple-gray mt-0.5">
+                      Obbligatoria per RT fiscale. Traccia incassi attesi vs reali.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCassaGestioneGiornaliera(!cassaGestioneGiornaliera)}
+                    className={`relative shrink-0 w-12 h-7 rounded-full transition-colors ${
+                      cassaGestioneGiornaliera ? 'bg-green-500' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform ${
+                        cassaGestioneGiornaliera ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-apple-darkgray mb-1">
+                    Fondo cassa iniziale (€)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={cassaFondoIniziale}
+                    onChange={(e) => setCassaFondoIniziale(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 bg-white border border-amber-200 rounded-apple text-sm text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400"
+                  />
+                  <p className="text-[10px] text-apple-gray mt-1">
+                    Importo in cassa all'apertura del turno (contanti per resto).
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="p-3 rounded-apple bg-gray-50 border border-gray-200 text-xs text-apple-gray">
+              💡 <strong>Nota:</strong> le impostazioni della Cassa vengono applicate alla prossima
+              emissione. Le configurazioni hardware (IP stampante, ecc.) verranno richieste in un
+              secondo momento.
+            </div>
+          </div>
+        </Card>
+      )}
       <Card
         title="Studio Commercialista"
         subtitle="Recapiti del commercialista per l'invio automatico dei report DDT e delle fatture."

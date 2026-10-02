@@ -49,6 +49,17 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
         setDatiAziendali(d);
       })
       .catch(console.error);
+
+    // 🔔 Ascolta cambi dati aziendali (es. cambio regime documenti)
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        setDatiAziendali(customEvent.detail);
+        setLogoUrl(customEvent.detail.logo_url ?? '');
+      }
+    };
+    window.addEventListener('datiAziendali-aggiornati', handler);
+    return () => window.removeEventListener('datiAziendali-aggiornati', handler);
   }, []);
 
   const currentPageId = currentPage;

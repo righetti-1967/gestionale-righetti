@@ -16,7 +16,7 @@ import { supabase } from './supabase';
 
 export type TipoScontrino = 'madre' | 'figlio';
 export type ModalitaCassa = 'digitale' | 'fisico';
-export type MetodoPagamento = 'Contanti' | 'Carta' | 'Bancomat' | 'Altro';
+export type MetodoPagamento = 'Contanti' | 'Carta' | 'Bancomat' | 'Bonifico' | 'Altro' | 'Non richiesto';
 
 export interface RigaScontrino {
   id?: number;
@@ -28,6 +28,8 @@ export interface RigaScontrino {
   quantita: number;
   prezzo_unitario_lordo: number;
   iva_percentuale: number;
+  sconto_tipo?: 'percentuale' | 'importo' | null;
+  sconto_valore?: number | null;
   created_at?: string;
 }
 
@@ -50,6 +52,11 @@ export interface Scontrino {
   annullato: boolean;
   modalita_cassa: ModalitaCassa;
   chiusura_id: number | null;
+  scontrino_madre_numero: string | null;
+  scontrino_madre_data: string | null;
+  note_cliente: string | null;
+  sconto_totale_tipo?: 'percentuale' | 'importo' | null;
+  sconto_totale_valore?: number | null;
   created_at: string;
   righe?: RigaScontrino[];
   cliente?: {
@@ -71,6 +78,8 @@ export interface NuovoScontrino {
   note: string | null;
   modalita_cassa: ModalitaCassa;
   scontrino_madre_id?: number | null;
+  sconto_totale_tipo?: 'percentuale' | 'importo' | null;
+  sconto_totale_valore?: number | null;
   righe: RigaScontrino[];
 }
 
@@ -190,6 +199,8 @@ export async function creaScontrino(scontrino: NuovoScontrino): Promise<Scontrin
       note: scontrino.note,
       modalita_cassa: scontrino.modalita_cassa,
       scontrino_madre_id: scontrino.scontrino_madre_id ?? null,
+      sconto_totale_tipo: scontrino.sconto_totale_tipo ?? null,
+      sconto_totale_valore: scontrino.sconto_totale_valore ?? null,
     })
     .select()
     .single();
@@ -210,6 +221,8 @@ export async function creaScontrino(scontrino: NuovoScontrino): Promise<Scontrin
       quantita: r.quantita,
       prezzo_unitario_lordo: r.prezzo_unitario_lordo,
       iva_percentuale: r.iva_percentuale,
+      sconto_tipo: r.sconto_tipo ?? null,
+      sconto_valore: r.sconto_valore ?? null,
     }));
 
     const { error: errRighe } = await supabase
