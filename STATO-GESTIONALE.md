@@ -205,3 +205,48 @@ cd /Users/luca/Desktop/Tricolab/GESTIONALE/app && npm run dev
 
 # Dev server TricoAI v2
 cd /Users/luca/Desktop/Tricolab_v2 && npm run dev
+
+---
+
+## 🚀 AGGIORNAMENTI COMPLETATI IL 02/10/2026 (parte 2)
+
+### 17. Fix CRITICO: Firma Anonima su Safari/iPhone
+- ✅ **Bug:** le pagine firma anonime (Privacy, DDT, Fattura) fallivano su Safari con "Non autenticato"
+- ✅ **Causa:** funzioni `getCliente`, `getFattura`, `salvaFirmaPrivacy`, `salvaFirmaFattura` richiedevano auth Supabase
+- ✅ **Fix:** rese pubbliche (senza auth) le seguenti funzioni:
+  - `getCliente(id)` (clienti.ts)
+  - `salvaFirmaPrivacy(id, firma)` (clienti.ts)
+  - `getFattura(id)` (fatture.ts)
+  - `salvaFirmaFattura(id, firma)` (fatture.ts)
+- ✅ **Sicurezza:** RLS Supabase già configurate per lettura/update pubblici per id
+
+### 18. Fix Email cliente in DDT
+- ✅ **Bug:** nella modale firma DDT mancava email/cellulare del cliente → "Email cliente non disponibile"
+- ✅ **Fix:** aggiunto `cellulare, email` al select delle query `scarichi.ts`
+
+### 19. Fix Email cliente in Fattura
+- ✅ **Bug:** nella modale firma Fattura il cliente era passato come `null`
+- ✅ **Fix:** passato `fattura.cliente as any` in `DettaglioFattura.tsx`
+- ✅ Aggiunto `cellulare` a tutte le query `fatture.ts`
+
+### 20. Fix Email cliente in Privacy
+- ✅ **Bug:** nella modale firma Privacy mancava email/cellulare del cliente
+- ✅ **Fix:** verificato che `clienteSelezionato` è passato correttamente
+
+### 21. Invio Email Firma Diretto (no più mailto:)
+- ✅ **Bug:** cliccando "Invia Email" nella modale firma si apriva Mail.app con campo destinatario vuoto
+- ✅ **Fix:** `CondividiLinkFirma.tsx` ora usa `inviaEmailConConfig` → invio diretto + banner esito:
+  - ⏳ Invio...
+  - ✅ Email inviata a [email cliente]
+  - ❌ Errore: [messaggio]
+- ✅ Funziona in tutte e 3 le modali (Privacy, DDT, Fattura)
+
+### 22. Bug Safari vs Chrome: ITP e Storage
+- ✅ **Nota:** il bug della firma anonima era visibile su Safari (non su Chrome) perché Safari blocca la sessione Supabase per pagine anonime
+- ✅ **Fix:** rendendo pubbliche le funzioni, la pagina firma non richiede più la sessione
+
+### 23. Dashboard + Fatture Responsive iPhone
+- ✅ **Dashboard:** grid responsive (`grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-8`)
+- ✅ **Card:** padding `p-3 sm:p-5`, font ridotti, `flex-wrap` per i select
+- ✅ **Fatture:** layout card verticale su mobile (numero + stato | cliente + importo | data)
+- ✅ **Risultato:** niente sovrapposizioni, tutto leggibile
