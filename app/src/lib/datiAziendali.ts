@@ -27,6 +27,7 @@ const DATI_AZIENDALI_VUOTI: DatiAziendali = {
   iban: '',
   sitoWeb: '',
   regimeFiscale: 'ordinario',
+  regimeDocumenti: 'fatture',
 
 };
 
@@ -63,7 +64,9 @@ function adatta(raw: unknown, isRighetti: boolean, nomeAziendaUser?: string): Da
     pec: r.pec ?? (isRighetti ? fallback.pec : ''),
     iban: r.iban ?? (isRighetti ? fallback.iban : ''),
     sitoWeb: r.sitoWeb ?? (isRighetti ? fallback.sitoWeb : ''),
+
     regimeFiscale: r.regimeFiscale === 'forfettario' ? 'forfettario' : 'ordinario',
+    regimeDocumenti: r.regimeDocumenti === 'scontrini' ? 'scontrini' : 'fatture',
   };
 }
 

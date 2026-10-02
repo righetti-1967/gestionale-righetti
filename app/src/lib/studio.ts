@@ -25,6 +25,7 @@ export interface DatiAziendali {
   iban: string;
   sitoWeb: string;
   regimeFiscale: 'ordinario' | 'forfettario';
+  regimeDocumenti: 'fatture' | 'scontrini';
   logo_url?: string;
 }
 
@@ -51,6 +52,7 @@ export const DATI_AZIENDALI_DEFAULT: DatiAziendali = {
   iban: '',
   sitoWeb: '',
   regimeFiscale: 'ordinario',
+  regimeDocumenti: 'fatture',
   logo_url: '',
 };
 
