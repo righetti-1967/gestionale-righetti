@@ -237,7 +237,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       )}
 
       {/* Card statistiche */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-8 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-8 gap-3 sm:gap-4 mb-8">
         {/* Card Pending */}
         <button
           onClick={() => {
@@ -247,19 +247,19 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             }
           }}
           disabled={appuntamentiPending === 0}
-          className={`rounded-apple shadow-apple p-5 text-left transition-all ${
+          className={`rounded-apple shadow-apple p-3 sm:p-5 text-left transition-all ${
             appuntamentiPending > 0
               ? 'bg-red-50 border-2 border-red-300 hover:shadow-apple-lg cursor-pointer'
               : 'bg-white border-2 border-transparent cursor-default'
           }`}
         >
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl">⏳</span>
+            <span className="text-xl sm:text-2xl">⏳</span>
           </div>
           <p className={`text-xs mb-1 ${appuntamentiPending > 0 ? 'text-red-700 font-semibold' : 'text-apple-gray'}`}>
             Pending
           </p>
-          <p className={`text-2xl font-bold ${appuntamentiPending > 0 ? 'text-red-800' : 'text-apple-darkgray'}`}>
+          <p className={`text-lg sm:text-2xl font-bold ${appuntamentiPending > 0 ? 'text-red-800' : 'text-apple-darkgray'}`}>
             {appuntamentiPending}
           </p>
         </button>
@@ -273,32 +273,32 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             }
           }}
           disabled={appuntamentiDaRiprogrammare === 0}
-          className={`rounded-apple shadow-apple p-5 text-left transition-all ${
+          className={`rounded-apple shadow-apple p-3 sm:p-5 text-left transition-all ${
             appuntamentiDaRiprogrammare > 0
               ? 'bg-orange-50 border-2 border-orange-300 hover:shadow-apple-lg cursor-pointer'
               : 'bg-white border-2 border-transparent cursor-default'
           }`}
         >
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl">🔄</span>
+            <span className="text-xl sm:text-2xl">🔄</span>
           </div>
           <p className={`text-xs mb-1 ${appuntamentiDaRiprogrammare > 0 ? 'text-orange-700 font-semibold' : 'text-apple-gray'}`}>
             Rebooking
           </p>
-          <p className={`text-2xl font-bold ${appuntamentiDaRiprogrammare > 0 ? 'text-orange-800' : 'text-apple-darkgray'}`}>
+          <p className={`text-lg sm:text-2xl font-bold ${appuntamentiDaRiprogrammare > 0 ? 'text-orange-800' : 'text-apple-darkgray'}`}>
             {appuntamentiDaRiprogrammare}
           </p>
         </button>
 
         {/* Card Fatturato Mese con selettori */}
-        <div className="bg-white rounded-apple shadow-apple p-5 text-left flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-2xl">💰</span>
-            <div className="flex items-center gap-1">
+        <div className="bg-white rounded-apple shadow-apple p-3 sm:p-5 text-left flex flex-col justify-between overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
+            <span className="text-xl sm:text-2xl shrink-0">💰</span>
+            <div className="flex items-center gap-1 min-w-0">
               <select
                 value={meseFatturato}
                 onChange={(e) => setMeseFatturato(Number(e.target.value))}
-                className="text-[10px] font-semibold bg-apple-lightgray border border-gray-200 rounded px-1.5 py-0.5 text-apple-darkgray focus:outline-none cursor-pointer"
+                className="text-[10px] font-semibold bg-apple-lightgray border border-gray-200 rounded px-1.5 py-0.5 text-apple-darkgray focus:outline-none cursor-pointer max-w-[70px] sm:max-w-none"
               >
                 {MESI_NOMI.map((m, idx) => (
                   <option key={idx} value={idx}>{m}</option>
@@ -307,7 +307,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               <select
                 value={annoFatturato}
                 onChange={(e) => setAnnoFatturato(Number(e.target.value))}
-                className="text-[10px] font-semibold bg-apple-lightgray border border-gray-200 rounded px-1 py-0.5 text-apple-darkgray focus:outline-none cursor-pointer"
+                className="text-[10px] font-semibold bg-apple-lightgray border border-gray-200 rounded px-1 py-0.5 text-apple-darkgray focus:outline-none cursor-pointer max-w-[45px] sm:max-w-none"
               >
                 {ANNI_DISPONIBILI.map((a) => (
                   <option key={a} value={a}>{a}</option>
@@ -319,7 +319,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <p className="text-xs text-apple-gray mb-1">
               Fatturato {MESI_NOMI[meseFatturato]}
             </p>
-            <p className="text-xl font-bold text-green-600">
+            <p className="text-lg sm:text-xl font-bold text-green-600">
               {formatEuro(fatturatoPeriodoSelezionato)}
             </p>
           </div>
@@ -328,27 +328,27 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         {/* Card Fatturato Anno */}
         <button
           onClick={() => onNavigate?.("fatture")}
-          className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all cursor-pointer flex flex-col justify-between"
+          className="bg-white rounded-apple shadow-apple p-3 sm:p-5 text-left hover:shadow-apple-lg transition-all cursor-pointer flex flex-col justify-between"
         >
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl">📈</span>
+            <span className="text-xl sm:text-2xl">📈</span>
             <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
               Anno {annoFatturato}
             </span>
           </div>
           <div>
             <p className="text-xs text-apple-gray mb-1">Totale Anno {annoFatturato}</p>
-            <p className="text-xl font-bold text-apple-blue">{formatEuro(fatturatoAnnoSelezionato)}</p>
+            <p className="text-lg sm:text-xl font-bold text-apple-blue">{formatEuro(fatturatoAnnoSelezionato)}</p>
           </div>
         </button>
 
         {/* Card Proforma in attesa */}
         <button
           onClick={() => onNavigate?.('fatture')}
-          className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all"
+          className="bg-white rounded-apple shadow-apple p-3 sm:p-5 text-left hover:shadow-apple-lg transition-all"
         >
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl">📄</span>
+            <span className="text-xl sm:text-2xl">📄</span>
           </div>
           <p className="text-xs text-apple-gray mb-1">Proforma in attesa</p>
           <p className={`text-xl font-bold ${proformaInAttesa > 0 ? 'text-orange-600' : 'text-apple-darkgray'}`}>
@@ -360,10 +360,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         {/* Card Clienti Totali */}
         <button
           onClick={() => onNavigate?.('clienti')}
-          className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all"
+          className="bg-white rounded-apple shadow-apple p-3 sm:p-5 text-left hover:shadow-apple-lg transition-all"
         >
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl">👥</span>
+            <span className="text-xl sm:text-2xl">👥</span>
           </div>
           <p className="text-xs text-apple-gray mb-1">Clienti Totali</p>
           <p className="text-xl font-bold text-apple-darkgray">{clientiTotali}</p>
@@ -372,10 +372,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         {/* Card Percorsi Attivi */}
         <button
           onClick={() => onNavigate?.('percorsi')}
-          className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all"
+          className="bg-white rounded-apple shadow-apple p-3 sm:p-5 text-left hover:shadow-apple-lg transition-all"
         >
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl">🎯</span>
+            <span className="text-xl sm:text-2xl">🎯</span>
           </div>
           <p className="text-xs text-apple-gray mb-1">Percorsi Attivi</p>
           <p className="text-xl font-bold text-apple-darkgray">{percorsiAttivi}</p>
@@ -384,10 +384,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         {/* Card Sotto scorta */}
         <button
           onClick={() => onNavigate?.('prodotti')}
-          className="bg-white rounded-apple shadow-apple p-5 text-left hover:shadow-apple-lg transition-all"
+          className="bg-white rounded-apple shadow-apple p-3 sm:p-5 text-left hover:shadow-apple-lg transition-all"
         >
           <div className="flex items-start justify-between mb-3">
-            <span className="text-2xl">⚠️</span>
+            <span className="text-xl sm:text-2xl">⚠️</span>
           </div>
           <p className="text-xs text-apple-gray mb-1">Sotto scorta</p>
           <p className={`text-xl font-bold ${prodottiSottoScorta > 0 ? 'text-red-600' : 'text-apple-darkgray'}`}>
