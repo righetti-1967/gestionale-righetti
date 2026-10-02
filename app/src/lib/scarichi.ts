@@ -319,7 +319,7 @@ export async function getTuttiScarichi(): Promise<ScaricoConCliente[]> {
   const { data, error } = await supabase
     .from('scarichi_seduta')
     .select(
-      '*, cliente:clienti(id, nome_cognome, codice_fiscale, partita_iva, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza)'
+      '*, cliente:clienti(id, nome_cognome, cellulare, email, codice_fiscale, partita_iva, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza)'
     )
     .eq('user_id', user.id)
     .order('data_seduta', { ascending: false });

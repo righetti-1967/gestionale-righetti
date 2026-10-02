@@ -78,15 +78,16 @@ export async function getClienti(): Promise<Cliente[]> {
 /**
  * Recupera un singolo cliente per ID
  */
+/**
+ * 🌐 FUNZIONE PUBBLICA
+ * Usata anche dalla pagina firma anonima (aperta da link QR/WhatsApp/Email).
+ * Sicurezza garantita da RLS Supabase (lettura pubblica per id).
+ */
 export async function getCliente(id: number): Promise<Cliente | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Non autenticato');
-
   const { data, error } = await supabase
     .from('clienti')
     .select('*')
     .eq('id', id)
-    .eq('user_id', user.id)
     .single();
 
   if (error) {
@@ -190,13 +191,15 @@ export async function eliminaCliente(id: number): Promise<void> {
 /**
  * Salva la firma privacy di un cliente
  */
+/**
+ * 🌐 FUNZIONE PUBBLICA
+ * Usata anche dalla pagina firma anonima (aperta da link QR/WhatsApp/Email).
+ * Sicurezza garantita da RLS Supabase (update pubblico per id).
+ */
 export async function salvaFirmaPrivacy(
   id: number,
   firmaBase64: string
 ): Promise<Cliente> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Non autenticato');
-
   const { data, error } = await supabase
     .from('clienti')
     .update({
@@ -205,7 +208,6 @@ export async function salvaFirmaPrivacy(
       privacy_data_firma: new Date().toISOString(),
     })
     .eq('id', id)
-    .eq('user_id', user.id)
     .select()
     .single();
 
