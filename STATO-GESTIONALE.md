@@ -250,3 +250,101 @@ cd /Users/luca/Desktop/Tricolab_v2 && npm run dev
 - ✅ **Card:** padding `p-3 sm:p-5`, font ridotti, `flex-wrap` per i select
 - ✅ **Fatture:** layout card verticale su mobile (numero + stato | cliente + importo | data)
 - ✅ **Risultato:** niente sovrapposizioni, tutto leggibile
+
+---
+
+## 🚀 AGGIORNAMENTI COMPLETATI IL 02/10/2026 (parte 3)
+
+### 24. Ambiente di Test Isolato
+- ✅ Creato progetto Supabase separato **`Scontrini_test`** (Free)
+- ✅ Ref: `wahkvaxvgcnqpnjaaooz.supabase.co`
+- ✅ Configurato `.env.local.TEST` / `.env.local.PROD` per switch rapido ambiente
+- ✅ Aggiornato `.gitignore` per escludere varianti `.env.local.PROD/TEST`
+- ✅ Creato utente test `luca.trainer@icloud.com` + dati demo (2 clienti, 3 prodotti, 2 servizi)
+- ✅ Schema DB completo: `clienti`, `prodotti`, `servizi`, `impostazioni`, `scontrini`, `scontrini_righe`, `chiusure_cassa`
+- ✅ Policy RLS permissive per test
+
+### 25. Nuova Feature: Regime Documenti (Fatture vs Scontrini)
+- ✅ Aggiunto campo `regimeDocumenti: 'fatture' | 'scontrini'` in `DatiAziendali` (`studio.ts`)
+- ✅ Funzione `salvaDatiAziendali()` in `datiAziendali.ts`
+- ✅ Aggiornato `adatta()` + `DATI_AZIENDALI_VUOTI` con `regimeDocumenti`
+- ✅ **Sidebar dinamica** basata sul regime attivo:
+  - Regime `fatture`: visibili `Fatture`, `DDT`; **nascosto** `Cassa Fiscale`
+  - Regime `scontrini`: visibile `Cassa Fiscale`; **nascosti** `Fatture`, `DDT`
+  - Voci sempre visibili: `Dashboard`, `Clienti`, `Percorsi`, `Prodotti`, `Servizi`, `Agenda`, `Magazzino`, `Ordini`
+- ✅ **Event System** con `CustomEvent('datiAziendali-aggiornati')` per aggiornamento istantaneo Sidebar (no refresh)
+- ✅ **Selettore Regime Documenti** in `Impostazioni → Fatturazione`:
+  - Card in cima con 2 opzioni radio stilizzate (Regime Fatture blu / Regime Scontrini ambra)
+  - Testo esplicativo + avviso su cambio Sidebar automatico
+  - Salvataggio contestuale a `salvaFatturazione` + `salvaDatiAziendali`
+
+### 26. Cassa Fiscale (in corso - ambiente TEST)
+- 🚧 **Obiettivo:** Cassa fiscale stile UALA (Apple-like), touch-friendly, pulita
+- 🚧 **Struttura pianificata:**
+  - **Area sinistra:** Griglia prodotti/servizi touch + ricerca rapida
+  - **Area destra:** Riepilogo scontrino live (righe, subtotale, IVA 22%, totale, metodo pagamento, pulsante "Emetti")
+  - **Report:** Chiusura giornaliera, storico scontrini, export commercialista
+- 🚧 **Regole fiscali:**
+  - IVA 22% fissa (regime ordinario)
+  - Scontrino Madre (incasso + IVA) + eventuale Figlio (0€)
+  - NO doppia emissione scontrino + fattura sulla stessa operazione
+  - Numerazione progressiva per anno
+- 🚧 **File previsti:**
+  - `src/lib/scontrini.ts` (CRUD + calcoli)
+  - `src/pages/CassaFiscale.tsx` (UI principale)
+  - `src/components/FormNuovoScontrino.tsx` (modale)
+  - `src/components/ListaScontrini.tsx` (storico)
+  - `src/lib/pdfScontrino.ts` (PDF)
+
+### 27. Event System — Aggiornamenti Live
+- ✅ Pattern adottato: `window.dispatchEvent(new CustomEvent('datiAziendali-aggiornati', { detail: dati }))`
+- ✅ Ascoltatori registrati in `Sidebar.tsx` per refresh istantaneo
+- ✅ Esportata costante `EVENT_DATI_AZIENDALI_AGGIORNATI` da `datiAziendali.ts`
+- ✅ **Vantaggio:** cambio regime → Sidebar aggiornata **senza refresh pagina**
+
+---
+
+## 📌 STATO AMBIENTI
+
+### Produzione (Railway)
+- **Frontend:** `gestionale.righetti.club`
+- **Supabase:** `yporpszebtasalwazirz.supabase.co` (progetto `gestionale-righetti`)
+- **Config:** `.env.local.PROD`
+- **Commit pushati:** fino a `fb5d607`
+
+### Sviluppo Locale (Test)
+- **Frontend:** `http://localhost:5173`
+- **Supabase:** `wahkvaxvgcnqpnjaaooz.supabase.co` (progetto `Scontrini_test`)
+- **Config:** `.env.local.TEST`
+- **Commit locali:** `544398b`, `0ff4332`, + altri non pushati
+
+### Switch ambiente
+```bash
+# Attiva TEST
+cp app/.env.local.TEST app/.env.local
+npm run dev
+
+# Torna a PROD
+cp app/.env.local.PROD app/.env.local
+npm run dev
+
+🎯 ROADMAP CASSA FISCALE (prossimi step)
+Fase 1 — Schema DB ✅ Completato
+
+Fase 2 — Regime Documenti ✅ Completato (selettore + Sidebar dinamica)
+
+Fase 3 — UI Cassa Fiscale 🚧 In corso
+
+Pagina CassaFiscale.tsx
+
+Modale FormNuovoScontrino.tsx
+
+Lista ListaScontrini.tsx
+
+Fase 4 — PDF e Stampa
+
+Fase 5 — Report Commercialista
+
+Fase 6 — Test completo in locale
+
+Fase 7 — Deploy produzione (solo dopo test ok)
