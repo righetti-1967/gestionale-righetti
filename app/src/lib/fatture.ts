@@ -72,7 +72,7 @@ export async function getFatture(): Promise<FatturaConCliente[]> {
 
   const { data, error } = await supabase
     .from('fatture')
-    .select('*, cliente:clienti(id, nome_cognome, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)')
+    .select('*, cliente:clienti(id, nome_cognome, cellulare, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)')
     .eq('user_id', user.id)
     .order('data_incasso', { ascending: false, nullsFirst: false });
 
@@ -107,7 +107,7 @@ export async function cercaFatture(query: string): Promise<FatturaConCliente[]> 
   const promesse: any[] = [
     supabase
       .from('fatture')
-      .select('*, cliente:clienti(id, nome_cognome, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)')
+      .select('*, cliente:clienti(id, nome_cognome, cellulare, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)')
       .eq('user_id', user.id)
       .ilike('numero_fattura', `%${q}%`),
   ];
@@ -116,7 +116,7 @@ export async function cercaFatture(query: string): Promise<FatturaConCliente[]> 
     promesse.push(
       supabase
         .from('fatture')
-        .select('*, cliente:clienti(id, nome_cognome, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)')
+        .select('*, cliente:clienti(id, nome_cognome, cellulare, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)')
         .eq('user_id', user.id)
         .in('cliente_id', clienteIds)
     );
@@ -148,7 +148,7 @@ export async function getFattura(id: number): Promise<FatturaConCliente | null> 
 
   const { data, error } = await supabase
     .from('fatture')
-    .select('*, cliente:clienti(id, nome_cognome, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)')
+    .select('*, cliente:clienti(id, nome_cognome, cellulare, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)')
     .eq('id', id)
     .eq('user_id', user.id)
     .single();
@@ -389,7 +389,7 @@ export async function salvaFirmaFattura(
     .eq('id', id)
     .eq('user_id', user.id)
     .select(
-      '*, cliente:clienti(id, nome_cognome, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)'
+      '*, cliente:clienti(id, nome_cognome, cellulare, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)'
     )
     .single();
 

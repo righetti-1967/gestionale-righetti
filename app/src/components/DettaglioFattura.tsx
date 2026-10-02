@@ -596,7 +596,7 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
         {showFirmaQR && (
           <FirmaFatturaQR
             fattura={fattura}
-            cliente={null}
+            cliente={(fattura.cliente as any) || null}
             onClose={() => setShowFirmaQR(false)}
             onSuccess={() => {
               setShowFirmaQR(false);
