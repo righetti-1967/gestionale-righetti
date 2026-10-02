@@ -1,5 +1,5 @@
 # STATO GESTIONALE RIGHETTI 1967
-Data ultimo aggiornamento: 02/10/2026
+Data ultimo aggiornamento: 02/10/2026 (sera)
 
 ---
 
@@ -348,3 +348,110 @@ Fase 5 — Report Commercialista
 Fase 6 — Test completo in locale
 
 Fase 7 — Deploy produzione (solo dopo test ok)
+
+---
+
+## AGGIORNAMENTI COMPLETATI IL 02/10/2026 (parte 4) — CASSA FISCALE COMPLETA
+
+### 28. Cassa Fiscale Completa (ambiente TEST)
+- COMPLETATO **Pagina `CassaFiscale.tsx`** con **3 tab**:
+  - `Cassa` — vendita normale con sconti
+  - `Archivio` — storico scontrini con filtri Fisico/Digitale
+  - `Riscatta Percorso` — riscatto percorsi prepagati
+- COMPLETATO **Tabelle DB**:
+  - `scontrini` (con `scontrino_madre_id`, `scontrino_madre_numero`, `scontrino_madre_data`, `sconto_totale_tipo`, `sconto_totale_valore`)
+  - `scontrini_righe` (con `sconto_tipo`, `sconto_valore`)
+  - `movimenti_magazzino` (con trigger SQL per aggiornare `prodotti.giacenza`)
+  - `percorsi` (con `scontrino_madre_id`)
+- COMPLETATO **Regole fiscali ADE**:
+  - IVA 22% fissa
+  - Scontrino madre (vendita) + scontrino figlio (riscatto a 0€)
+  - Opzione B confermata: figlio con righe positive scontate + riga storno compensativa
+  - Numerazione progressiva per anno (`SC-00001/2026`)
+
+### 29. Sconti su Cassa
+- COMPLETATO **Sconto per riga** (con toggle `%` / `€`)
+  - Campo in ogni riga del carrello
+  - Il prezzo unitario cambia in tempo reale
+  - La stampa mostra: prezzo pieno, sotto-riga "Sconto X%" con importo negativo
+- COMPLETATO **Sconto sul totale** (con toggle `%` / `€`)
+  - Campo in basso al carrello
+  - Calcolo automatico + riga "Sconto totale" nella stampa
+- COMPLETATO **5 metodi pagamento**: Contanti, Carta, Bancomat, **Bonifico**, Altro
+
+### 30. Percorsi Prepagati (regime scontrini)
+- COMPLETATO **`FormNuovoPercorso.tsx`** con `regime="scontrini"`:
+  - Crea percorso + **scontrino madre** automatico
+  - Madre con **1 sola riga** "Percorso [nome]" importo scontato (modello fatture/DDT)
+- COMPLETATO **`FormRiscattaPercorso.tsx`**:
+  - Mostra residuo per riga
+  - Precompila quantità se ci sono `vociIniziali`
+  - Genera **scontrino figlio** con righe scontate + riga storno → totale **0,00 € / IVA 0,00 €**
+- COMPLETATO **`scontrini-figli.ts`**:
+  - `creaScontrinoFiglio()` con magazzino automatico (trigger SQL)
+  - `getRigheRiscattateDaFigli()` per calcolare residuo percorso
+- COMPLETATO **Tab "Riscatta Percorso"** nella Cassa Fiscale:
+  - Lista percorsi attivi con residuo € / totale €
+  - Pulsante **"➕ Nuovo Percorso"**
+  - Pulsante **"Riscatta →"** per aprire form
+
+### 31. Pulsante Intelligente Overlap
+- COMPLETATO **Auto-rilevamento overlap**: quando nel carrello ci sono voci che sono anche nel percorso attivo del cliente
+- COMPLETATO **Pulsante cambia colore**:
+  - **Verde** → `✅ EMETTI SCONTRINO (€X)` (flusso normale)
+  - **Giallo** → `🎫 Scarica voci Percorso | Emetti Figlio` (con overlap)
+- COMPLETATO **Auto-rimozione**: dopo aver emesso il figlio, le voci in overlap **spariscono dal carrello**
+- COMPLETATO **Ricarica live**: il residuo del percorso si aggiorna senza refresh
+
+### 32. Stampa Scontrino (carta termica 80mm)
+- COMPLETATO **`StampaScontrino.tsx`**:
+  - Layout monospace stile carta termica
+  - **Colonna IVA** + **riga "di cui IVA"**
+  - Sotto-riga "Sconto X%" per ogni riga scontata
+  - Riga "Sconto totale X%" se applicato
+  - Barcode finto in fondo
+  - Per figli: badge "FIGLIO (0€)" + dicitura "Documento di cortesia — nessun pagamento" + riferimento al madre
+  - Warning "simulazione stampa termica 80mm" per scontrini fisici
+
+### 33. Bug Fix Cassa
+- COMPLETATO Bug `[object Object]` in Clienti/Percorsi (causato da `getFatture()` che fallisce in TEST)
+- COMPLETATO Fix campi mancanti nel tipo `Scontrino` (`scontrino_madre_numero`, `scontrino_madre_data`, `note_cliente`)
+- COMPLETATO Fix campi sconto in `RigaScontrino` + `Scontrino`
+- COMPLETATO Fix `MetodoPagamento` con `'Bonifico'` e `'Non richiesto'`
+
+### 34. File Nuovi / Modificati
+- NUOVO `src/pages/CassaFiscale.tsx` (riscritto con 3 tab + sconti + overlap)
+- NUOVO `src/components/StampaScontrino.tsx`
+- NUOVO `src/components/FormRiscattaPercorso.tsx`
+- NUOVO `src/lib/scontrini-figli.ts`
+- MODIFICATO `src/components/FormNuovoPercorso.tsx` (regime scontrini)
+- MODIFICATO `src/lib/scontrini.ts` (Bonifico, sconto totale, scontrino_madre_*)
+- MODIFICATO `src/lib/percorsi.ts` (scontrino_madre_id opzionale)
+- MODIFICATO `src/pages/Clienti.tsx` (getFatture tollerante)
+- MODIFICATO `src/pages/Percorsi.tsx` (getFatture tollerante)
+
+---
+
+## ROADMAP CASSA FISCALE (aggiornata 02/10/2026)
+
+- Fase 1 — Schema DB: COMPLETATO
+- Fase 2 — Regime Documenti: COMPLETATO
+- Fase 3 — UI Cassa Fiscale: COMPLETATO
+  - Pagina CassaFiscale.tsx con 3 tab
+  - Sconti riga + totale
+  - Pulsante intelligente overlap
+- Fase 4 — Stampa: COMPLETATO (simulazione a video)
+- Fase 5 — Report Commercialista: IN CORSO
+- Fase 6 — Test completo in locale: IN CORSO
+- Fase 7 — Deploy produzione: DA FARE (solo dopo test ok)
+
+### Prossimi step Cassa Fiscale
+- Grouping madre/figli in Archivio (madre con figli indentati)
+- Pulsante "Stampa" reale (window.print con CSS 80mm)
+- Riepilogo incassi in cima all'Archivio (oggi / settimana / mese)
+- Filtri data in Archivio (oggi, ieri, settimana, mese, custom)
+- Ricerca per numero scontrino o nome cliente
+- Annullo scontrino (soft delete con motivo)
+- Chiusura cassa giornaliera con fondo iniziale
+- Export CSV scontrini per commercialista
+- PDF scontrino (oltre alla stampa termica)
