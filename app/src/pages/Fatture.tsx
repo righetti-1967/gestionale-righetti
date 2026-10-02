@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { inviaEmail } from '../lib/api';
+import { inviaEmailConConfig } from '../lib/api';
 import { generaPdfFattura } from '../lib/pdfFattura';
 import {
   getFatture, cercaFatture, formatEuro, formatData, isPagata, type FatturaConCliente,
@@ -75,17 +75,48 @@ export function Fatture() {
 
       {!loading && !errore && (
         <div className="bg-white rounded-apple shadow-apple overflow-hidden">
+          {/* Header solo desktop */}
           <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50/80 border-b border-gray-200/60 text-xs font-semibold text-apple-gray uppercase">
-            <div className="col-span-2">Numero</div><div className="col-span-3">Cliente</div><div className="col-span-2 text-left">Data</div><div className="col-span-2 text-right">Importo</div><div className="col-span-3 text-center">Stato</div>
+            <div className="col-span-2">Numero</div>
+            <div className="col-span-3">Cliente</div>
+            <div className="col-span-2 text-left">Data</div>
+            <div className="col-span-2 text-right">Importo</div>
+            <div className="col-span-3 text-center">Stato</div>
           </div>
           <div className="divide-y divide-gray-100">
             {fattureMostrate.map((f) => (
-              <button key={f.id} onClick={() => setFatturaSelezionata(f)} className="w-full grid grid-cols-12 gap-4 px-6 py-4 hover:bg-blue-50/40 transition-colors items-center text-left">
-                <div className="col-span-2 text-sm font-semibold text-apple-darkgray">{f.numero_fattura}</div>
-                <div className="col-span-3 text-sm text-apple-darkgray truncate">{f.cliente?.nome_cognome || '—'}</div>
-                <div className="col-span-2 text-sm text-apple-gray">{formatData(f.data_incasso)}</div>
-                <div className="col-span-2 text-sm font-bold text-apple-darkgray text-right">{formatEuro(Number(f.lordo_ivato))}</div>
-                <div className="col-span-3 flex justify-center"><span className={"px-2.5 py-1 rounded-full text-xs font-semibold " + (isPagata(f) ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700")}>{isPagata(f) ? '✓ Pagata' : '📄 Proforma'}</span></div>
+              <button
+                key={f.id}
+                onClick={() => setFatturaSelezionata(f)}
+                className="w-full hover:bg-blue-50/40 transition-colors text-left"
+              >
+                {/* DESKTOP: grid a 12 colonne */}
+                <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 items-center">
+                  <div className="col-span-2 text-sm font-semibold text-apple-darkgray">{f.numero_fattura}</div>
+                  <div className="col-span-3 text-sm text-apple-darkgray truncate">{f.cliente?.nome_cognome || '—'}</div>
+                  <div className="col-span-2 text-sm text-apple-gray">{formatData(f.data_incasso)}</div>
+                  <div className="col-span-2 text-sm font-bold text-apple-darkgray text-right">{formatEuro(Number(f.lordo_ivato))}</div>
+                  <div className="col-span-3 flex justify-center">
+                    <span className={"px-2.5 py-1 rounded-full text-xs font-semibold " + (isPagata(f) ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700")}>
+                      {isPagata(f) ? '✓ Pagata' : '📄 Proforma'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* MOBILE: card verticale */}
+                <div className="md:hidden px-4 py-3 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-apple-darkgray truncate">{f.numero_fattura}</span>
+                    <span className={"shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold " + (isPagata(f) ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700")}>
+                      {isPagata(f) ? '✓ Pagata' : '📄 Proforma'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-apple-darkgray truncate">{f.cliente?.nome_cognome || '—'}</span>
+                    <span className="text-sm font-bold text-apple-darkgray shrink-0">{formatEuro(Number(f.lordo_ivato))}</span>
+                  </div>
+                  <div className="text-[11px] text-apple-gray">{formatData(f.data_incasso)}</div>
+                </div>
               </button>
             ))}
           </div>
