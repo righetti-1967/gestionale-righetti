@@ -113,3 +113,22 @@ export function invalidaCacheDatiAziendali(): void {
   cache = null;
   promessaInCorso = null;
 }
+
+export async function salvaDatiAziendali(dati: DatiAziendali): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const { error } = await supabase
+    .from('impostazioni')
+    .upsert(
+      {
+        user_id: user.id,
+        chiave: 'dati_aziendali',
+        valore: dati,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,chiave' }
+    );
+  if (error) throw error;
+  cache = dati;
+}

@@ -12,7 +12,7 @@ import {
   popolaDemoUtente,
   type AdminUtenteLicenza,
 } from '../lib/api';
-import { invalidaCacheDatiAziendali } from '../lib/datiAziendali';
+import { invalidaCacheDatiAziendali, caricaDatiAziendali, salvaDatiAziendali } from '../lib/datiAziendali';
 import { useAuth } from '../lib/auth';
 import { getLogoUrl, uploadLogo, rimuoviLogo, esisteLogoCustom } from '../lib/logo';
 import { caricaFatturazione, salvaFatturazione, FATTURAZIONE_DEFAULT, type ConfigFatturazione } from '../lib/fatturazione';
@@ -1226,12 +1226,17 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [messaggio, setMessaggio] = useState<{ tipo: 'ok' | 'errore'; testo: string } | null>(null);
+  const [regimeDocumenti, setRegimeDocumenti] = useState<'fatture' | 'scontrini'>('fatture');
 
   useEffect(() => {
     async function carica() {
       try {
-        const c = await caricaFatturazione();
+        const [c, d] = await Promise.all([
+          caricaFatturazione(),
+          caricaDatiAziendali(),
+        ]);
         setConfig(c);
+        setRegimeDocumenti(d.regimeDocumenti || 'fatture');
       } catch (err) {
         console.error('Errore caricamento fatturazione:', err);
         setMessaggio({ tipo: 'errore', testo: 'Errore nel caricamento.' });
@@ -1247,6 +1252,12 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
     setMessaggio(null);
     try {
       await salvaFatturazione(config);
+
+      // Salva anche il regime documenti nei dati aziendali
+      const datiAttuali = await caricaDatiAziendali();
+      await salvaDatiAziendali({ ...datiAttuali, regimeDocumenti });
+      invalidaCacheDatiAziendali();
+
       setMessaggio({ tipo: 'ok', testo: 'Configurazione salvata.' });
       setTimeout(() => setMessaggio(null), 3000);
     } catch (err) {
@@ -1255,7 +1266,7 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
     } finally {
       setSalvando(false);
     }
-  }, [config]);
+  }, [config, regimeDocumenti]);
 
   useEffect(() => {
     if (registraSalva) {
@@ -1293,6 +1304,65 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
         </div>
       )}
 
+      <Card
+        title="📋 Regime Documenti"
+        subtitle="Scegli cosa emetti: fatture/DDT oppure scontrini (Cassa Fiscale)."
+      >
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => setRegimeDocumenti('fatture')}
+            className={`w-full text-left px-4 py-3 rounded-apple border-2 transition-all ${
+              regimeDocumenti === 'fatture'
+                ? 'bg-blue-50 border-apple-blue shadow-sm'
+                : 'bg-white border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-apple-darkgray">
+                  📄 Regime Fatture
+                </p>
+                <p className="text-xs text-apple-gray mt-0.5">
+                  Emetti Fatture e DDT dai Percorsi. Cassa Fiscale nascosta.
+                </p>
+              </div>
+              {regimeDocumenti === 'fatture' && (
+                <span className="text-apple-blue text-xl shrink-0">✓</span>
+              )}
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRegimeDocumenti('scontrini')}
+            className={`w-full text-left px-4 py-3 rounded-apple border-2 transition-all ${
+              regimeDocumenti === 'scontrini'
+                ? 'bg-amber-50 border-amber-500 shadow-sm'
+                : 'bg-white border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-apple-darkgray">
+                  🧾 Regime Scontrini
+                </p>
+                <p className="text-xs text-apple-gray mt-0.5">
+                  Emetti scontrini fiscali dai Percorsi. Fatture e DDT nascosti.
+                </p>
+              </div>
+              {regimeDocumenti === 'scontrini' && (
+                <span className="text-amber-500 text-xl shrink-0">✓</span>
+              )}
+            </div>
+          </button>
+
+          <div className="p-3 rounded-apple bg-gray-50 border border-gray-200 text-xs text-apple-gray">
+            ⚠️ <strong>Attenzione:</strong> cambiando regime, la <strong>Sidebar</strong> si aggiornerà automaticamente.
+            Le fatture/scontrini già emessi resteranno visibili nei rispettivi archivi.
+          </div>
+        </div>
+      </Card>
       <Card
         title="Studio Commercialista"
         subtitle="Recapiti del commercialista per l'invio automatico dei report DDT e delle fatture."
