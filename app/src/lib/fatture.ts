@@ -142,15 +142,16 @@ export async function cercaFatture(query: string): Promise<FatturaConCliente[]> 
   });
 }
 
+/**
+ * 🌐 FUNZIONE PUBBLICA
+ * Usata anche dalla pagina firma anonima (aperta da link QR/WhatsApp/Email).
+ * Sicurezza garantita da RLS Supabase (lettura pubblica per id).
+ */
 export async function getFattura(id: number): Promise<FatturaConCliente | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Non autenticato');
-
   const { data, error } = await supabase
     .from('fatture')
     .select('*, cliente:clienti(id, nome_cognome, cellulare, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)')
     .eq('id', id)
-    .eq('user_id', user.id)
     .single();
 
   if (error) {
@@ -372,13 +373,15 @@ function generaToken(): string {
   return token;
 }
 
+/**
+ * 🌐 FUNZIONE PUBBLICA
+ * Usata anche dalla pagina firma anonima (aperta da link QR/WhatsApp/Email).
+ * Sicurezza garantita da RLS Supabase (update pubblico per id).
+ */
 export async function salvaFirmaFattura(
   id: number,
   firmaBase64: string
 ): Promise<FatturaConCliente> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Non autenticato');
-
   const { data, error } = await supabase
     .from('fatture')
     .update({
@@ -387,7 +390,6 @@ export async function salvaFirmaFattura(
       data_firma: new Date().toISOString(),
     })
     .eq('id', id)
-    .eq('user_id', user.id)
     .select(
       '*, cliente:clienti(id, nome_cognome, cellulare, email, codice_fiscale, partita_iva, codice_sdi, indirizzo_residenza, cap_residenza, citta_residenza, provincia_residenza, indirizzo_spedizione, cap_spedizione, citta_spedizione, provincia_spedizione)'
     )
