@@ -25,3 +25,11 @@ backend/.secrets/
 *.pre-*
 backup*.zip
 backups/
+
+# === Env variants (PROD/TEST/DEV) ===
+.env.local.*
+.env.*.local
+.env.local.PROD
+.env.local.TEST
+app/.env.local.PROD
+app/.env.local.TEST
