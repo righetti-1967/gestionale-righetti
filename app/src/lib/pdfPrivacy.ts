@@ -20,28 +20,24 @@ export async function generaPdfPrivacyCompleto(
   const larghezzaTesto = paginaLarghezza - margin * 2;
   let y = 0;
 
-  // HEADER BLU
-  doc.setFillColor(0, 122, 255);
-  doc.rect(0, 0, paginaLarghezza, 32, 'F');
-
-  // Logo (se disponibile)
+  // HEADER (sfondo bianco, testo nero)
   const logo = await caricaLogoBase64();
   if (logo) {
     try {
-      doc.addImage(logo, 'PNG', margin, 4, 22, 0);
+      doc.addImage(logo, 'PNG', margin, 10, 22, 0);
     } catch (err) {
       console.error('Errore logo:', err);
     }
   }
 
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(28, 28, 30);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text(az.ragioneSociale, paginaLarghezza / 2, 15, { align: 'center' });
+  doc.setFontSize(11);
+  doc.text(az.ragioneSociale, paginaLarghezza - margin, 14, { align: 'right' });
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text(`Sede Operativa: ${formatSede(az.sedeOperativa)}`, paginaLarghezza / 2, 21, { align: 'center' });
-  doc.text(`Sede Legale: ${formatSede(az.sedeLegale)}`, paginaLarghezza / 2, 26, { align: 'center' });
+  doc.setFontSize(7.5);
+  doc.text(`Sede Operativa: ${formatSede(az.sedeOperativa)}`, paginaLarghezza - margin, 19, { align: 'right' });
+  doc.text(`Sede Legale: ${formatSede(az.sedeLegale)}`, paginaLarghezza - margin, 23, { align: 'right' });
 
   y = 42;
   doc.setTextColor(28, 28, 30);
