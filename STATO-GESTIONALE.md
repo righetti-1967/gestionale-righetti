@@ -685,3 +685,162 @@ Fase 7 — Deploy produzione (solo dopo test ok)
 13. Conferma cambio regime
 14. Log azioni critiche
 15. Timeout sessione
+
+
+---
+
+## 🎯 PIANO FINALE — INTEGRAZIONE IN PRODUZIONE
+
+**Quando**: dopo che TUTTE le prove su TEST sono OK
+**Obiettivo**: portare il lavoro da TEST (locale) a PROD (online)
+
+### Strategia generale
+Non fondere i due database. Invece:
+1. Allineare lo SCHEMA (TEST a PROD)
+2. Promuovere il CODICE (locale a main a Vercel/Railway)
+3. Verificare in PROD
+
+I dati non si toccano: PROD mantiene i dati reali di Righetti Consulting.
+
+---
+
+### STEP 1 — Allineare Schema DB (TEST a PROD)
+
+Dove: SQL Editor di Supabase PROD (`yporpszebtasalwazirz`)
+
+Cosa applicare (SOLO istruzioni CREATE TABLE + ALTER TABLE, NON i dati):
+
+Tabelle nuove da creare in PROD:
+- percorsi (con scontrino_madre_id)
+- movimenti_magazzino (con trigger SQL)
+- config_fiscale
+- testi_template
+- automazioni
+
+Colonne nuove su tabelle esistenti:
+- scontrini: scontrino_madre_id, scontrino_madre_numero, scontrino_madre_data, sconto_totale_tipo, sconto_totale_valore, annullato_at, annullato_motivo, annullato_da, ripristino_magazzino, note_cliente
+- scontrini_righe: sconto_tipo, sconto_valore, prodotto_percorso_id, sconto_percorso_id, riga_tipo
+- clienti: segnalazioni_annulli
+- chiusure_cassa: totale_bancomat, totale_prepagate, totale_bonifico, contanti_contati, differenza_cassa
+- appuntamenti: promemoria_inviato_at, promemoria_canale, percorso_id, servizio_id, prodotto_id, scontistica_percorso
+
+Storage:
+- Bucket scontrini-pdf con policy lettura pubblica + upload autenticato
+
+Verifica: dopo ALTER, esegui SELECT column_name FROM information_schema.columns per ogni tabella modificata.
+
+---
+
+### STEP 2 — Promuovere Codice React (Locale a main)
+
+Dove: terminale locale
+
+cd /Users/luca/Desktop/Tricolab/GESTIONALE
+git checkout main
+git status
+git add -A
+git commit -m "feat: integrazione moduli scontrini, percorsi, automazioni e report"
+git push origin main
+
+
+Effetto: Vercel rileva il push su main e fa deploy automatico in produzione.
+
+Verifica build: prima di pushare, fai npm run build in locale e verifica che sia verde.
+
+---
+
+### STEP 3 — Aggiornare Backend FastAPI (Railway)
+
+Dove: repo backend su Railway
+
+Cosa serve:
+- Endpoint /api/email/invia funzionante (già c'è)
+- Endpoint per report commercialista (se implementato)
+- Endpoint per promemoria automatico (se implementato)
+- Endpoint per integrazione FPT/ADE (futuro)
+
+Verifica: apri https://gestionale-righetti-production.up.railway.app/health
+
+---
+
+### STEP 4 — Verifica in PROD
+
+Dopo STEP 1+2+3:
+
+1. Apri gestionale.righetti.club (tab anonima)
+2. Sidebar: verifica nuove voci in base al regime
+3. Testa ogni funzionalità:
+   - Emetti scontrino
+   - Crea percorso
+   - Riscatta percorso (figlio)
+   - Annulla scontrino (con password)
+   - Invia email con PDF
+   - Report commercialista
+   - Chiusura cassa
+   - Promemoria
+   - Configurazione fiscale
+   - Testi Messaggi
+   - Automazioni
+4. Controlla Console DevTools per errori
+5. Controlla log Vercel
+6. Controlla Supabase PROD
+
+---
+
+### STEP 5 — Comunicazione Utente
+
+Dopo che PROD funziona:
+- Backup PROD prima del push
+- Comunicare a Righetti le nuove funzionalità
+- Documentare con GUIDA-UTENTE.md
+- Formazione breve su: emettere scontrino, creare percorso, configurare regime
+
+---
+
+### ATTENZIONI CRITICHE
+
+Prima del push su main:
+- Fare backup schema PROD (Supabase, Backups, Download)
+- Fare backup DB TEST
+- Verificare policy RLS su PROD
+- Verificare bucket Storage scontrini-pdf in PROD
+- Verificare config_email in PROD
+
+Dopo il push:
+- Non toccare codice main per 24h
+- Non eseguire DELETE su PROD
+- Non modificare schemi PROD se non necessario
+
+Se qualcosa va storto:
+- Rollback codice: git revert HEAD + git push
+- Rollback schema: ripristina backup Supabase
+- Rollback DB: DROP TABLE nuove tabelle (attenzione: perdi dati)
+
+---
+
+### CHECKLIST FINALE
+
+- [ ] Backup PROD scaricato
+- [ ] Schema PROD allineato
+- [ ] Policy RLS PROD verificate
+- [ ] Bucket Storage scontrini-pdf in PROD
+- [ ] Codice committato in locale
+- [ ] Build locale verde
+- [ ] git push origin main eseguito
+- [ ] Vercel deploy verde
+- [ ] Railway backend up
+- [ ] gestionale.righetti.club si apre
+- [ ] Test emetti scontrino OK
+- [ ] Test percorso OK
+- [ ] Test annullo OK
+- [ ] Test email PDF OK
+- [ ] Test WhatsApp link OK
+- [ ] Test promemoria OK
+- [ ] Test report commercialista OK
+- [ ] Test chiusura cassa OK
+- [ ] Test config fiscale OK
+- [ ] Test automazioni OK
+- [ ] Documentazione utente preparata
+- [ ] Formazione Righetti fatta
+
+Quando tutti i check sono verdi: SIAMO ONLINE.
