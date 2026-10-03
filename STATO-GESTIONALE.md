@@ -611,3 +611,77 @@ Fase 7 — Deploy produzione (solo dopo test ok)
 - Conferma prima di salvare il cambio di regime documenti (evita click accidentali)
 - Log accessi/azioni critiche
 - Timeout sessione per inattivita
+
+
+---
+
+## AGGIORNAMENTI COMPLETATI IL 03/10/2026 (parte 8) — SESSIONE FINALE
+
+### 54. Storico Cliente Unificato
+- COMPLETATO **caricamento unificato**: scontrini + fatture + DDT insieme
+- COMPLETATO **lista unica** con link cliccabili per ogni documento:
+  - 🧾 Scontrino → apre `StampaScontrino`
+  - 📄 Fattura → apre anteprima fattura
+  - 📋 DDT → apre `AnteprimaDdtMinimale`
+
+### 55. Card Totale Spesa Cliente
+- COMPLETATO **card in cima allo Storico** con:
+  - 🧾 Totale scontrini
+  - 📄 Totale fatture
+  - 💰 **TOTALE SPESA**
+  - 📊 **Fiches media** (valore medio di ogni servizio/prodotto venduto)
+  - Numero documenti totali
+  - Numero fiches totali
+  - Scontrino medio
+
+### 56. Post-Seduta con tempistiche flessibili
+- COMPLETATO **Post-Seduta** con:
+  - Quantità + unità (minuti / ore / giorni)
+  - Descrizione dinamica ("2 ore dopo la seduta", "1 giorno dopo la seduta")
+  - Avviso se < 15 min (limite scheduler futuro)
+
+### 57. Fix layout email Promemoria
+- Layout uniforme Apple-style
+- Zero emoji (bug duplicazione backend)
+- Footer con ragione sociale + disclaimer
+
+---
+
+## TODO / ROADMAP FUTURA (finale)
+
+### 🔴 PRIORITÀ ALTA
+1. **📊 Report Analytics Clienti**
+   - Singolo cliente (cercabile)
+   - Aggregato periodo (settimana/mese/anno)
+   - Ranking clienti per spesa
+   - Export PDF A4 + video
+   - Card in Dashboard
+
+2. **🔗 Collegamento Automazioni → Azione manuale**
+   - Modale in scheda cliente
+   - "📸 Post-seduta" / "🎂 Auguri" / "💤 Riattiva"
+   - Selezione clienti + invio
+
+3. **🤖 Motore automatico promemoria** (scheduler backend)
+   - Cron job
+   - Invio post-seduta/compleanno/riattivazione
+   - Log in `promemoria_inviati`
+
+4. **🔌 Integrazione API reali** (FPT, ADE, RCH, Epson)
+
+5. **📲 Push App Cliente** (PWA)
+
+6. **🔄 Annullo/storno Fatture, DDT, Commercialista**
+
+### 🟡 PRIORITÀ MEDIA
+7. Grouping madre/figli in Archivio
+8. Filtri data Archivio
+9. Ricerca scontrini
+10. Riepilogo incassi in Archivio
+11. Tastiera numerica Cassa
+12. Tabelle DB mancanti in TEST
+
+### 🟢 PRIORITÀ BASSA
+13. Conferma cambio regime
+14. Log azioni critiche
+15. Timeout sessione
