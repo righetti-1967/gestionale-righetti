@@ -6,6 +6,8 @@ import {
 } from '../lib/percorsi';
 import { getScarichiFattura } from '../lib/scarichi';
 import { getFatture } from '../lib/fatture';
+import { getRigheRiscattateDaFigli } from '../lib/scontrini-figli';
+import { useDatiAziendali } from '../lib/useDatiAziendali';
 import {
   calcolaResiduo,
   formatEuro,
@@ -29,21 +31,33 @@ interface PercorsoConResiduo {
   fatturaIncassata: boolean;
 }
 
-const STATO_CONFIG: Record<StatoPercorso, { label: string; colore: string }> = {
-  attivo: { label: '🟢 Attivo', colore: 'bg-green-100 text-green-700' },
-  'in-scadenza': { label: '🟡 In scadenza', colore: 'bg-amber-100 text-amber-700' },
-  'da-incassare': { label: '🟠 Da incassare', colore: 'bg-orange-100 text-orange-700' },
-  'da-fatturare': { label: '🟡 Da fatturare', colore: 'bg-yellow-100 text-yellow-700' },
-  completato: { label: '🔵 Completato', colore: 'bg-blue-100 text-blue-700' },
-  scaduto: { label: '🔴 Scaduto', colore: 'bg-red-100 text-red-700' },
-  bloccato: { label: '🔴 Bloccato', colore: 'bg-red-100 text-red-700' },
-  terminato: { label: '⚫ Terminato', colore: 'bg-gray-200 text-gray-700' },
-};
+function staticoConfig(regime: 'fatture' | 'scontrini') {
+  return {
+    attivo: { label: '🟢 Attivo', colore: 'bg-green-100 text-green-700' },
+    'in-scadenza': { label: '🟡 In scadenza', colore: 'bg-amber-100 text-amber-700' },
+    'da-incassare': {
+      label: regime === 'scontrini' ? '🟠 Da scontrinare' : '🟠 Da incassare',
+      colore: 'bg-orange-100 text-orange-700',
+    },
+    'da-fatturare': {
+      label: regime === 'scontrini' ? '🟡 Da scontrinare' : '🟡 Da fatturare',
+      colore: 'bg-yellow-100 text-yellow-700',
+    },
+    completato: { label: '🔵 Completato', colore: 'bg-blue-100 text-blue-700' },
+    scaduto: { label: '🔴 Scaduto', colore: 'bg-red-100 text-red-700' },
+    bloccato: { label: '🔴 Bloccato', colore: 'bg-red-100 text-red-700' },
+    terminato: { label: '⚫ Terminato', colore: 'bg-gray-200 text-gray-700' },
+  } as Record<StatoPercorso, { label: string; colore: string }>;
+}
 
 export function ListaPercorsiCliente({
   clienteId,
   onApriPercorso,
 }: ListaPercorsiClienteProps) {
+  const { dati: azienda } = useDatiAziendali();
+  const regime = azienda.regimeDocumenti || 'fatture';
+  const STATO_CONFIG = staticoConfig(regime);
+
   const [percorsi, setPercorsi] = useState<PercorsoConResiduo[]>([]);
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState<string | null>(null);
@@ -56,7 +70,7 @@ export function ListaPercorsiCliente({
 
         const [percorsiCliente, tutteFatture] = await Promise.all([
           getPercorsiCliente(clienteId),
-          getFatture(),
+          getFatture().catch(() => []),
         ]);
 
         const fattureIncassate = new Set(
@@ -68,17 +82,39 @@ export function ListaPercorsiCliente({
         const risultati: PercorsoConResiduo[] = [];
 
         for (const p of percorsiCliente) {
-          let scarichi: Awaited<ReturnType<typeof getScarichiFattura>> = [];
-          if (p.fattura_id) {
-            try {
-              scarichi = await getScarichiFattura(p.fattura_id);
-            } catch {
-              scarichi = [];
+          // Filtro per regime
+          if (regime === 'fatture' && p.scontrino_madre_id) continue;
+          if (regime === 'scontrini' && p.fattura_id) continue;
+
+          let righeScaricate: {
+            tipo: 'servizio' | 'prodotto';
+            servizio_id: number | null;
+            prodotto_id: number | null;
+            prodotto_percorso_id?: number | null;
+            quantita: number;
+            prezzo_scontato_lordo: number;
+          }[] = [];
+
+          if (regime === 'scontrini') {
+            // Regime scontrini: calcola residuo dai figli
+            if (p.scontrino_madre_id) {
+              try {
+                righeScaricate = await getRigheRiscattateDaFigli(p.scontrino_madre_id);
+              } catch {
+                righeScaricate = [];
+              }
+            }
+          } else {
+            // Regime fatture: calcola residuo dagli scarichi fattura
+            if (p.fattura_id) {
+              try {
+                const scarichi = await getScarichiFattura(p.fattura_id);
+                righeScaricate = scarichi.flatMap((s) => s.righe || []);
+              } catch {
+                righeScaricate = [];
+              }
             }
           }
-
-          // Conserva TUTTE le informazioni degli scarichi (incluso prodotto_percorso_id)
-          const righeScaricate = scarichi.flatMap((s) => s.righe || []);
 
           const residuo = calcolaResiduo(p.righe || [], righeScaricate);
           const completato = residuo.valore_residuo_lordo <= 0;
@@ -95,9 +131,13 @@ export function ListaPercorsiCliente({
             stato = 'terminato';
           } else if (p.bloccato) {
             stato = 'bloccato';
-          } else if (!p.fattura_id) {
+          } else if (regime === 'fatture' && !p.fattura_id) {
             stato = 'da-fatturare';
-          } else if (!fattureIncassate.has(p.fattura_id)) {
+          } else if (
+            regime === 'fatture' &&
+            p.fattura_id &&
+            !fattureIncassate.has(p.fattura_id)
+          ) {
             stato = 'da-incassare';
           } else if (scaduto) {
             stato = 'scaduto';
@@ -107,23 +147,28 @@ export function ListaPercorsiCliente({
             stato = 'attivo';
           }
 
-          const fatturaIncassata = p.fattura_id
-            ? fattureIncassate.has(p.fattura_id)
-            : false;
+          const fatturaIncassata =
+            regime === 'fatture' && p.fattura_id
+              ? fattureIncassate.has(p.fattura_id)
+              : false;
 
           risultati.push({ percorso: p, residuo, stato, fatturaIncassata });
         }
 
         setPercorsi(risultati);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
+      } catch (err: any) {
+        const msg =
+          err?.message ||
+          err?.error_description ||
+          err?.details ||
+          (typeof err === 'object' ? JSON.stringify(err) : String(err));
         setErrore(msg || 'Errore nel caricamento percorsi');
       } finally {
         setLoading(false);
       }
     }
     carica();
-  }, [clienteId]);
+  }, [clienteId, regime]);
 
   if (loading) {
     return (
@@ -159,6 +204,7 @@ export function ListaPercorsiCliente({
           percorso={dati.percorso}
           residuo={dati.residuo}
           stato={dati.stato}
+          statoConfig={STATO_CONFIG}
           onClick={() => onApriPercorso(dati)}
         />
       ))}
@@ -170,14 +216,16 @@ function CardPercorso({
   percorso,
   residuo,
   stato,
+  statoConfig,
   onClick,
 }: {
   percorso: Percorso;
   residuo: ResiduoPercorso;
   stato: StatoPercorso;
+  statoConfig: Record<StatoPercorso, { label: string; colore: string }>;
   onClick: () => void;
 }) {
-  const cfg = STATO_CONFIG[stato];
+  const cfg = statoConfig[stato];
   const percentuale = residuo.percentuale_consumata;
 
   return (

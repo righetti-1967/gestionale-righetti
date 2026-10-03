@@ -6,7 +6,10 @@ import { AnteprimaPdf, IntestazionePdf, BandaBluPdf, FooterPdf } from './Antepri
 import { generaPdfDdtCliente } from '../lib/pdfDdt';
 import { generaPdfFattura } from '../lib/pdfFattura';
 import type { Percorso } from '../lib/percorsi';
+import { StampaScontrino } from './StampaScontrino';
 import type { Cliente } from '../lib/clienti';
+import { useDatiAziendali } from '../lib/useDatiAziendali';
+import { getScontrini, type Scontrino } from '../lib/scontrini';
 
 interface StoricoProdottiProps {
   clienteId: number;
@@ -20,6 +23,7 @@ interface VoceStorico {
   data: string;
   numeroDdt: number | null;
   numeroFattura: string | null;
+  numeroScontrino: string | null;
   anno: number;
   nome: string;
   quantita: number;
@@ -28,27 +32,44 @@ interface VoceStorico {
   pagata: boolean;
   scarico: ScaricoSeduta | null;
   fattura: Fattura | null;
+  scontrino: Scontrino | null;
 }
 
 export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
+  const { dati: azienda } = useDatiAziendali();
+  const regime = azienda.regimeDocumenti || 'fatture';
+
   const [scarichi, setScarichi] = useState<ScaricoSeduta[]>([]);
   const [fatture, setFatture] = useState<Fattura[]>([]);
+  const [scontrini, setScontrini] = useState<Scontrino[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabFiltro>('tutti');
   const [ricerca, setRicerca] = useState('');
   const [ddtAperto, setDdtAperto] = useState<ScaricoSeduta | null>(null);
   const [fatturaAperta, setFatturaAperta] = useState<Fattura | null>(null);
+  const [scontrinoAperto, setScontrinoAperto] = useState<Scontrino | null>(null);
 
   useEffect(() => {
     async function carica() {
       try {
         setLoading(true);
-        const [dataScarichi, dataFatture] = await Promise.all([
-          getScarichiCliente(clienteId),
-          getFattureCliente(clienteId),
-        ]);
-        setScarichi(dataScarichi);
-        setFatture(dataFatture);
+
+        if (regime === 'scontrini') {
+          // Regime scontrini: carica scontrini figli del cliente
+          const tutti = await getScontrini();
+          const suoi = tutti.filter(
+            (s) => s.cliente_id === clienteId && s.tipo === 'figlio' && !s.annullato
+          );
+          setScontrini(suoi);
+        } else {
+          // Regime fatture: carica scarichi + fatture
+          const [dataScarichi, dataFatture] = await Promise.all([
+            getScarichiCliente(clienteId),
+            getFattureCliente(clienteId),
+          ]);
+          setScarichi(dataScarichi);
+          setFatture(dataFatture);
+        }
       } catch (err) {
         console.error('Errore nel recupero storico cliente:', err);
       } finally {
@@ -56,7 +77,7 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
       }
     }
     carica();
-  }, [clienteId]);
+  }, [clienteId, regime]);
 
   // Estrae sia PRODOTTI che SERVIZI da tutti i DDT del cliente
   const tutteVoci: VoceStorico[] = useMemo(() => {
@@ -73,6 +94,7 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
           data: s.data_seduta,
           numeroDdt: s.numero_ddt,
           numeroFattura: null,
+          numeroScontrino: null,
           anno,
           nome: nomePulito,
           quantita: r.quantita,
@@ -81,6 +103,62 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
           pagata: false,
           scarico: s,
           fattura: null,
+          scontrino: null,
+        });
+      }
+    }
+
+    // === Regime scontrini: voci dai figli ===
+    for (const sc of scontrini) {
+      const anno = new Date(sc.data_emissione).getFullYear();
+      for (const r of sc.righe || []) {
+        // Salta righe di storno e negative
+        if (r.quantita <= 0) continue;
+        if (r.nome.startsWith('Storno percorso')) continue;
+
+        list.push({
+          id: `sc-${sc.id}-${r.tipo}-${r.prodotto_id || r.servizio_id}-${Math.random()}`,
+          tipo: r.tipo,
+          data: sc.data_emissione,
+          numeroDdt: null,
+          numeroFattura: null,
+          numeroScontrino: sc.numero_scontrino,
+          anno,
+          nome: r.nome,
+          quantita: r.quantita,
+          isExtra: false,
+          importo: null,
+          pagata: false,
+          scarico: null,
+          fattura: null,
+          scontrino: sc,
+        });
+      }
+    }
+
+    // === Regime fatture: voci dai DDT ===
+    for (const s of scarichi) {
+      const anno = new Date(s.data_seduta).getFullYear();
+      for (const r of s.righe || []) {
+        const isExtra = r.nome.includes('(EXTRA Percorso)');
+        const nomePulito = r.nome.replace(' (EXTRA Percorso)', '').trim();
+
+        list.push({
+          id: `${s.id}-${r.tipo}-${r.prodotto_id || r.servizio_id}-${Math.random()}`,
+          tipo: r.tipo,
+          data: s.data_seduta,
+          numeroDdt: s.numero_ddt,
+          numeroFattura: null,
+          numeroScontrino: null,
+          anno,
+          nome: nomePulito,
+          quantita: r.quantita,
+          isExtra,
+          importo: null,
+          pagata: false,
+          scarico: s,
+          fattura: null,
+          scontrino: null,
         });
       }
     }
@@ -95,6 +173,7 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
         data: dataRif,
         numeroDdt: null,
         numeroFattura: fatt.numero_fattura,
+        numeroScontrino: null,
         anno,
         nome: `Fattura ${fatt.numero_fattura}`,
         quantita: 1,
@@ -103,12 +182,13 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
         pagata: !!fatt.data_incasso,
         scarico: null,
         fattura: fatt,
+        scontrino: null,
       });
     }
 
     // Ordina per data più recente
     return list.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
-  }, [scarichi, fatture]);
+  }, [scarichi, fatture, scontrini]);
 
   // Conteggi
   const totaleProdotti = tutteVoci
@@ -295,6 +375,15 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
                       >
                         📄 {item.numeroFattura}
                       </button>
+                    ) : item.scontrino ? (
+                      <button
+                        type="button"
+                        onClick={() => setScontrinoAperto(item.scontrino)}
+                        className="font-medium text-apple-blue hover:underline"
+                        title="Apri scontrino"
+                      >
+                        🧾 {item.numeroScontrino}
+                      </button>
                     ) : item.scarico ? (
                       <button
                         type="button"
@@ -349,6 +438,19 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
         <AnteprimaFatturaMinimale
           fattura={fatturaAperta}
           onClose={() => setFatturaAperta(null)}
+        />
+      )}
+
+      {/* Modale Stampa Scontrino */}
+      {scontrinoAperto && (
+        <StampaScontrino
+          scontrino={scontrinoAperto}
+          onClose={() => setScontrinoAperto(null)}
+          onAnnullato={() => {
+            setScontrinoAperto(null);
+            // Ricarica per aggiornare lo storico
+            window.location.reload();
+          }}
         />
       )}
 

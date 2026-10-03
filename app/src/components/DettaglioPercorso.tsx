@@ -87,8 +87,14 @@ export function DettaglioPercorso({
   > = {
     attivo: { label: '🟢 Attivo', colore: 'bg-green-100 text-green-700' },
     'in-scadenza': { label: '🟡 In scadenza', colore: 'bg-amber-100 text-amber-700' },
-    'da-incassare': { label: '🟠 Da incassare', colore: 'bg-orange-100 text-orange-700' },
-    'da-fatturare': { label: '🟡 Da fatturare', colore: 'bg-yellow-100 text-yellow-700' },
+    'da-incassare': {
+      label: regimeEffettivo === 'scontrini' ? '🟠 Da scontrinare' : '🟠 Da incassare',
+      colore: 'bg-orange-100 text-orange-700',
+    },
+    'da-fatturare': {
+      label: regimeEffettivo === 'scontrini' ? '🟡 Da scontrinare' : '🟡 Da fatturare',
+      colore: 'bg-yellow-100 text-yellow-700',
+    },
     completato: { label: '🔵 Completato', colore: 'bg-blue-100 text-blue-700' },
     scaduto: { label: '🔴 Scaduto', colore: 'bg-red-100 text-red-700' },
     bloccato: { label: '🔴 Bloccato', colore: 'bg-red-100 text-red-700' },
@@ -644,6 +650,7 @@ export function DettaglioPercorso({
           percorso={percorso}
           cliente={cliente}
           proformaIncassata={fatturaIncassata}
+          scontrinoEmesso={!!percorso.scontrino_madre_id}
           onClose={() => setShowModifica(false)}
           onSuccess={() => {
             setShowModifica(false);

@@ -21,6 +21,7 @@ import {
   type ResiduoPercorso,
 } from '../lib/percorsi-helper';
 import { getRigheRiscattateDaFigli } from '../lib/scontrini-figli';
+import { aggiornaAppuntamento } from '../lib/appuntamenti';
 import { useDatiAziendali } from '../lib/useDatiAziendali';
 import { Toast, type ToastTipo } from '../components/Toast';
 import { StampaScontrino } from '../components/StampaScontrino';
@@ -96,6 +97,17 @@ export function CassaFiscale() {
   const [percorsoSelezionato, setPercorsoSelezionato] = useState<PercorsoConResiduo | null>(null);
   const [showNuovoPercorso, setShowNuovoPercorso] = useState(false);
 
+  // Voci da pre-selezionare (da Agenda/Clienti via localStorage)
+  const [vociDaPreselezionare, setVociDaPreselezionare] = useState<
+    Array<{
+      tipo: 'servizio' | 'prodotto';
+      servizio_id: number | null;
+      prodotto_id: number | null;
+      nome?: string;
+      quantita: number;
+    }> | null
+  >(null);
+
   // Percorsi attivi del cliente selezionato in Cassa
   const [percorsiClienteCorrente, setPercorsiClienteCorrente] = useState<PercorsoConResiduo[]>([]);
   const [percorsoDaRiscattare, setPercorsoDaRiscattare] = useState<PercorsoConResiduo | null>(null);
@@ -126,6 +138,94 @@ export function CassaFiscale() {
     }
     carica();
   }, []);
+
+  // Legge cliente + voci pre-selezionate da localStorage (da Clienti o Agenda)
+  useEffect(() => {
+    const salvatoCliente = localStorage.getItem('cassa_cliente_preselezionato');
+    const salvatoVoci = localStorage.getItem('cassa_voci_preselezionate');
+
+    if (salvatoCliente) {
+      try {
+        const cliente = JSON.parse(salvatoCliente);
+        setClienteSelezionato(cliente);
+        localStorage.removeItem('cassa_cliente_preselezionato');
+      } catch (err) {
+        console.warn('Errore parse cliente pre-selezionato:', err);
+      }
+    }
+
+    if (salvatoVoci) {
+      try {
+        const voci = JSON.parse(salvatoVoci);
+        if (Array.isArray(voci) && voci.length > 0) {
+          setVociDaPreselezionare(voci);
+        }
+        localStorage.removeItem('cassa_voci_preselezionate');
+      } catch (err) {
+        console.warn('Errore parse voci pre-selezionate:', err);
+      }
+    }
+  }, []);
+
+  // Quando prodotti + servizi sono caricati, popola il carrello con le voci pre-selezionate
+  useEffect(() => {
+    if (!vociDaPreselezionare || vociDaPreselezionare.length === 0) return;
+    if (prodotti.length === 0 && servizi.length === 0) return;
+
+    setCarrello((prev) => {
+      const nuove = [...prev];
+      for (const v of vociDaPreselezionare) {
+        if (v.tipo === 'servizio' && v.servizio_id) {
+          const s = servizi.find((x) => x.id === v.servizio_id);
+          if (s) {
+            const esistente = nuove.findIndex(
+              (r) => r.tipo === 'servizio' && r.servizio_id === s.id
+            );
+            if (esistente >= 0) {
+              nuove[esistente].quantita += v.quantita || 1;
+            } else {
+              nuove.push({
+                id: Math.random().toString(36).substring(7),
+                tipo: 'servizio',
+                prodotto_id: null,
+                servizio_id: s.id,
+                nome: s.nome,
+                prezzo_unitario_lordo: Number(s.prezzo_lordo) || 0,
+                quantita: v.quantita || 1,
+                sconto_tipo: 'percentuale',
+                sconto_valore: 0,
+              });
+            }
+          }
+        } else if (v.tipo === 'prodotto' && v.prodotto_id) {
+          const p = prodotti.find((x) => x.id === v.prodotto_id);
+          if (p) {
+            const esistente = nuove.findIndex(
+              (r) => r.tipo === 'prodotto' && r.prodotto_id === p.id
+            );
+            if (esistente >= 0) {
+              nuove[esistente].quantita += v.quantita || 1;
+            } else {
+              nuove.push({
+                id: Math.random().toString(36).substring(7),
+                tipo: 'prodotto',
+                prodotto_id: p.id,
+                servizio_id: null,
+                nome: p.nome,
+                prezzo_unitario_lordo: Number(p.prezzo_lordo) || 0,
+                quantita: v.quantita || 1,
+                sconto_tipo: 'percentuale',
+                sconto_valore: 0,
+              });
+            }
+          }
+        }
+      }
+      return nuove;
+    });
+
+    setVociDaPreselezionare(null);
+  }, [vociDaPreselezionare, prodotti, servizi]);
 
   useEffect(() => {
     if (tab !== 'archivio') return;
@@ -457,6 +557,19 @@ export function CassaFiscale() {
         sconto_totale_valore: scontoTotaleValore > 0 ? scontoTotaleValore : null,
         righe,
       });
+
+      // Se lo scontrino viene da un appuntamento, marca come completato
+      const appuntamentoId = localStorage.getItem('cassa_appuntamento_id');
+      if (appuntamentoId) {
+        try {
+          await aggiornaAppuntamento(Number(appuntamentoId), {
+            stato: 'completato',
+          });
+          localStorage.removeItem('cassa_appuntamento_id');
+        } catch (errApp) {
+          console.warn('⚠️ Errore aggiornamento appuntamento:', errApp);
+        }
+      }
 
       setToast({
         message: `✅ Scontrino emesso (${formatEuro(totali.totaleFinale)})`,

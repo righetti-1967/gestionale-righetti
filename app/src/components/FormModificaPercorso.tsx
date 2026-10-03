@@ -10,6 +10,7 @@ interface FormModificaPercorsoProps {
   percorso: Percorso;
   cliente: Cliente | null;
   proformaIncassata: boolean;
+  scontrinoEmesso?: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -27,6 +28,7 @@ export function FormModificaPercorso({
   percorso,
   cliente,
   proformaIncassata,
+  scontrinoEmesso,
   onClose,
   onSuccess,
 }: FormModificaPercorsoProps) {
@@ -57,7 +59,7 @@ export function FormModificaPercorso({
   const [showServiziPicker, setShowServiziPicker] = useState(false);
   const [showProdottiPicker, setShowProdottiPicker] = useState(false);
 
-  const soloNote = proformaIncassata;
+  const soloNote = proformaIncassata || !!scontrinoEmesso;
 
   useEffect(() => {
     async function carica() {

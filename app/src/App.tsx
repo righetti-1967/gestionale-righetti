@@ -167,7 +167,7 @@ function AppGestionale() {
 
         <main className="flex-1 overflow-y-auto p-3 lg:p-4">
           {currentPage === 'dashboard' && <Dashboard onNavigate={setCurrentPage} />}
-          {currentPage === 'agenda' && <Agenda />}
+          {currentPage === 'agenda' && <Agenda onNavigate={setCurrentPage} />}
           {currentPage === 'clienti' && <Clienti onNavigate={setCurrentPage} />}
           {currentPage === 'fatture' && <Fatture />}
           {currentPage === 'ddt' && <DDT />}
@@ -175,7 +175,7 @@ function AppGestionale() {
           {currentPage === 'ordini' && <Ordini />}
           {currentPage === 'servizi' && <Servizi />}
           {currentPage === 'prodotti' && <Prodotti />}
-          {currentPage === 'percorsi' && <Percorsi />}
+          {currentPage === 'percorsi' && <Percorsi onNavigate={setCurrentPage} />}
           {currentPage === 'cassa_fiscale' && <CassaFiscale />}
           {currentPage === 'impostazioni' && <Impostazioni />}
         </main>

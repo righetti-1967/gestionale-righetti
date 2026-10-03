@@ -14,6 +14,7 @@ import { getFatture } from '../lib/fatture';
 import { getScarichiFattura, type ScaricoSeduta } from '../lib/scarichi';
 import { getAppuntamenti, OPERATORI } from '../lib/appuntamenti';
 import { calcolaResiduo, type ResiduoPercorso } from '../lib/percorsi-helper';
+import { getRigheRiscattateDaFigli } from '../lib/scontrini-figli';
 import { FormCliente } from '../components/FormNuovoCliente';
 import { FormNuovoPercorso } from '../components/FormNuovoPercorso';
 import { FormNuovaFattura } from '../components/FormNuovaFattura';
@@ -69,6 +70,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
   const [clienteRebooking, setClienteRebooking] = useState<Cliente | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showFormPercorso, setShowFormPercorso] = useState(false);
+  const [showFormPercorsoScontrino, setShowFormPercorsoScontrino] = useState(false);
   const [confermaElimina, setConfermaElimina] = useState<Cliente | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastTipo, setToastTipo] = useState<ToastTipo>('success');
@@ -81,6 +83,9 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
   const [percorsiPerCliente, setPercorsiPerCliente] = useState<
     Map<number, PercorsoAttivo[]>
   >(new Map());
+
+  // Regime documenti
+  const regimeDocumenti = azienda.regimeDocumenti || 'fatture';
 
   const [percorsoScarico, setPercorsoScarico] = useState<{
     percorso: Percorso;
@@ -233,17 +238,40 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
       const trentaGiorniMs = 30 * 24 * 60 * 60 * 1000;
 
       for (const p of tuttiPercorsi) {
-        let scarichi: Awaited<ReturnType<typeof getScarichiFattura>> = [];
-        if (p.fattura_id) {
-          let cached = scarichiCache.get(p.fattura_id);
-          if (!cached) {
-            cached = await getScarichiFattura(p.fattura_id);
-            scarichiCache.set(p.fattura_id, cached);
+        // Filtro per regime: in FATTURE escludo percorsi scontrinati, in SCONTRINI escludo percorsi fatturati
+        if (regimeDocumenti === 'fatture' && p.scontrino_madre_id) continue;
+        if (regimeDocumenti === 'scontrini' && p.fattura_id) continue;
+
+        let righeScaricate: {
+          tipo: 'servizio' | 'prodotto';
+          servizio_id: number | null;
+          prodotto_id: number | null;
+          prodotto_percorso_id?: number | null;
+          quantita: number;
+          prezzo_scontato_lordo: number;
+        }[] = [];
+
+        if (regimeDocumenti === 'scontrini') {
+          // Regime scontrini: calcola residuo dai figli
+          if (p.scontrino_madre_id) {
+            try {
+              righeScaricate = await getRigheRiscattateDaFigli(p.scontrino_madre_id);
+            } catch {
+              righeScaricate = [];
+            }
           }
-          scarichi = cached;
+        } else {
+          // Regime fatture: calcola residuo dagli scarichi fattura
+          if (p.fattura_id) {
+            let cached = scarichiCache.get(p.fattura_id);
+            if (!cached) {
+              cached = await getScarichiFattura(p.fattura_id);
+              scarichiCache.set(p.fattura_id, cached);
+            }
+            righeScaricate = cached.flatMap((s) => s.righe || []);
+          }
         }
 
-        const righeScaricate = scarichi.flatMap((s) => s.righe || []);
         const residuo = calcolaResiduo(p.righe || [], righeScaricate);
         const completato = residuo.valore_residuo_lordo <= 0;
 
@@ -259,10 +287,16 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
           stato = 'bloccato';
         } else if (completato) {
           stato = 'completato';
-        } else if (!p.fattura_id) {
+        } else if (regimeDocumenti === 'fatture' && !p.fattura_id) {
           stato = 'da-fatturare';
-        } else if (!fattureIncassate.has(p.fattura_id)) {
+        } else if (
+          regimeDocumenti === 'fatture' &&
+          p.fattura_id &&
+          !fattureIncassate.has(p.fattura_id)
+        ) {
           stato = 'da-incassare';
+        } else if (regimeDocumenti === 'scontrini' && !p.scontrino_madre_id) {
+          stato = 'da-fatturare';
         } else if (scaduto) {
           stato = 'scaduto';
         } else if (inScadenza) {
@@ -443,6 +477,19 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
     setClientePerPercorso(cliente);
     setClienteSelezionato(null);
     setShowFormPercorso(true);
+  }
+
+  function apriNuovoPercorsoScontrino(cliente: Cliente) {
+    setClientePerPercorso(cliente);
+    setClienteSelezionato(null);
+    setShowFormPercorsoScontrino(true);
+  }
+
+  function apriNuovoScontrino(cliente: Cliente) {
+    // Salva cliente in localStorage e naviga a Cassa Fiscale
+    localStorage.setItem('cassa_cliente_preselezionato', JSON.stringify(cliente));
+    setClienteSelezionato(null);
+    onNavigate?.('cassa_fiscale');
   }
 
   function apriFissaAppuntamento(cliente: Cliente) {
@@ -759,7 +806,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
                             return `–${String(hF).padStart(2, '0')}:${String(mF).padStart(2, '0')}`;
                           })()}
                           {' • '}
-                          {OPERATORI[app.operatore].label}
+                          {OPERATORI[app.operatore]?.label || app.operatore}
                         </p>
                       </div>
                     </div>
@@ -1104,12 +1151,29 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
               >
                 ✏️ Modifica
               </button>
-              <button
-                onClick={() => apriNuovoPercorso(clienteSelezionato)}
-                className="flex-1 px-4 py-2.5 bg-green-500 text-white rounded-apple font-medium text-sm hover:bg-green-600 transition-colors"
-              >
-                🎯 Nuovo Percorso
-              </button>
+              {regimeDocumenti === 'scontrini' ? (
+                <>
+                  <button
+                    onClick={() => apriNuovoPercorsoScontrino(clienteSelezionato)}
+                    className="flex-1 px-4 py-2.5 bg-amber-500 text-white rounded-apple font-medium text-sm hover:bg-amber-600 transition-colors"
+                  >
+                    🎯 Nuovo Percorso
+                  </button>
+                  <button
+                    onClick={() => apriNuovoScontrino(clienteSelezionato)}
+                    className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-apple font-medium text-sm hover:bg-purple-700 transition-colors"
+                  >
+                    🧾 Nuovo Scontrino
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => apriNuovoPercorso(clienteSelezionato)}
+                  className="flex-1 px-4 py-2.5 bg-green-500 text-white rounded-apple font-medium text-sm hover:bg-green-600 transition-colors"
+                >
+                  🎯 Nuovo Percorso
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1181,6 +1245,24 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
             setClientePerPercorso(null);
             caricaClienti();
             setToastMessage(`Percorso creato con successo! (ID: ${percorsoId})`);
+            setToastTipo('success');
+          }}
+        />
+      )}
+
+      {showFormPercorsoScontrino && (
+        <FormNuovoPercorso
+          clienteIniziale={clientePerPercorso}
+          regime="scontrini"
+          onClose={() => {
+            setShowFormPercorsoScontrino(false);
+            setClientePerPercorso(null);
+          }}
+          onSuccess={(percorsoId) => {
+            setShowFormPercorsoScontrino(false);
+            setClientePerPercorso(null);
+            caricaClienti();
+            setToastMessage(`Percorso + Scontrino madre creato! (ID: ${percorsoId})`);
             setToastTipo('success');
           }}
         />

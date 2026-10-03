@@ -9,6 +9,7 @@ import {
 import { getProdotti, type Prodotto } from '../lib/prodotti';
 import { getServizi, type Servizio } from '../lib/servizi';
 import { creaScontrinoFiglio, getRigheRiscattateDaFigli } from '../lib/scontrini-figli';
+import { aggiornaAppuntamento } from '../lib/appuntamenti';
 import { Toast, type ToastTipo } from './Toast';
 
 interface VociIniziale {
@@ -185,6 +186,19 @@ export function FormRiscattaPercorso({
         metodo_pagamento: 'Non richiesto',
         modalita_cassa: 'digitale',
       });
+
+      // Se il figlio viene da un appuntamento, marca come completato
+      const appuntamentoId = localStorage.getItem('cassa_appuntamento_id');
+      if (appuntamentoId) {
+        try {
+          await aggiornaAppuntamento(Number(appuntamentoId), {
+            stato: 'completato',
+          });
+          localStorage.removeItem('cassa_appuntamento_id');
+        } catch (errApp) {
+          console.warn('⚠️ Errore aggiornamento appuntamento:', errApp);
+        }
+      }
 
       setToast({ message: '✅ Scontrino figlio emesso', tipo: 'success' });
       setTimeout(() => {

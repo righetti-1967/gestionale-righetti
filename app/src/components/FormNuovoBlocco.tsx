@@ -140,7 +140,7 @@ export function FormNuovoBlocco({
                       : 'bg-gray-100 text-apple-darkgray hover:bg-gray-200'
                   }`}
                 >
-                  {OPERATORI[op].label}
+                  {OPERATORI[op]?.label || op}
                 </button>
               ))}
             </div>

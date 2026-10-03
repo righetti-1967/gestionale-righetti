@@ -39,7 +39,11 @@ function dataToLocaleISO(d: Date): string {
   return `${anno}-${mese}-${giorno}`;
 }
 
-export function Agenda() {
+export function Agenda({
+  onNavigate,
+}: {
+  onNavigate?: (page: string) => void;
+} = {}) {
   const [vista, setVista] = useState<Vista>('giornaliera');
   const [raggruppaSeduta, setRaggruppaSeduta] = useState<boolean>(() => {
     return localStorage.getItem('gestionale_raggruppa_seduta') === 'true';
@@ -811,6 +815,23 @@ export function Agenda() {
           }}
           onModifica={() => modificaAppuntamento(dettaglio)}
           onScaricoSeduta={apriScaricoSeduta}
+          onScontrina={(app) => {
+            // Salva cliente + voci dell'appuntamento in localStorage
+            localStorage.setItem(
+              'cassa_cliente_preselezionato',
+              JSON.stringify(app.cliente)
+            );
+            localStorage.setItem(
+              'cassa_voci_preselezionate',
+              JSON.stringify(app.voci_selezionate || [])
+            );
+            localStorage.setItem(
+              'cassa_appuntamento_id',
+              String(app.id)
+            );
+            setDettaglio(null);
+            onNavigate?.('cassa_fiscale');
+          }}
           onFatturaProforma={apriFatturaProforma}
           onFatturaDiretta={apriFatturaDiretta}
           onToast={(msg, tipo) => setToast({ message: msg, tipo })}

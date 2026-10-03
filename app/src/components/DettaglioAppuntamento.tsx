@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDatiAziendali } from '../lib/useDatiAziendali';
 import type { AppuntamentoConCliente, Operatore, VoceSelezionata } from '../lib/appuntamenti';
 import { OPERATORI, aggiornaAppuntamento } from '../lib/appuntamenti';
 
@@ -10,6 +11,7 @@ interface DettaglioAppuntamentoProps {
   onScaricoSeduta: (app: AppuntamentoConCliente) => void;
   onFatturaProforma: (app: AppuntamentoConCliente) => void;
   onFatturaDiretta: (app: AppuntamentoConCliente) => void;
+  onScontrina?: (app: AppuntamentoConCliente) => void;
   onToast: (msg: string, tipo: 'success' | 'error' | 'info') => void;
 }
 
@@ -23,8 +25,11 @@ export function DettaglioAppuntamento({
   onScaricoSeduta,
   onFatturaProforma,
   onFatturaDiretta,
+  onScontrina,
   onToast,
 }: DettaglioAppuntamentoProps) {
+  const { dati: azienda } = useDatiAziendali();
+  const regime = azienda.regimeDocumenti || 'fatture';
   const [modaleElimina, setModaleElimina] = useState(false);
   const [tipoEliminazione, setTipoEliminazione] = useState<TipoEliminazione>(null);
   const [salvando, setSalvando] = useState(false);
@@ -223,13 +228,23 @@ export function DettaglioAppuntamento({
           )}
 
           <div className="pt-4 border-t border-gray-200/60 space-y-2">
-            {isPercorso && (
+            {isPercorso && regime === 'fatture' && (
               <button
                 onClick={() => onScaricoSeduta(appuntamento)}
                 className="w-full px-4 py-3 bg-green-600 text-white rounded-apple font-semibold text-sm hover:bg-green-700 transition-colors shadow-sm flex items-center justify-center gap-2"
               >
                 <span>📋</span>
                 <span>Avvia Scarico Seduta & DDT</span>
+              </button>
+            )}
+
+            {isPercorso && regime === 'scontrini' && onScontrina && (
+              <button
+                onClick={() => onScontrina(appuntamento)}
+                className="w-full px-4 py-3 bg-purple-600 text-white rounded-apple font-semibold text-sm hover:bg-purple-700 transition-colors shadow-sm flex items-center justify-center gap-2"
+              >
+                <span>🧾</span>
+                <span>Scontrina (vai a Cassa Fiscale)</span>
               </button>
             )}
 

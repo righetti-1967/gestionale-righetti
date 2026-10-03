@@ -32,23 +32,32 @@ type FiltroStato =
   | 'bloccati'
   | 'tutti';
 
-const STATO_CONFIG: Record<
+function staticoConfig(regime: 'fatture' | 'scontrini'): Record<
   StatoPercorso,
   { label: string; colore: string }
-> = {
-  attivo: { label: '🟢 Attivo', colore: 'bg-green-100 text-green-700' },
-  'in-scadenza': { label: '🟡 In scadenza', colore: 'bg-amber-100 text-amber-700' },
-  'da-incassare': { label: '🟠 Da incassare', colore: 'bg-orange-100 text-orange-700' },
-  'da-fatturare': { label: '🟡 Da fatturare', colore: 'bg-yellow-100 text-yellow-700' },
-  completato: { label: '🔵 Completato', colore: 'bg-blue-100 text-blue-700' },
-  scaduto: { label: '🔴 Scaduto', colore: 'bg-red-100 text-red-700' },
-  bloccato: { label: '🔴 Bloccato', colore: 'bg-red-100 text-red-700' },
-  terminato: { label: '⚫ Terminato', colore: 'bg-gray-200 text-gray-700' },
-};
+> {
+  return {
+    attivo: { label: '🟢 Attivo', colore: 'bg-green-100 text-green-700' },
+    'in-scadenza': { label: '🟡 In scadenza', colore: 'bg-amber-100 text-amber-700' },
+    'da-incassare': {
+      label: regime === 'scontrini' ? '🟠 Da scontrinare' : '🟠 Da incassare',
+      colore: 'bg-orange-100 text-orange-700',
+    },
+    'da-fatturare': {
+      label: regime === 'scontrini' ? '🟡 Da scontrinare' : '🟡 Da fatturare',
+      colore: 'bg-yellow-100 text-yellow-700',
+    },
+    completato: { label: '🔵 Completato', colore: 'bg-blue-100 text-blue-700' },
+    scaduto: { label: '🔴 Scaduto', colore: 'bg-red-100 text-red-700' },
+    bloccato: { label: '🔴 Bloccato', colore: 'bg-red-100 text-red-700' },
+    terminato: { label: '⚫ Terminato', colore: 'bg-gray-200 text-gray-700' },
+  };
+}
 
-export function Percorsi() {
+export function Percorsi({ onNavigate }: { onNavigate?: (page: string) => void } = {}) {
   const { dati: azienda } = useDatiAziendali();
   const regime = azienda.regimeDocumenti || 'fatture';
+  const STATO_CONFIG = staticoConfig(regime);
   const [percorsi, setPercorsi] = useState<PercorsoConDati[]>([]);
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState<string | null>(null);
@@ -81,8 +90,15 @@ export function Percorsi() {
       const oggi = new Date();
       const trentaGiorniMs = 30 * 24 * 60 * 60 * 1000;
 
+      // Filtro per regime
+      const percorsiFiltratiPerRegime = tuttiPercorsi.filter((p) => {
+        if (regime === 'fatture' && p.scontrino_madre_id) return false;
+        if (regime === 'scontrini' && p.fattura_id) return false;
+        return true;
+      });
+
       const risultati: PercorsoConDati[] = await Promise.all(
-        tuttiPercorsi.map(async (p) => {
+        percorsiFiltratiPerRegime.map(async (p) => {
           let scarichi: Awaited<ReturnType<typeof getScarichiFattura>> = [];
           if (p.fattura_id) {
             try {
@@ -110,10 +126,15 @@ export function Percorsi() {
             stato = 'terminato';
           } else if (p.bloccato) {
             stato = 'bloccato';
-          } else if (!p.fattura_id) {
+          } else if (regime === 'fatture' && !p.fattura_id) {
+            // Regime fatture: percorso senza fattura emessa
             stato = 'da-fatturare';
-          } else if (!fattureIncassate.has(p.fattura_id)) {
+          } else if (regime === 'fatture' && p.fattura_id && !fattureIncassate.has(p.fattura_id)) {
+            // Regime fatture: fattura emessa ma non incassata
             stato = 'da-incassare';
+          } else if (regime === 'scontrini' && !p.scontrino_madre_id) {
+            // Regime scontrini: percorso senza scontrino madre emesso
+            stato = 'da-fatturare';
           } else if (scaduto) {
             stato = 'scaduto';
           } else if (inScadenza) {
@@ -299,7 +320,7 @@ export function Percorsi() {
                 onClick={() => setPercorsoSelezionato(p)}
                 className="w-full bg-white rounded-apple shadow-apple p-4 text-left hover:bg-blue-50/40 transition-colors"
               >
-                <CardPercorsoMobile dati={p} />
+                <CardPercorsoMobile dati={p} statoConfig={STATO_CONFIG} />
               </button>
             ))}
           </div>
@@ -379,11 +400,10 @@ export function Percorsi() {
             setFatturaDaPercorso(p);
           }}
           onRiscatta={() => {
-            // In regime scontrini: cambia pagina alla Cassa Fiscale
-            // (il riscatto vero si fa lì)
-            window.location.hash = '#cassa_fiscale';
-            localStorage.setItem('gestionale_pagina', 'cassa_fiscale');
-            window.location.reload();
+            if (onNavigate) {
+              setPercorsoSelezionato(null);
+              onNavigate('cassa_fiscale');
+            }
           }}
         />
       )}
@@ -412,9 +432,15 @@ export function Percorsi() {
   );
 }
 
-function CardPercorsoMobile({ dati }: { dati: PercorsoConDati }) {
+function CardPercorsoMobile({
+  dati,
+  statoConfig,
+}: {
+  dati: PercorsoConDati;
+  statoConfig: Record<StatoPercorso, { label: string; colore: string }>;
+}) {
   const { percorso, cliente, residuo, stato } = dati;
-  const cfg = STATO_CONFIG[stato];
+  const cfg = statoConfig[stato];
 
   return (
     <>

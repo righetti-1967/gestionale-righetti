@@ -87,9 +87,25 @@ export function ListaAppuntamentiCliente({
         setErrore(null);
         const data = await getAppuntamentiCliente(clienteId);
         setAppuntamenti(data || []);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        setErrore(msg || 'Errore nel caricamento');
+      } catch (err: any) {
+        const msg =
+          err?.message ||
+          err?.error_description ||
+          err?.details ||
+          err?.hint ||
+          (typeof err === 'object' ? JSON.stringify(err) : String(err));
+
+        // Se la tabella non esiste (ambiente TEST incompleto), ignora silenziosamente
+        if (
+          typeof msg === 'string' &&
+          (msg.includes('Could not find the table') ||
+            msg.includes('relation') && msg.includes('does not exist'))
+        ) {
+          setAppuntamenti([]);
+          setErrore(null);
+        } else {
+          setErrore(msg || 'Errore nel caricamento appuntamenti');
+        }
       } finally {
         setLoading(false);
       }

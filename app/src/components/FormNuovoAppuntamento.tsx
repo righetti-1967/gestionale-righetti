@@ -758,29 +758,35 @@ export function FormNuovoAppuntamento({
               Operatore <span className="text-red-500">*</span>
             </label>
             <div className="grid grid-cols-2 gap-3">
-              {operatoriVisibili.map((op) => (
-                <button
-                  key={op}
-                  type="button"
-                  onClick={() => setOperatore(op)}
-                  className={`px-4 py-3 rounded-apple font-semibold text-sm transition-all text-left ${
-                    operatore === op
-                      ? op === 'luca'
-                        ? 'bg-blue-600 text-white shadow-apple'
-                        : 'bg-green-600 text-white shadow-apple'
-                      : 'bg-gray-100 text-apple-darkgray hover:bg-gray-200'
-                  }`}
-                >
-                  <p className="text-sm font-bold">{OPERATORI[op].label}</p>
-                  <p
-                    className={`text-xs mt-0.5 ${
-                      operatore === op ? 'opacity-90' : 'opacity-70'
+              {operatoriVisibili.map((op) => {
+                const opConfig = OPERATORI[op];
+                const label = opConfig?.label || op;
+                const ruolo = opConfig?.ruolo || 'Operatore';
+
+                return (
+                  <button
+                    key={op}
+                    type="button"
+                    onClick={() => setOperatore(op)}
+                    className={`px-4 py-3 rounded-apple font-semibold text-sm transition-all text-left ${
+                      operatore === op
+                        ? op === 'luca'
+                          ? 'bg-blue-600 text-white shadow-apple'
+                          : 'bg-green-600 text-white shadow-apple'
+                        : 'bg-gray-100 text-apple-darkgray hover:bg-gray-200'
                     }`}
                   >
-                    {OPERATORI[op].ruolo}
-                  </p>
-                </button>
-              ))}
+                    <p className="text-sm font-bold">{label}</p>
+                    <p
+                      className={`text-xs mt-0.5 ${
+                        operatore === op ? 'opacity-90' : 'opacity-70'
+                      }`}
+                    >
+                      {ruolo}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

@@ -73,7 +73,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         const dataFine90 = tra90Giorni.toISOString().split('T')[0];
 
         const [fatture, clienti, percorsi, prodotti, scarichi, appuntamenti] = await Promise.all([
-          getFatture(),
+          getFatture().catch(() => []),
           getClienti(),
           getTuttiPercorsi(),
           getProdotti(),

@@ -31,7 +31,7 @@ export function Fatture() {
   }, [ricerca]);
 
   async function caricaFatture() {
-    try { setLoading(true); const d = await getFatture(); setFatture(d); } catch (e: any) { setErrore(e.message); } finally { setLoading(false); }
+    try { setLoading(true); const d = await getFatture(); setFatture(d); } catch (e: any) { setErrore(e?.message || 'Errore caricamento fatture'); setFatture([]); } finally { setLoading(false); }
   }
   async function eseguiRicerca(q: string) {
     try { setLoading(true); const d = await cercaFatture(q); setFatture(d); } catch (e: any) { setErrore(e.message); } finally { setLoading(false); }
