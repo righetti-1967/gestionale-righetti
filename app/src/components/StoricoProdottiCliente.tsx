@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
 import { getScarichiCliente, type ScaricoSeduta } from '../lib/scarichi';
-import { getFattureCliente, type Fattura } from '../lib/fatture';
 import type { ScaricoConCliente } from '../lib/scarichi';
 import { AnteprimaPdf, IntestazionePdf, BandaBluPdf, FooterPdf } from './AnteprimaPdf';
 import { generaPdfDdtCliente } from '../lib/pdfDdt';
@@ -10,6 +9,7 @@ import { StampaScontrino } from './StampaScontrino';
 import type { Cliente } from '../lib/clienti';
 import { useDatiAziendali } from '../lib/useDatiAziendali';
 import { getScontrini, type Scontrino } from '../lib/scontrini';
+import { getFattureCliente, type Fattura } from '../lib/fatture';
 
 interface StoricoProdottiProps {
   clienteId: number;
@@ -54,22 +54,24 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
       try {
         setLoading(true);
 
-        if (regime === 'scontrini') {
-          // Regime scontrini: carica scontrini figli del cliente
-          const tutti = await getScontrini();
-          const suoi = tutti.filter(
-            (s) => s.cliente_id === clienteId && s.tipo === 'figlio' && !s.annullato
-          );
-          setScontrini(suoi);
-        } else {
-          // Regime fatture: carica scarichi + fatture
-          const [dataScarichi, dataFatture] = await Promise.all([
-            getScarichiCliente(clienteId),
-            getFattureCliente(clienteId),
-          ]);
-          setScarichi(dataScarichi);
-          setFatture(dataFatture);
-        }
+        // Carica SEMPRE tutte e 3 le fonti (indipendentemente dal regime)
+        const [tuttiScontrini, dataScarichi, dataFatture] = await Promise.all([
+          getScontrini().catch(() => []),
+          getScarichiCliente(clienteId).catch(() => []),
+          getFattureCliente(clienteId).catch(() => []),
+        ]);
+
+        // Filtra scontrini: figli + madre del cliente, non annullati
+        const scontriniCliente = tuttiScontrini.filter(
+          (s) =>
+            s.cliente_id === clienteId &&
+            (s.tipo === 'figlio' || s.tipo === 'madre') &&
+            !s.annullato
+        );
+
+        setScontrini(scontriniCliente);
+        setScarichi(dataScarichi);
+        setFatture(dataFatture);
       } catch (err) {
         console.error('Errore nel recupero storico cliente:', err);
       } finally {
@@ -77,7 +79,7 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
       }
     }
     carica();
-  }, [clienteId, regime]);
+  }, [clienteId]);
 
   // Estrae sia PRODOTTI che SERVIZI da tutti i DDT del cliente
   const tutteVoci: VoceStorico[] = useMemo(() => {
@@ -190,6 +192,54 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
     return list.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
   }, [scarichi, fatture, scontrini]);
 
+  // Totale spesa (solo scontrini madre + fatture) + fiches
+  const totaleSpesa = useMemo(() => {
+    const scontriniMadre = scontrini.filter((s) => s.tipo === 'madre');
+
+    const totScontrini = scontriniMadre.reduce(
+      (sum, s) => sum + Number(s.totale_lordo || 0),
+      0
+    );
+
+    const totFatture = fatture.reduce(
+      (sum, f) => sum + Number(f.lordo_ivato || 0),
+      0
+    );
+
+    const totaleGenerale = totScontrini + totFatture;
+
+    // Conta le fiches: numero di voci (servizi+prodotti) negli scontrini madre + nelle fatture
+    let numFiches = 0;
+
+    for (const s of scontriniMadre) {
+      for (const r of s.righe || []) {
+        numFiches += Number(r.quantita || 0);
+      }
+    }
+
+    for (const f of fatture) {
+      const righeFatt = (f.righe as any[]) || [];
+      for (const r of righeFatt) {
+        numFiches += Number(r.quantita || 0);
+      }
+    }
+
+    const fichesMedia = numFiches > 0 ? totaleGenerale / numFiches : 0;
+    const numeroDocumenti = scontriniMadre.length + fatture.length;
+    const scontrinoMedio =
+      numeroDocumenti > 0 ? totaleGenerale / numeroDocumenti : 0;
+
+    return {
+      scontrini: Number(totScontrini.toFixed(2)),
+      fatture: Number(totFatture.toFixed(2)),
+      totale: Number(totaleGenerale.toFixed(2)),
+      numFiches,
+      fichesMedia: Number(fichesMedia.toFixed(2)),
+      numeroDocumenti,
+      scontrinoMedio: Number(scontrinoMedio.toFixed(2)),
+    };
+  }, [scontrini, fatture]);
+
   // Conteggi
   const totaleProdotti = tutteVoci
     .filter((v) => v.tipo === 'prodotto')
@@ -259,6 +309,67 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
             className="px-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-apple text-apple-darkgray placeholder:text-apple-gray focus:outline-none focus:ring-2 focus:ring-apple-blue/30 w-full sm:w-48"
           />
         )}
+      </div>
+
+      {/* 🆕 Card Totale Spesa + Fiches */}
+      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-apple p-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Scontrini */}
+          <div className="text-center sm:text-left">
+            <p className="text-[10px] text-apple-gray uppercase tracking-wide font-semibold">
+              🧾 Scontrini
+            </p>
+            <p className="text-base font-bold text-apple-darkgray mt-0.5">
+              {totaleSpesa.scontrini.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+            </p>
+          </div>
+
+          {/* Fatture */}
+          <div className="text-center sm:text-left">
+            <p className="text-[10px] text-apple-gray uppercase tracking-wide font-semibold">
+              📄 Fatture
+            </p>
+            <p className="text-base font-bold text-apple-darkgray mt-0.5">
+              {totaleSpesa.fatture.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+            </p>
+          </div>
+
+          {/* TOTALE */}
+          <div className="text-center sm:text-left">
+            <p className="text-[10px] text-green-800 uppercase tracking-wide font-bold">
+              💰 Totale Spesa
+            </p>
+            <p className="text-lg font-bold text-green-700 mt-0.5">
+              {totaleSpesa.totale.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+            </p>
+          </div>
+
+          {/* Fiches media */}
+          <div className="text-center sm:text-left">
+            <p className="text-[10px] text-apple-gray uppercase tracking-wide font-semibold">
+              📊 Fiches media
+            </p>
+            <p className="text-base font-bold text-apple-darkgray mt-0.5">
+              {totaleSpesa.fichesMedia.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+            </p>
+          </div>
+        </div>
+
+        {/* Sottoriga con scontrino medio + passaggi */}
+        <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-green-200/60 text-[11px] text-apple-gray">
+          <span>
+            <strong className="text-apple-darkgray">{totaleSpesa.numeroDocumenti}</strong> documenti
+          </span>
+          <span>
+            <strong className="text-apple-darkgray">{totaleSpesa.numFiches}</strong> fiches totali
+          </span>
+          <span>
+            Scontrino medio:{' '}
+            <strong className="text-apple-darkgray">
+              {totaleSpesa.scontrinoMedio.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+            </strong>
+          </span>
+        </div>
       </div>
 
       {/* Segmented control stile Apple per passare da Tutti / Prodotti / Servizi */}

@@ -16,7 +16,7 @@ import { supabase } from './supabase';
 
 export type TipoScontrino = 'madre' | 'figlio';
 export type ModalitaCassa = 'digitale' | 'fisico';
-export type MetodoPagamento = 'Contanti' | 'Carta' | 'Bancomat' | 'Bonifico' | 'Altro' | 'Non richiesto';
+export type MetodoPagamento = 'Contanti' | 'Carta' | 'Bancomat' | 'Prepagate' | 'Bonifico' | 'Altro' | 'Non richiesto';
 
 export interface RigaScontrino {
   id?: number;
@@ -100,6 +100,11 @@ export interface ChiusuraCassa {
   numero_scontrini: number;
   fondo_cassa_iniziale: number;
   contanti_attesi: number;
+  totale_bancomat?: number;
+  totale_prepagate?: number;
+  totale_bonifico?: number;
+  contanti_contati?: number;
+  differenza_cassa?: number;
   note: string | null;
   aperta_at: string | null;
   chiusa_at: string | null;
@@ -434,6 +439,9 @@ export async function getChiusuraGiornaliera(data: string): Promise<ChiusuraCass
 export async function calcolaTotaliGiorno(data: string): Promise<{
   contanti: number;
   carta: number;
+  bancomat: number;
+  prepagate: number;
+  bonifico: number;
   altro: number;
   totale: number;
   numeroScontrini: number;
@@ -449,6 +457,9 @@ export async function calcolaTotaliGiorno(data: string): Promise<{
 
   let contanti = 0;
   let carta = 0;
+  let bancomat = 0;
+  let prepagate = 0;
+  let bonifico = 0;
   let altro = 0;
 
   for (const s of madri) {
@@ -458,8 +469,16 @@ export async function calcolaTotaliGiorno(data: string): Promise<{
         contanti += importo;
         break;
       case 'Carta':
-      case 'Bancomat':
         carta += importo;
+        break;
+      case 'Bancomat':
+        bancomat += importo;
+        break;
+      case 'Prepagate':
+        prepagate += importo;
+        break;
+      case 'Bonifico':
+        bonifico += importo;
         break;
       default:
         altro += importo;
@@ -469,8 +488,13 @@ export async function calcolaTotaliGiorno(data: string): Promise<{
   return {
     contanti: Number(contanti.toFixed(2)),
     carta: Number(carta.toFixed(2)),
+    bancomat: Number(bancomat.toFixed(2)),
+    prepagate: Number(prepagate.toFixed(2)),
+    bonifico: Number(bonifico.toFixed(2)),
     altro: Number(altro.toFixed(2)),
-    totale: Number((contanti + carta + altro).toFixed(2)),
+    totale: Number(
+      (contanti + carta + bancomat + prepagate + bonifico + altro).toFixed(2)
+    ),
     numeroScontrini: madri.length,
   };
 }
@@ -478,12 +502,16 @@ export async function calcolaTotaliGiorno(data: string): Promise<{
 export async function salvaChiusuraCassa(params: {
   data: string;
   fondoIniziale: number;
+  contantiContati?: number;
   note?: string | null;
 }): Promise<ChiusuraCassa> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Non autenticato');
 
   const totali = await calcolaTotaliGiorno(params.data);
+  const contantiAttesi = Number((totali.contanti + params.fondoIniziale).toFixed(2));
+  const contantiContati = params.contantiContati ?? contantiAttesi;
+  const differenza = Number((contantiContati - contantiAttesi).toFixed(2));
 
   const { data, error } = await supabase
     .from('chiusure_cassa')
@@ -493,11 +521,16 @@ export async function salvaChiusuraCassa(params: {
         data_chiusura: params.data,
         totale_contanti: totali.contanti,
         totale_carta: totali.carta,
+        totale_bancomat: totali.bancomat,
+        totale_prepagate: totali.prepagate,
+        totale_bonifico: totali.bonifico,
         totale_altro: totali.altro,
         totale_generale: totali.totale,
         numero_scontrini: totali.numeroScontrini,
         fondo_cassa_iniziale: params.fondoIniziale,
-        contanti_attesi: Number((totali.contanti + params.fondoIniziale).toFixed(2)),
+        contanti_attesi: contantiAttesi,
+        contanti_contati: contantiContati,
+        differenza_cassa: differenza,
         note: params.note ?? null,
         chiusa_at: new Date().toISOString(),
       },

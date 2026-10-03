@@ -15,6 +15,13 @@ import { getScarichiFattura, type ScaricoSeduta } from '../lib/scarichi';
 import { getAppuntamenti, OPERATORI } from '../lib/appuntamenti';
 import { calcolaResiduo, type ResiduoPercorso } from '../lib/percorsi-helper';
 import { getRigheRiscattateDaFigli } from '../lib/scontrini-figli';
+import {
+  getTestoTemplate,
+  renderTemplate,
+  estraiNome,
+  estraiCognome,
+  formatDataIt,
+} from '../lib/testiTemplate';
 import { FormCliente } from '../components/FormNuovoCliente';
 import { FormNuovoPercorso } from '../components/FormNuovoPercorso';
 import { FormNuovaFattura } from '../components/FormNuovaFattura';
@@ -425,23 +432,19 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
     setToastTipo('info');
 
     try {
-      const corpoHtml = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5ea;">
-        <div style="text-align: center; margin-bottom: 24px;">
-          <img src="https://yporpszebtasalwazirz.supabase.co/storage/v1/object/public/azienda/logo.png" alt="Righetti Since 1967" style="height: 52px; max-width: 220px; object-fit: contain; margin-bottom: 10px;" />
-          <p style="color: #8e8e93; font-size: 12px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Conferma Informativa Privacy GDPR</p>
-        </div>
-        <div style="background: #f2f2f7; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-          <p style="margin: 0; color: #1c1c1e; font-size: 14px; font-weight: 600;">Gentile ${cliente.nome_cognome},</p>
-          <p style="margin: 8px 0 0 0; color: #3a3a3c; font-size: 13px; line-height: 1.5;">
-            le confermiamo la ricezione e la corretta registrazione del consenso al trattamento dei dati personali (Regolamento UE 2016/679 - GDPR) presso la nostra sede.
-          </p>
-        </div>
-        <div style="border-top: 1px solid #e5e5ea; padding-top: 12px; margin-top: 20px; font-size: 11px; color: #8e8e93; text-align: center;">
-          Documento generato automaticamente dal Gestionale Righetti.
-        </div>
-      </div>
-      `;
+      // Leggi template personalizzato
+      const template = await getTestoTemplate('email_privacy');
+      const nome = estraiNome(cliente.nome_cognome);
+      const cognome = estraiCognome(cliente.nome_cognome);
+      const variabili = {
+        cliente: cliente.nome_cognome,
+        nome,
+        cognome,
+        azienda: azienda.ragioneSociale || '',
+        data: new Date().toLocaleDateString('it-IT'),
+      };
+      const oggettoCustom = renderTemplate(template.oggetto || 'Informativa Privacy GDPR', variabili);
+      const corpoHtml = renderTemplate(template.corpo, variabili);
 
       // Genera il PDF legale ufficiale completo di 2 pagine con testo GDPR e firme
       let pdfBase64: string | undefined = undefined;
@@ -458,7 +461,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
 
       await inviaEmailConConfig({
         destinatario: cliente.email.trim(),
-        oggetto: 'Informativa Privacy GDPR — Righetti Since 1967',
+        oggetto: oggettoCustom,
         corpo_html: corpoHtml,
         from_name: 'Righetti Since 1967',
         allegato_base64: pdfBase64,

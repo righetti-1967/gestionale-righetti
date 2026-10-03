@@ -1,5 +1,17 @@
 import { useState } from 'react';
 import { useDatiAziendali } from '../lib/useDatiAziendali';
+import {
+  caricaConfigPromemoria,
+  generaTestoPromemoria,
+  apriWhatsAppPromemoria,
+  inviaEmailPromemoria,
+  marcaPromemoriaInviato,
+  canaliDisponibili,
+  isPromemoriaInviato,
+  promemoriaInviatoLabel,
+  type ConfigPromemoria,
+  type CanalePromemoria,
+} from '../lib/promemoria';
 import type { AppuntamentoConCliente, Operatore, VoceSelezionata } from '../lib/appuntamenti';
 import { OPERATORI, aggiornaAppuntamento } from '../lib/appuntamenti';
 
@@ -12,6 +24,7 @@ interface DettaglioAppuntamentoProps {
   onFatturaProforma: (app: AppuntamentoConCliente) => void;
   onFatturaDiretta: (app: AppuntamentoConCliente) => void;
   onScontrina?: (app: AppuntamentoConCliente) => void;
+  onPromemoriaInviato?: () => void;
   onToast: (msg: string, tipo: 'success' | 'error' | 'info') => void;
 }
 
@@ -26,10 +39,17 @@ export function DettaglioAppuntamento({
   onFatturaProforma,
   onFatturaDiretta,
   onScontrina,
+  onPromemoriaInviato,
   onToast,
 }: DettaglioAppuntamentoProps) {
   const { dati: azienda } = useDatiAziendali();
   const regime = azienda.regimeDocumenti || 'fatture';
+
+  // Promemoria
+  const [showPromemoria, setShowPromemoria] = useState(false);
+  const [configProm, setConfigProm] = useState<ConfigPromemoria | null>(null);
+  const [inviando, setInviando] = useState<CanalePromemoria | null>(null);
+  const [promemoriaInviato, setPromemoriaInviato] = useState(isPromemoriaInviato(appuntamento));
   const [modaleElimina, setModaleElimina] = useState(false);
   const [tipoEliminazione, setTipoEliminazione] = useState<TipoEliminazione>(null);
   const [salvando, setSalvando] = useState(false);
@@ -81,6 +101,58 @@ export function DettaglioAppuntamento({
       const msg = err instanceof Error ? err.message : 'Errore nella cancellazione';
       onToast(msg, 'error');
       setSalvando(false);
+    }
+  }
+
+  const canali = canaliDisponibili(appuntamento);
+
+  async function apriModalePromemoria() {
+    try {
+      const cfg = await caricaConfigPromemoria();
+      setConfigProm(cfg);
+      setShowPromemoria(true);
+    } catch (err: any) {
+      onToast('❌ Errore caricamento config promemoria: ' + (err?.message || ''), 'error');
+    }
+  }
+
+  async function handleInviaWhatsApp() {
+    if (!configProm) return;
+    try {
+      setInviando('whatsapp');
+      const testo = generaTestoPromemoria(appuntamento, configProm, azienda.ragioneSociale);
+      const cell = appuntamento.cliente?.cellulare || '';
+      const ok = apriWhatsAppPromemoria(cell, testo);
+      if (!ok) {
+        onToast('❌ Cellulare non valido', 'error');
+        return;
+      }
+      await marcaPromemoriaInviato(appuntamento.id, 'whatsapp');
+      setPromemoriaInviato(true);
+      onToast('✅ WhatsApp aperto e promemoria marcato come inviato', 'success');
+      setShowPromemoria(false);
+      onPromemoriaInviato?.();
+    } catch (err: any) {
+      onToast('❌ ' + (err?.message || 'Errore invio WhatsApp'), 'error');
+    } finally {
+      setInviando(null);
+    }
+  }
+
+  async function handleInviaEmail() {
+    if (!configProm) return;
+    try {
+      setInviando('email');
+      await inviaEmailPromemoria(appuntamento, configProm, azienda.ragioneSociale);
+      await marcaPromemoriaInviato(appuntamento.id, 'email');
+      setPromemoriaInviato(true);
+      onToast('✅ Email promemoria inviata', 'success');
+      setShowPromemoria(false);
+      onPromemoriaInviato?.();
+    } catch (err: any) {
+      onToast('❌ ' + (err?.message || 'Errore invio email'), 'error');
+    } finally {
+      setInviando(null);
     }
   }
 
@@ -268,6 +340,23 @@ export function DettaglioAppuntamento({
               </button>
             )}
 
+            {/* Pulsante Promemoria */}
+            <button
+              onClick={apriModalePromemoria}
+              className={`w-full px-4 py-3 rounded-apple font-semibold text-sm transition-colors shadow-sm flex items-center justify-center gap-2 ${
+                promemoriaInviato
+                  ? 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
+                  : 'bg-amber-500 text-white hover:bg-amber-600'
+              }`}
+            >
+              <span>⏰</span>
+              <span>
+                {promemoriaInviato
+                  ? `Promemoria inviato (${promemoriaInviatoLabel(appuntamento) || ''})`
+                  : 'Invia promemoria ora'}
+              </span>
+            </button>
+
             <div className="flex gap-2 pt-2">
               <button
                 onClick={onModifica}
@@ -285,6 +374,87 @@ export function DettaglioAppuntamento({
           </div>
         </div>
       </div>
+
+      {/* ============================================================ */}
+      {/* MODALE PROMEMORIA */}
+      {/* ============================================================ */}
+      {showPromemoria && configProm && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
+          onClick={() => !inviando && setShowPromemoria(false)}
+        >
+          <div
+            className="bg-white rounded-apple shadow-apple-lg max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-amber-100 flex items-center justify-center text-2xl">
+                ⏰
+              </div>
+              <h2 className="text-lg font-bold text-apple-darkgray mb-1">
+                Invia promemoria
+              </h2>
+              <p className="text-xs text-apple-gray">
+                {appuntamento.cliente?.nome_cognome || 'Cliente'} •{' '}
+                {formatData(appuntamento.data)} • {oraInizioStr}
+              </p>
+            </div>
+
+            {/* Preview testo */}
+            <div className="mb-4 p-3 bg-gray-50 rounded-apple border border-gray-200">
+              <p className="text-[10px] font-bold text-apple-gray uppercase tracking-wide mb-2">
+                📝 Anteprima messaggio
+              </p>
+              <p className="text-xs text-apple-darkgray leading-relaxed whitespace-pre-wrap">
+                {generaTestoPromemoria(appuntamento, configProm, azienda.ragioneSociale)}
+              </p>
+            </div>
+
+            {/* Info canali */}
+            <div className="mb-4 text-xs space-y-1">
+              {canali.whatsapp ? (
+                <p className="text-green-700">
+                  ✅ WhatsApp disponibile: {appuntamento.cliente?.cellulare}
+                </p>
+              ) : (
+                <p className="text-red-600">❌ Cellulare non disponibile</p>
+              )}
+              {canali.email ? (
+                <p className="text-green-700">
+                  ✅ Email disponibile: {appuntamento.cliente?.email}
+                </p>
+              ) : (
+                <p className="text-red-600">❌ Email non disponibile</p>
+              )}
+            </div>
+
+            {/* Pulsanti canale */}
+            <div className="space-y-2">
+              <button
+                onClick={handleInviaWhatsApp}
+                disabled={!canali.whatsapp || inviando !== null}
+                className="w-full px-4 py-3 bg-green-600 text-white rounded-apple font-semibold text-sm hover:bg-green-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {inviando === 'whatsapp' ? '⏳...' : '💬 Invia via WhatsApp'}
+              </button>
+              <button
+                onClick={handleInviaEmail}
+                disabled={!canali.email || inviando !== null}
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-apple font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {inviando === 'email' ? '⏳...' : '📧 Invia via Email'}
+              </button>
+              <button
+                onClick={() => setShowPromemoria(false)}
+                disabled={inviando !== null}
+                className="w-full px-4 py-2.5 bg-gray-100 text-apple-darkgray rounded-apple font-medium text-sm hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ============================================================ */}
       {/* MODALE SCELTA ELIMINAZIONE */}

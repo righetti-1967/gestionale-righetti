@@ -74,6 +74,19 @@ export function AgendaGiornaliera({
   const { config: agendaConfig } = useAgendaConfig();
   const [nota, setNota] = useState<string | null>(null);
 
+  // Helper: cerca info operatore nella config (fallback su OPERATORI hardcoded)
+  const getOpInfo = (opId: string): { label: string; colore: string } => {
+    const fromConfig = agendaConfig.operatori?.find((o) => o.id === opId);
+    if (fromConfig) {
+      return { label: fromConfig.label, colore: fromConfig.colore || 'blue' };
+    }
+    const fromCost = OPERATORI[opId];
+    if (fromCost) {
+      return { label: fromCost.label, colore: fromCost.colore || 'blue' };
+    }
+    return { label: opId, colore: 'blue' };
+  };
+
   const operatoriVisibili = useMemo(() => {
     const config = getOperatoriVisibili();
     // Aggiungi operatori "orfani" (presenti negli appuntamenti ma non in config)
@@ -346,7 +359,7 @@ export function AgendaGiornaliera({
     const cambiaOperatore = nuovoOperatore !== operatoreAttuale;
 
     if (cambiaOperatore) {
-      const nuovoNome = OPERATORI[nuovoOperatore]?.label || nuovoOperatore;
+      const nuovoNome = getOpInfo(nuovoOperatore).label;
       const msg =
         voceIndex === null
           ? `Spostare l'appuntamento su ${nuovoNome} alle ${oraInizio}?`
@@ -445,7 +458,7 @@ export function AgendaGiornaliera({
         };
         onUpdateAppuntamento(app.id, updates);
       }
-      setNota(`Spostato su ${OPERATORI[nuovoOperatore]?.label || nuovoOperatore} ✅`);
+      setNota(`Spostato su ${getOpInfo(nuovoOperatore).label} ✅`);
     } else if (tipo === 'sposta' && nuovaOra) {
       if (voceIndex === null) {
         // Ricalcola orari sequenziali per tutte le voci mantenendo l'operatore
@@ -548,7 +561,7 @@ export function AgendaGiornaliera({
       >
         <div className="bg-gray-50/50 border-r border-gray-200/60"></div>
         {operatoriVisibili.map((op) => {
-          const info = OPERATORI[op] || { label: op, colore: 'blue' };
+          const info = getOpInfo(op);
           const dotColor = COLORI_DOT[info.colore] || 'bg-blue-500';
           return (
             <div
@@ -880,6 +893,14 @@ function BloccoRnd({
               <p className="text-xs font-bold truncate leading-tight" title={hasNote ? app.note || undefined : undefined}>
                 <span className="truncate">{app.cliente?.nome_cognome || "—"}</span>
                 {isFirst && app.stato === "completato" && <span className="ml-1 text-[10px]">✓</span>}
+                {isFirst && (app as any).promemoria_inviato_at && (
+                  <span
+                    className="ml-1 text-[10px] opacity-90"
+                    title={`Promemoria inviato ${(app as any).promemoria_canale || ''}`}
+                  >
+                    ⏰✓
+                  </span>
+                )}
                 {isFirst && hasNote && (
                   <span className="ml-1 text-[11px] font-semibold text-red-600 tracking-tight">
                     | 📝 {app.note}

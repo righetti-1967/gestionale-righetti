@@ -39,6 +39,18 @@ export function AgendaSettimanale({
 }: AgendaSettimanaleProps) {
   const { config: agendaConfig } = useAgendaConfig();
 
+  const getOpInfo = (opId: string): { label: string; colore: string } => {
+    const fromConfig = agendaConfig.operatori?.find((o) => o.id === opId);
+    if (fromConfig) {
+      return { label: fromConfig.label, colore: fromConfig.colore || 'blue' };
+    }
+    const fromCost = OPERATORI[opId];
+    if (fromCost) {
+      return { label: fromCost.label, colore: fromCost.colore || 'blue' };
+    }
+    return { label: opId, colore: 'blue' };
+  };
+
   const operatoriVisibili = useMemo(
     () => getOperatoriVisibili(),
     [agendaConfig.operatoriVisibili, agendaConfig.operatori]
@@ -151,7 +163,7 @@ export function AgendaSettimanale({
                 style={{ gridTemplateColumns: `repeat(${colonneCount}, 1fr)` }}
               >
                 {operatoriVisibili.map((op) => {
-                  const info = OPERATORI[op] || { label: op, colore: 'blue' };
+                  const info = getOpInfo(op);
                   const dotColor = COLORI_DOT[info.colore] || 'bg-blue-500';
                   return (
                     <div

@@ -32,6 +32,10 @@ import { getServizi, type Servizio } from '../lib/servizi';
 import { caricaPrivacy, salvaPrivacy, invalidaCachePrivacy, PRIVACY_DEFAULT, INFORMATIVA_DEFAULT, type ConfigPrivacy } from '../lib/privacy';
 import { caricaAspetto, salvaAspetto, invalidaCacheAspetto, ASPETTO_DEFAULT, type ConfigAspetto } from '../lib/aspetto';
 import { SicurezzaTab } from '../components/SicurezzaTab';
+import { ModaleConfigFiscale } from '../components/ModaleConfigFiscale';
+import { TestiTemplateTab } from '../components/TestiTemplateTab';
+import { AutomazioniTab } from '../components/AutomazioniTab';
+import type { RegimeFiscale } from '../lib/configFiscale';
 
 // ============ TIPI ============
 interface Sede {
@@ -103,7 +107,7 @@ function normalizzaDati(raw: unknown): DatiAziendali {
   };
 }
 
-type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'comunicazioni' | 'promemoria' | 'sicurezza' | 'licenze';
+type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'comunicazioni' | 'promemoria' | 'testi_template' | 'automazioni' | 'sicurezza' | 'licenze';
 
 const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'profilo', label: 'Profilo', icon: '👤' },
@@ -115,6 +119,8 @@ const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'google_sheets', label: 'Google Sheets', icon: '🔄' },
   { id: 'comunicazioni', label: 'Comunicazioni', icon: '💬' },
   { id: 'promemoria', label: 'Promemoria', icon: '⏰' },
+  { id: 'testi_template', label: 'Testi Messaggi', icon: '📝' },
+  { id: 'automazioni', label: 'Automazioni', icon: '🔔' },
   { id: 'sicurezza', label: 'Sicurezza', icon: '🔐' },
 ];
 
@@ -1023,6 +1029,8 @@ export function Impostazioni() {
         {tabAttiva === 'google_sheets' && <TabGoogleSheets registraSalva={registraSalva} />}
         {tabAttiva === 'comunicazioni' && <TabComunicazioni registraSalva={registraSalva} />}
         {tabAttiva === 'promemoria' && <TabPromemoria registraSalva={registraSalva} />}
+        {tabAttiva === 'testi_template' && <TestiTemplateTab />}
+        {tabAttiva === 'automazioni' && <AutomazioniTab />}
         {tabAttiva === 'sicurezza' && <SicurezzaTab />}
         {tabAttiva === 'licenze' && isAdmin && <TabLicenze adminEmail={user?.email || ''} />}
       </div>
@@ -1234,6 +1242,10 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
   const [cassaGestioneGiornaliera, setCassaGestioneGiornaliera] = useState<boolean>(false);
   const [cassaFondoIniziale, setCassaFondoIniziale] = useState<number>(0);
 
+  // Config fiscale modale
+  const [showModaleConfig, setShowModaleConfig] = useState(false);
+  const [regimeModale, setRegimeModale] = useState<RegimeFiscale>('fatture');
+
   useEffect(() => {
     async function carica() {
       try {
@@ -1326,7 +1338,11 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
         <div className="space-y-3">
           <button
             type="button"
-            onClick={() => setRegimeDocumenti('fatture')}
+            onClick={() => {
+              setRegimeDocumenti('fatture');
+              setRegimeModale('fatture');
+              setShowModaleConfig(true);
+            }}
             className={`w-full text-left px-4 py-3 rounded-apple border-2 transition-all ${
               regimeDocumenti === 'fatture'
                 ? 'bg-blue-50 border-apple-blue shadow-sm'
@@ -1350,7 +1366,11 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
 
           <button
             type="button"
-            onClick={() => setRegimeDocumenti('scontrini')}
+            onClick={() => {
+              setRegimeDocumenti('scontrini');
+              setRegimeModale('scontrini_digitale');
+              setShowModaleConfig(true);
+            }}
             className={`w-full text-left px-4 py-3 rounded-apple border-2 transition-all ${
               regimeDocumenti === 'scontrini'
                 ? 'bg-amber-50 border-amber-500 shadow-sm'
@@ -1387,7 +1407,11 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
           <div className="space-y-3">
             <button
               type="button"
-              onClick={() => setCassaModalita('digitale')}
+              onClick={() => {
+                setCassaModalita('digitale');
+                setRegimeModale('scontrini_digitale');
+                setShowModaleConfig(true);
+              }}
               className={`w-full text-left px-4 py-3 rounded-apple border-2 transition-all ${
                 cassaModalita === 'digitale'
                   ? 'bg-blue-50 border-apple-blue shadow-sm'
@@ -1414,6 +1438,8 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
               onClick={() => {
                 setCassaModalita('fisico');
                 setCassaGestioneGiornaliera(true);
+                setRegimeModale('scontrini_fisico');
+                setShowModaleConfig(true);
               }}
               className={`w-full text-left px-4 py-3 rounded-apple border-2 transition-all ${
                 cassaModalita === 'fisico'
@@ -1624,6 +1650,15 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
           {salvando ? 'Salvataggio…' : 'Salva modifiche'}
         </button>
       </div>
+
+      {/* Modale Config Fiscale */}
+      {showModaleConfig && (
+        <ModaleConfigFiscale
+          regime={regimeModale}
+          onClose={() => setShowModaleConfig(false)}
+          onSaved={() => setShowModaleConfig(false)}
+        />
+      )}
     </>
   );
 }
@@ -2205,7 +2240,8 @@ function TabPrivacy({ registraSalva }: { registraSalva?: (fn: () => void, salvan
           {salvando ? 'Salvataggio…' : 'Salva modifiche'}
         </button>
       </div>
-    </>
+
+          </>
   );
 }
 

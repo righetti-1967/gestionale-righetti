@@ -12,6 +12,15 @@ import {
 } from './scontrini';
 import { creaMovimento } from './magazzino';
 import { generaPdfScontrinoBase64 } from './pdfScontrino';
+import {
+  getTestoTemplate,
+  renderTemplate,
+  estraiNome,
+  estraiCognome,
+  formatDataIt,
+  formatEuroIt,
+} from './testiTemplate';
+import { caricaDatiAziendali } from './datiAziendali';
 import { inviaEmailConConfig } from './api';
 
 // ============================================================
@@ -298,42 +307,30 @@ export async function inviaScontrinoEmail(
   }
 
   const { base64, nomeFile } = await generaPdfScontrinoBase64(scontrino);
+  const azienda = await caricaDatiAziendali();
 
-  const isFiglio = scontrino.tipo === 'figlio';
-  const tipoLabel = isFiglio
-    ? `Scontrino scarico ${scontrino.numero_scontrino}`
-    : `Scontrino ${scontrino.numero_scontrino}`;
+  // Leggi template personalizzato
+  const template = await getTestoTemplate('email_scontrino');
 
-  const corpoHtml = `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5ea;">
-      <div style="text-align: center; margin-bottom: 20px;">
-        <p style="color: #8e8e93; font-size: 12px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
-          Documento Commerciale
-        </p>
-      </div>
-      <div style="background: #f2f2f7; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-        <p style="margin: 0; color: #1c1c1e; font-size: 14px; font-weight: 600;">
-          Gentile ${scontrino.cliente?.nome_cognome || 'Cliente'},
-        </p>
-        <p style="margin: 8px 0 0 0; color: #3a3a3c; font-size: 13px; line-height: 1.5;">
-          In allegato trovi il documento commerciale relativo alla tua operazione del
-          ${new Date(scontrino.data_emissione).toLocaleDateString('it-IT')}.
-        </p>
-        ${isFiglio && scontrino.scontrino_madre_numero ? `
-          <p style="margin: 8px 0 0 0; color: #8e8e93; font-size: 12px;">
-            Riferimento scontrino madre: <strong>${scontrino.scontrino_madre_numero}</strong>
-          </p>
-        ` : ''}
-      </div>
-      <div style="border-top: 1px solid #e5e5ea; padding-top: 12px; margin-top: 20px; font-size: 11px; color: #8e8e93; text-align: center;">
-        Documento generato automaticamente dal Gestionale.
-      </div>
-    </div>
-  `;
+  const nome = estraiNome(scontrino.cliente?.nome_cognome);
+  const cognome = estraiCognome(scontrino.cliente?.nome_cognome);
+
+  const variabili = {
+    cliente: scontrino.cliente?.nome_cognome || 'Cliente',
+    nome,
+    cognome,
+    azienda: azienda.ragioneSociale || '',
+    data: formatDataIt(scontrino.data_emissione),
+    numero_documento: scontrino.numero_scontrino,
+    importo: formatEuroIt(scontrino.totale_lordo),
+  };
+
+  const oggetto = renderTemplate(template.oggetto || 'Scontrino', variabili);
+  const corpoHtml = renderTemplate(template.corpo, variabili);
 
   await inviaEmailConConfig({
     destinatario: emailDestinatario.trim(),
-    oggetto: tipoLabel,
+    oggetto,
     corpo_html: corpoHtml,
     allegato_base64: base64,
     allegato_nome: nomeFile,
@@ -356,11 +353,25 @@ export async function inviaScontrinoWhatsApp(
   }
 
   const { url } = await caricaPdfScontrinoStorage(scontrino);
+  const azienda = await caricaDatiAziendali();
 
-  const isFiglio = scontrino.tipo === 'figlio';
-  const testo = isFiglio
-    ? `Gentile ${scontrino.cliente?.nome_cognome || 'Cliente'}, ecco il documento di scarico percorso ${scontrino.numero_scontrino} (rif. scontrino madre ${scontrino.scontrino_madre_numero || ''}).\n\n${url}`
-    : `Gentile ${scontrino.cliente?.nome_cognome || 'Cliente'}, ecco il tuo scontrino ${scontrino.numero_scontrino}.\n\n${url}`;
+  // Leggi template personalizzato
+  const template = await getTestoTemplate('whatsapp_scontrino');
+
+  const nome = estraiNome(scontrino.cliente?.nome_cognome);
+  const cognome = estraiCognome(scontrino.cliente?.nome_cognome);
+
+  const variabili = {
+    cliente: scontrino.cliente?.nome_cognome || 'Cliente',
+    nome,
+    cognome,
+    azienda: azienda.ragioneSociale || '',
+    numero_documento: scontrino.numero_scontrino,
+    link: url,
+    importo: formatEuroIt(scontrino.totale_lordo),
+  };
+
+  const testo = renderTemplate(template.corpo, variabili);
 
   // Normalizza numero (aggiunge 39 se manca)
   const numPulito = cellulare.replace(/\D/g, '');

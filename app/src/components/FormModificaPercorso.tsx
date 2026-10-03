@@ -302,8 +302,11 @@ export function FormModificaPercorso({
           {soloNote && (
             <div className="bg-amber-50 border border-amber-200 rounded-apple p-3">
               <p className="text-xs text-amber-800 leading-relaxed">
-                ⚠️ <strong>Modifica limitata</strong>: la fattura collegata è già stata
-                incassata, quindi il percorso è fiscalmente "congelato". Puoi modificare
+                ⚠️ <strong>Modifica limitata</strong>:{' '}
+                {scontrinoEmesso
+                  ? 'lo scontrino fiscale è già stato emesso'
+                  : 'la fattura collegata è già stata incassata'}
+                , quindi il percorso è fiscalmente "congelato". Puoi modificare
                 <strong> solo le note</strong>.
               </p>
             </div>

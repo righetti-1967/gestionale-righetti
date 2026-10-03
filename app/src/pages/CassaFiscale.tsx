@@ -27,6 +27,8 @@ import { Toast, type ToastTipo } from '../components/Toast';
 import { StampaScontrino } from '../components/StampaScontrino';
 import { FormRiscattaPercorso } from '../components/FormRiscattaPercorso';
 import { FormNuovoPercorso } from '../components/FormNuovoPercorso';
+import { ChiusuraCassaTab } from '../components/ChiusuraCassaTab';
+import { ReportCommercialistaTab } from '../components/ReportCommercialistaTab';
 
 interface RigaCarrello {
   id: string;
@@ -40,7 +42,7 @@ interface RigaCarrello {
   sconto_valore: number;
 }
 
-type TabPagina = 'cassa' | 'archivio' | 'riscatta';
+type TabPagina = 'cassa' | 'archivio' | 'riscatta' | 'chiusura' | 'report';
 type FiltroTipo = 'tutti' | 'fisico' | 'digitale';
 type ScontoTipo = 'percentuale' | 'importo';
 
@@ -637,6 +639,22 @@ export function CassaFiscale() {
           >
             🎫 Riscatta Percorso
           </button>
+          <button
+            onClick={() => setTab('chiusura')}
+            className={`px-4 sm:px-5 py-2 rounded-apple text-xs sm:text-sm font-semibold transition-all ${
+              tab === 'chiusura' ? 'bg-white text-green-700 shadow-apple' : 'text-apple-gray hover:text-green-700'
+            }`}
+          >
+            💰 Chiusura Cassa
+          </button>
+          <button
+            onClick={() => setTab('report')}
+            className={`px-4 sm:px-5 py-2 rounded-apple text-xs sm:text-sm font-semibold transition-all ${
+              tab === 'report' ? 'bg-white text-blue-700 shadow-apple' : 'text-apple-gray hover:text-blue-700'
+            }`}
+          >
+            📊 Report Commercialista
+          </button>
         </div>
       </div>
 
@@ -969,8 +987,8 @@ export function CassaFiscale() {
                     <p className="text-[11px] font-semibold text-apple-gray uppercase mb-1.5">
                       Metodo pagamento
                     </p>
-                    <div className="grid grid-cols-5 gap-1">
-                      {(['Contanti', 'Carta', 'Bancomat', 'Bonifico', 'Altro'] as const).map((m) => (
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                      {(['Contanti', 'Carta', 'Bancomat', 'Prepagate', 'Bonifico', 'Altro'] as const).map((m) => (
                         <button
                           key={m}
                           onClick={() => setMetodoPagamento(m)}
@@ -983,6 +1001,7 @@ export function CassaFiscale() {
                           {m === 'Contanti' && '💵'}
                           {m === 'Carta' && '💳'}
                           {m === 'Bancomat' && '📱'}
+                          {m === 'Prepagate' && '🎁'}
                           {m === 'Bonifico' && '🏦'}
                           {m === 'Altro' && '➕'}
                           <br />
@@ -1204,6 +1223,18 @@ export function CassaFiscale() {
           )}
         </div>
       )}
+
+      {/* === TAB CHIUSURA CASSA === */}
+      {tab === 'chiusura' && (
+        <ChiusuraCassaTab
+          onChiusuraSalvata={() => {
+            setToast({ message: '✅ Chiusura cassa salvata', tipo: 'success' });
+          }}
+        />
+      )}
+
+      {/* === TAB REPORT COMMERCIALISTA === */}
+      {tab === 'report' && <ReportCommercialistaTab />}
 
       {/* Modale selettore cliente */}
       {showSelettoreCliente && (
