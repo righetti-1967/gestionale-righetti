@@ -54,5 +54,12 @@ export default defineConfig({
       'macbook-pro-di-luca.local',
       '.local',
     ],
+    proxy: {
+      '/api': {
+        target: 'https://gestionale-righetti-production.up.railway.app',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
   },
 })

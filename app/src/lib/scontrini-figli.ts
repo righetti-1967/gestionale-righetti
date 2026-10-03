@@ -11,6 +11,12 @@ import {
   type ModalitaCassa,
 } from './scontrini';
 import { creaMovimento } from './magazzino';
+import { generaPdfScontrinoBase64 } from './pdfScontrino';
+import { inviaEmailConConfig } from './api';
+
+// ============================================================
+// TIPI
+// ============================================================
 
 export interface RigaRiscatto {
   tipo: 'servizio' | 'prodotto';
@@ -30,6 +36,10 @@ export interface NuovoScontrinoFiglio {
   modalita_cassa?: ModalitaCassa;
   note?: string | null;
 }
+
+// ============================================================
+// CREAZIONE SCONTRINO FIGLIO
+// ============================================================
 
 export async function creaScontrinoFiglio(
   params: NuovoScontrinoFiglio
@@ -166,6 +176,10 @@ export async function creaScontrinoFiglio(
   return nuovo;
 }
 
+// ============================================================
+// HELPER: calcolo residuo di un percorso dai figli
+// ============================================================
+
 export async function getRigheRiscattateDaFigli(madreId: number): Promise<{
   tipo: 'servizio' | 'prodotto';
   servizio_id: number | null;
@@ -217,4 +231,145 @@ export async function getRigheRiscattateDaFigli(madreId: number): Promise<{
   }
 
   return righe;
+}
+
+// ============================================================
+// UPLOAD PDF SU SUPABASE STORAGE
+// ============================================================
+
+/**
+ * Genera PDF dello scontrino, lo carica su Supabase Storage e ritorna l'URL pubblico.
+ */
+export async function caricaPdfScontrinoStorage(
+  scontrino: Scontrino
+): Promise<{ url: string; nomeFile: string }> {
+  const { base64, nomeFile } = await generaPdfScontrinoBase64(scontrino);
+
+  // Nome file univoco: scontrini/{userId}/{numero}-{timestamp}.pdf
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const numeroSicuro = scontrino.numero_scontrino.replace(/\//g, '-');
+  const timestamp = Date.now();
+  const path = `${user.id}/${numeroSicuro}-${timestamp}.pdf`;
+
+  // Converti base64 in Blob
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+  const { error: errUpload } = await supabase.storage
+    .from('scontrini-pdf')
+    .upload(path, blob, {
+      contentType: 'application/pdf',
+      upsert: false,
+    });
+
+  if (errUpload) {
+    console.error('❌ Errore upload PDF:', errUpload);
+    throw errUpload;
+  }
+
+  const { data: publicUrl } = supabase.storage
+    .from('scontrini-pdf')
+    .getPublicUrl(path);
+
+  return { url: publicUrl.publicUrl, nomeFile };
+}
+
+// ============================================================
+// INVIO EMAIL
+// ============================================================
+
+/**
+ * Invia lo scontrino via Email al cliente, con PDF in allegato.
+ * Usa il provider configurato (Google Workspace / SMTP).
+ */
+export async function inviaScontrinoEmail(
+  scontrino: Scontrino,
+  emailDestinatario: string
+): Promise<void> {
+  if (!emailDestinatario || !emailDestinatario.trim()) {
+    throw new Error('Email cliente non disponibile');
+  }
+
+  const { base64, nomeFile } = await generaPdfScontrinoBase64(scontrino);
+
+  const isFiglio = scontrino.tipo === 'figlio';
+  const tipoLabel = isFiglio
+    ? `Scontrino scarico ${scontrino.numero_scontrino}`
+    : `Scontrino ${scontrino.numero_scontrino}`;
+
+  const corpoHtml = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5ea;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <p style="color: #8e8e93; font-size: 12px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+          Documento Commerciale
+        </p>
+      </div>
+      <div style="background: #f2f2f7; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+        <p style="margin: 0; color: #1c1c1e; font-size: 14px; font-weight: 600;">
+          Gentile ${scontrino.cliente?.nome_cognome || 'Cliente'},
+        </p>
+        <p style="margin: 8px 0 0 0; color: #3a3a3c; font-size: 13px; line-height: 1.5;">
+          In allegato trovi il documento commerciale relativo alla tua operazione del
+          ${new Date(scontrino.data_emissione).toLocaleDateString('it-IT')}.
+        </p>
+        ${isFiglio && scontrino.scontrino_madre_numero ? `
+          <p style="margin: 8px 0 0 0; color: #8e8e93; font-size: 12px;">
+            Riferimento scontrino madre: <strong>${scontrino.scontrino_madre_numero}</strong>
+          </p>
+        ` : ''}
+      </div>
+      <div style="border-top: 1px solid #e5e5ea; padding-top: 12px; margin-top: 20px; font-size: 11px; color: #8e8e93; text-align: center;">
+        Documento generato automaticamente dal Gestionale.
+      </div>
+    </div>
+  `;
+
+  await inviaEmailConConfig({
+    destinatario: emailDestinatario.trim(),
+    oggetto: tipoLabel,
+    corpo_html: corpoHtml,
+    allegato_base64: base64,
+    allegato_nome: nomeFile,
+  });
+}
+
+// ============================================================
+// INVIO WHATSAPP (link PDF)
+// ============================================================
+
+/**
+ * Genera PDF, lo carica su Storage e apre WhatsApp con link al PDF.
+ */
+export async function inviaScontrinoWhatsApp(
+  scontrino: Scontrino,
+  cellulare: string
+): Promise<void> {
+  if (!cellulare || !cellulare.trim()) {
+    throw new Error('Cellulare cliente non disponibile');
+  }
+
+  const { url } = await caricaPdfScontrinoStorage(scontrino);
+
+  const isFiglio = scontrino.tipo === 'figlio';
+  const testo = isFiglio
+    ? `Gentile ${scontrino.cliente?.nome_cognome || 'Cliente'}, ecco il documento di scarico percorso ${scontrino.numero_scontrino} (rif. scontrino madre ${scontrino.scontrino_madre_numero || ''}).\n\n${url}`
+    : `Gentile ${scontrino.cliente?.nome_cognome || 'Cliente'}, ecco il tuo scontrino ${scontrino.numero_scontrino}.\n\n${url}`;
+
+  // Normalizza numero (aggiunge 39 se manca)
+  const numPulito = cellulare.replace(/\D/g, '');
+  const prefisso = numPulito.startsWith('39') ? '' : '39';
+  const numeroFinale = numPulito ? `${prefisso}${numPulito}` : '';
+
+  const waUrl = numeroFinale
+    ? `https://wa.me/${numeroFinale}?text=${encodeURIComponent(testo)}`
+    : `https://wa.me/?text=${encodeURIComponent(testo)}`;
+
+  window.open(waUrl, '_blank');
 }

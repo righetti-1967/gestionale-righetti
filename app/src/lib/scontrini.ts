@@ -57,12 +57,18 @@ export interface Scontrino {
   note_cliente: string | null;
   sconto_totale_tipo?: 'percentuale' | 'importo' | null;
   sconto_totale_valore?: number | null;
+  annullato_at?: string | null;
+  annullato_motivo?: string | null;
+  annullato_da?: string | null;
+  ripristino_magazzino?: boolean | null;
   created_at: string;
   righe?: RigaScontrino[];
   cliente?: {
     id: number;
     nome_cognome: string;
     codice_fiscale: string | null;
+    email: string | null;
+    cellulare: string | null;
   } | null;
 }
 
@@ -121,7 +127,7 @@ export async function getScontrini(filtri?: {
 
   let query = supabase
     .from('scontrini')
-    .select('*, righe:scontrini_righe(*), cliente:clienti(id, nome_cognome, codice_fiscale)')
+    .select('*, righe:scontrini_righe(*), cliente:clienti(id, nome_cognome, codice_fiscale, email, cellulare)')
     .eq('user_id', user.id)
     .order('data_emissione', { ascending: false })
     .order('ora_emissione', { ascending: false });
@@ -144,7 +150,7 @@ export async function getScontrino(id: number): Promise<Scontrino | null> {
 
   const { data, error } = await supabase
     .from('scontrini')
-    .select('*, righe:scontrini_righe(*), cliente:clienti(id, nome_cognome, codice_fiscale)')
+    .select('*, righe:scontrini_righe(*), cliente:clienti(id, nome_cognome, codice_fiscale, email, cellulare)')
     .eq('id', id)
     .eq('user_id', user.id)
     .single();
@@ -238,23 +244,172 @@ export async function creaScontrino(scontrino: NuovoScontrino): Promise<Scontrin
   return nuovo;
 }
 
-export async function annullaScontrino(id: number, motivo?: string): Promise<void> {
+export interface AnnullaScontrinoParams {
+  id: number;
+  motivo: string;
+  ripristinoMagazzino: boolean;
+  annullatoDa: string; // email o nome utente
+}
+
+/**
+ * Annulla uno scontrino (soft-delete tracciato).
+ *
+ * Regole:
+ * - Non puoi annullare un MADRE se ha figli ATTIVI (non annullati)
+ * - Se ripristinoMagazzino è true e ci sono prodotti → crea movimenti di carico
+ * - Segna il cliente con la segnalazione
+ * - Il campo `annullato` = true, più metadati
+ */
+export async function annullaScontrino(
+  params: AnnullaScontrinoParams
+): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Non autenticato');
 
-  const { error } = await supabase
+  const { id, motivo, ripristinoMagazzino, annullatoDa } = params;
+
+  if (!motivo || motivo.trim().length < 10) {
+    throw new Error('Il motivo deve avere almeno 10 caratteri');
+  }
+
+  // 1. Leggi lo scontrino
+  const { data: sc, error: errLettura } = await supabase
+    .from('scontrini')
+    .select('*, righe:scontrini_righe(*), cliente:clienti(id, nome_cognome, segnalazioni_annulli)')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .single();
+
+  if (errLettura || !sc) {
+    throw new Error('Scontrino non trovato');
+  }
+
+  if (sc.annullato) {
+    throw new Error('Scontrino già annullato');
+  }
+
+  // 2. Se è un MADRE, verifica che non abbia figli attivi
+  if (sc.tipo === 'madre') {
+    const { data: figli, error: errFigli } = await supabase
+      .from('scontrini')
+      .select('id, numero_scontrino')
+      .eq('user_id', user.id)
+      .eq('scontrino_madre_id', id)
+      .eq('annullato', false);
+
+    if (errFigli) {
+      console.error('❌ Errore verifica figli:', errFigli);
+      throw errFigli;
+    }
+
+    if (figli && figli.length > 0) {
+      const numeri = figli.map((f) => f.numero_scontrino).join(', ');
+      throw new Error(
+        `Impossibile annullare: ci sono ${figli.length} figli attivi collegati. Annullali prima: ${numeri}`
+      );
+    }
+  }
+
+  // 3. Se ripristinoMagazzino, crea movimenti di carico per i prodotti
+  if (ripristinoMagazzino && sc.righe && sc.righe.length > 0) {
+    const righeProdotto = sc.righe.filter(
+      (r: RigaScontrino) => r.tipo === 'prodotto' && r.prodotto_id && r.quantita > 0
+    );
+
+    for (const r of righeProdotto) {
+      try {
+        const { error: errMag } = await supabase
+          .from('movimenti_magazzino')
+          .insert({
+            user_id: user.id,
+            prodotto_id: r.prodotto_id,
+            tipo: 'carico',
+            quantita: r.quantita,
+            motivo: `Annullo scontrino ${sc.numero_scontrino}`,
+            note: `Ripristino merce - motivo: ${motivo}`,
+            data_movimento: new Date().toISOString().split('T')[0],
+          });
+
+        if (errMag) {
+          console.error('⚠️ Errore ripristino magazzino riga:', errMag);
+        }
+      } catch (err) {
+        console.error('⚠️ Errore ripristino magazzino:', err);
+      }
+    }
+  }
+
+  // 4. Segna lo scontrino come annullato
+  const { error: errUpdate } = await supabase
     .from('scontrini')
     .update({
       annullato: true,
-      note: motivo ? `ANNULLATO: ${motivo}` : 'ANNULLATO',
+      annullato_at: new Date().toISOString(),
+      annullato_motivo: motivo.trim(),
+      annullato_da: annullatoDa,
+      ripristino_magazzino: ripristinoMagazzino,
     })
     .eq('id', id)
     .eq('user_id', user.id);
 
+  if (errUpdate) {
+    console.error('❌ Errore annullamento scontrino:', errUpdate);
+    throw errUpdate;
+  }
+
+  // 5. Aggiungi segnalazione al cliente
+  if (sc.cliente_id) {
+    try {
+      const dataIt = new Date().toLocaleDateString('it-IT');
+      const nuovaSegnalazione = `[${dataIt}] Annullato ${sc.numero_scontrino} — Motivo: ${motivo.trim()}`;
+
+      // Leggi segnalazioni esistenti
+      const { data: cli } = await supabase
+        .from('clienti')
+        .select('segnalazioni_annulli')
+        .eq('id', sc.cliente_id)
+        .maybeSingle();
+
+      const esistenti = cli?.segnalazioni_annulli || '';
+      const aggiornate = esistenti
+        ? esistenti + '\n' + nuovaSegnalazione
+        : nuovaSegnalazione;
+
+      await supabase
+        .from('clienti')
+        .update({ segnalazioni_annulli: aggiornate })
+        .eq('id', sc.cliente_id);
+    } catch (errCli) {
+      console.error('⚠️ Errore segnalazione cliente:', errCli);
+    }
+  }
+
+  // 6. Se è un FIGLIO, aggiorna il percorso (se esiste) per riportare il residuo
+  // (non facciamo nulla: il residuo si calcola escludendo i figli annullati,
+  //  grazie al filtro `.eq('annullato', false)` in getRigheRiscattateDaFigli)
+}
+
+/**
+ * Ritorna i figli attivi (non annullati) di un madre.
+ */
+export async function getFigliDiMadre(madreId: number): Promise<Scontrino[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const { data, error } = await supabase
+    .from('scontrini')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('scontrino_madre_id', madreId)
+    .eq('annullato', false)
+    .order('data_emissione', { ascending: false });
+
   if (error) {
-    console.error('❌ Errore annullamento scontrino:', error);
+    console.error('❌ Errore recupero figli:', error);
     throw error;
   }
+
+  return data || [];
 }
 
 // ============================================================

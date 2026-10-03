@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { FormScaricoSeduta } from './FormScaricoSeduta';
 import { MenuSceltaPdf } from './MenuSceltaPdf';
 import { FormModificaPercorso } from './FormModificaPercorso';
+import { useDatiAziendali } from '../lib/useDatiAziendali';
+import { getScontrino, type Scontrino } from '../lib/scontrini';
+import { StampaScontrino } from './StampaScontrino';
 import type { ScaricoSeduta } from '../lib/scarichi';
 import {
   formatEuro,
@@ -25,10 +28,12 @@ interface DettaglioPercorsoProps {
   residuo: ResiduoPercorso;
   fatturaIncassata: boolean;
   stato: StatoPercorso;
+  regime?: 'fatture' | 'scontrini';
   onClose: () => void;
   onUpdated: () => void;
   onModifica?: () => void;
   onFattura: () => void;
+  onRiscatta?: () => void;
 }
 
 // Calcola i mesi totali tra data inizio e data fine
@@ -47,12 +52,17 @@ export function DettaglioPercorso({
   residuo,
   fatturaIncassata,
   stato,
+  regime,
   onClose,
   onUpdated,
   onModifica: _onModifica,
   onFattura,
+  onRiscatta,
 }: DettaglioPercorsoProps) {
+  const { dati: azienda } = useDatiAziendali();
+  const regimeEffettivo = regime || azienda.regimeDocumenti || 'fatture';
   const [salvando, setSalvando] = useState(false);
+  const [scontrinoMadreAperto, setScontrinoMadreAperto] = useState<Scontrino | null>(null);
   const [showConfermaElimina, setShowConfermaElimina] = useState(false);
   const [showBlocca, setShowBlocca] = useState(false);
   const [showProroga, setShowProroga] = useState(false);
@@ -163,6 +173,35 @@ export function DettaglioPercorso({
       alert('Errore: ' + err.message);
     } finally {
       setSalvando(false);
+    }
+  }
+
+  async function apriScontrinoMadre() {
+    if (!percorso.scontrino_madre_id) {
+      alert('Nessuno scontrino madre collegato a questo percorso');
+      return;
+    }
+    try {
+      const s = await getScontrino(percorso.scontrino_madre_id);
+      if (!s) {
+        alert('Scontrino madre non trovato');
+        return;
+      }
+      const scontrinoConCliente: Scontrino = {
+        ...s,
+        cliente: cliente
+          ? {
+              id: cliente.id,
+              nome_cognome: cliente.nome_cognome,
+              codice_fiscale: cliente.codice_fiscale,
+              email: cliente.email,
+              cellulare: cliente.cellulare,
+            }
+          : s.cliente || null,
+      };
+      setScontrinoMadreAperto(scontrinoConCliente);
+    } catch (err: any) {
+      alert('Errore: ' + (err?.message || 'impossibile aprire scontrino'));
     }
   }
 
@@ -420,7 +459,7 @@ export function DettaglioPercorso({
           </div>
 
           {/* Footer */}
-          <div className="flex gap-2 px-5 sm:px-6 py-4 border-t border-gray-200/60 bg-gray-50/50 shrink-0">
+          <div className="flex flex-wrap gap-2 px-5 sm:px-6 py-4 border-t border-gray-200/60 bg-gray-50/50 shrink-0">
             <button
               type="button"
               onClick={() => setShowConfermaElimina(true)}
@@ -430,32 +469,68 @@ export function DettaglioPercorso({
             >
               🗑️
             </button>
-            {!percorso.fattura_id && (
-              <button
-                type="button"
-                onClick={onFattura}
-                disabled={salvando}
-                className="flex-1 px-4 py-2.5 bg-amber-500 text-white rounded-apple font-medium text-sm hover:bg-amber-600 transition-colors disabled:opacity-50"
-              >
-                💵 Fattura proforma
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setShowModifica(true)}
-              className="flex-1 px-4 py-2.5 bg-apple-blue text-white rounded-apple font-medium text-sm hover:bg-blue-600 transition-colors"
-            >
-              ✏️ Modifica
-            </button>
-            {fatturaIncassata && (
-              <button
-                type="button"
-                onClick={() => setShowScarico(true)}
-                disabled={salvando}
-                className="flex-1 px-4 py-2.5 bg-green-500 text-white rounded-apple font-medium text-sm hover:bg-green-600 transition-colors disabled:opacity-50"
-              >
-                📋 Scarico Seduta
-              </button>
+
+            {regimeEffettivo === 'fatture' ? (
+              <>
+                {!percorso.fattura_id && (
+                  <button
+                    type="button"
+                    onClick={onFattura}
+                    disabled={salvando}
+                    className="flex-1 px-4 py-2.5 bg-amber-500 text-white rounded-apple font-medium text-sm hover:bg-amber-600 transition-colors disabled:opacity-50"
+                  >
+                    💵 Fattura proforma
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowModifica(true)}
+                  className="flex-1 px-4 py-2.5 bg-apple-blue text-white rounded-apple font-medium text-sm hover:bg-blue-600 transition-colors"
+                >
+                  ✏️ Modifica
+                </button>
+                {fatturaIncassata && (
+                  <button
+                    type="button"
+                    onClick={() => setShowScarico(true)}
+                    disabled={salvando}
+                    className="flex-1 px-4 py-2.5 bg-green-500 text-white rounded-apple font-medium text-sm hover:bg-green-600 transition-colors disabled:opacity-50"
+                  >
+                    📋 Scarico Seduta
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                {percorso.scontrino_madre_id && (
+                  <button
+                    type="button"
+                    onClick={apriScontrinoMadre}
+                    disabled={salvando}
+                    className="px-4 py-2.5 bg-blue-50 text-blue-700 rounded-apple font-medium text-sm hover:bg-blue-100 transition-colors disabled:opacity-50"
+                    title="Vedi scontrino madre (con invio Email/WhatsApp)"
+                  >
+                    📄 Vedi scontrino
+                  </button>
+                )}
+                {onRiscatta && (
+                  <button
+                    type="button"
+                    onClick={onRiscatta}
+                    disabled={salvando}
+                    className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-apple font-medium text-sm hover:bg-purple-700 transition-colors disabled:opacity-50"
+                  >
+                    🎫 Riscatta Percorso
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowModifica(true)}
+                  className="flex-1 px-4 py-2.5 bg-apple-blue text-white rounded-apple font-medium text-sm hover:bg-blue-600 transition-colors"
+                >
+                  ✏️ Modifica
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -586,6 +661,14 @@ export function DettaglioPercorso({
             setScaricoPerPdf(null);
             onUpdated();
           }}
+        />
+      )}
+
+      {/* Modale Stampa Scontrino Madre */}
+      {scontrinoMadreAperto && (
+        <StampaScontrino
+          scontrino={scontrinoMadreAperto}
+          onClose={() => setScontrinoMadreAperto(null)}
         />
       )}
 

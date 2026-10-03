@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getTuttiPercorsi, type Percorso, type StatoPercorso } from '../lib/percorsi';
+import { useDatiAziendali } from '../lib/useDatiAziendali';
 import { getClienti, type Cliente } from '../lib/clienti';
 import { getFatture } from '../lib/fatture';
 import { getScarichiFattura } from '../lib/scarichi';
@@ -46,6 +47,8 @@ const STATO_CONFIG: Record<
 };
 
 export function Percorsi() {
+  const { dati: azienda } = useDatiAziendali();
+  const regime = azienda.regimeDocumenti || 'fatture';
   const [percorsi, setPercorsi] = useState<PercorsoConDati[]>([]);
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState<string | null>(null);
@@ -367,12 +370,20 @@ export function Percorsi() {
           residuo={percorsoSelezionato.residuo}
           fatturaIncassata={percorsoSelezionato.fatturaIncassata}
           stato={percorsoSelezionato.stato}
+          regime={regime}
           onClose={() => setPercorsoSelezionato(null)}
           onUpdated={() => { setPercorsoSelezionato(null); caricaPercorsi(); }}
           onFattura={() => {
             const p = percorsoSelezionato;
             setPercorsoSelezionato(null);
             setFatturaDaPercorso(p);
+          }}
+          onRiscatta={() => {
+            // In regime scontrini: cambia pagina alla Cassa Fiscale
+            // (il riscatto vero si fa lì)
+            window.location.hash = '#cassa_fiscale';
+            localStorage.setItem('gestionale_pagina', 'cassa_fiscale');
+            window.location.reload();
           }}
         />
       )}

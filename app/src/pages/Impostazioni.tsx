@@ -31,6 +31,7 @@ import { aggiornaCostantiAgenda } from '../lib/appuntamenti';
 import { getServizi, type Servizio } from '../lib/servizi';
 import { caricaPrivacy, salvaPrivacy, invalidaCachePrivacy, PRIVACY_DEFAULT, INFORMATIVA_DEFAULT, type ConfigPrivacy } from '../lib/privacy';
 import { caricaAspetto, salvaAspetto, invalidaCacheAspetto, ASPETTO_DEFAULT, type ConfigAspetto } from '../lib/aspetto';
+import { SicurezzaTab } from '../components/SicurezzaTab';
 
 // ============ TIPI ============
 interface Sede {
@@ -102,7 +103,7 @@ function normalizzaDati(raw: unknown): DatiAziendali {
   };
 }
 
-type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'comunicazioni' | 'promemoria' | 'licenze';
+type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'comunicazioni' | 'promemoria' | 'sicurezza' | 'licenze';
 
 const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'profilo', label: 'Profilo', icon: '👤' },
@@ -114,6 +115,7 @@ const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'google_sheets', label: 'Google Sheets', icon: '🔄' },
   { id: 'comunicazioni', label: 'Comunicazioni', icon: '💬' },
   { id: 'promemoria', label: 'Promemoria', icon: '⏰' },
+  { id: 'sicurezza', label: 'Sicurezza', icon: '🔐' },
 ];
 
 const ADMIN_EMAIL = 'righetti@righetti.club';
@@ -1021,6 +1023,7 @@ export function Impostazioni() {
         {tabAttiva === 'google_sheets' && <TabGoogleSheets registraSalva={registraSalva} />}
         {tabAttiva === 'comunicazioni' && <TabComunicazioni registraSalva={registraSalva} />}
         {tabAttiva === 'promemoria' && <TabPromemoria registraSalva={registraSalva} />}
+        {tabAttiva === 'sicurezza' && <SicurezzaTab />}
         {tabAttiva === 'licenze' && isAdmin && <TabLicenze adminEmail={user?.email || ''} />}
       </div>
     </div>
