@@ -455,3 +455,81 @@ Fase 7 — Deploy produzione (solo dopo test ok)
 - Chiusura cassa giornaliera con fondo iniziale
 - Export CSV scontrini per commercialista
 - PDF scontrino (oltre alla stampa termica)
+
+
+---
+
+## AGGIORNAMENTI COMPLETATI IL 03/10/2026
+
+### 35. Cassa Fiscale — Email, WhatsApp e PDF
+- COMPLETATO **PDF scontrino formato 80mm** (`src/lib/pdfScontrino.ts`)
+  - Generazione con jsPDF
+  - Base64 per upload/allegato
+- COMPLETATO **Supabase Storage** bucket `scontrini-pdf`
+  - Policy lettura pubblica + upload autenticato
+  - Upload PDF → URL pubblico
+- COMPLETATO **Invio Email scontrino** (`inviaScontrinoEmail`)
+  - PDF in allegato
+  - Body HTML professionale
+  - Riferimento madre per i figli
+- COMPLETATO **Invio WhatsApp scontrino** (`inviaScontrinoWhatsApp`)
+  - PDF caricato su Storage → link pubblico nel messaggio
+  - Apre `wa.me` con testo precompilato
+- COMPLETATO **Pulsanti in `StampaScontrino`**: ⬇️ Scarica PDF | 📧 Email | 💬 WhatsApp
+
+### 36. Fix CORS con Proxy Vite
+- AGGIUNTO **proxy `/api/*`** in `vite.config.ts` per sviluppo locale
+  - Target: `https://gestionale-righetti-production.up.railway.app`
+  - Permette test email/backend da `localhost:5173` senza CORS
+- MODIFICATO **`.env.local.TEST`** con `VITE_FASTAPI_URL=` (vuoto → usa proxy)
+
+### 37. Fix clienti TEST
+- AGGIUNTE **colonne mancanti** in `clienti`:
+  - `data_nascita`, `dna`, `note_anamnesi`
+  - `indirizzo_spedizione`, `cap_spedizione`, `citta_spedizione`, `provincia_spedizione`
+  - `privacy_firmata`, `privacy_firma_immagine`, `privacy_data_firma`
+  - `privacy_inviata_email_at`, `privacy_inviata_whatsapp_at`
+
+### 38. Annullo Scontrini (Fiscalmente Tracciato)
+- COMPLETATO **soft-delete** con metadati:
+  - `annullato_at`, `annullato_motivo`, `annullato_da`, `ripristino_magazzino`
+- COMPLETATO **Password gestionale hashata** (SHA-256, `src/lib/sicurezza.ts`)
+  - Tab **🔐 Sicurezza** in Impostazioni
+  - Imposta/cambia/rimuovi password
+- COMPLETATO **Blocco annullo madre con figli attivi**
+  - Messaggio con elenco dei figli da annullare prima
+- COMPLETATO **Ripristino magazzino opzionale**
+  - Checkbox nella modale annullo
+  - Crea movimenti di carico per ogni prodotto
+- COMPLETATO **Segnalazione su scheda cliente**
+  - Colonna `clienti.segnalazioni_annulli`
+  - Append automatico con data + numero scontrino + motivo
+- COMPLETATO **Badge "❌ ANNULLATO"** in `StampaScontrino`
+  - Mostra motivo + data + utente
+
+---
+
+## TODO / ROADMAP FUTURA
+
+### Priorita ALTA — Allineamento Regime Fatture
+- **Annullo/storno anche per Fatture, DDT cliente, DDT commercialista**
+  - Stessa logica degli scontrini (password + motivo + tracciamento)
+  - Nota di credito automatica al commercialista via email
+  - Blocco fattura con DDT collegati
+  - Segnalazione su scheda cliente
+  - Soft-delete su `scarichi_seduta`
+- **Applicare i fix TEST a PROD** (colonne clienti mancanti, schema percorsi, ecc.)
+
+### Priorita MEDIA — Miglioramenti Cassa
+- Grouping madre/figli in Archivio (madre con figli indentati)
+- Filtri data in Archivio (oggi/ieri/settimana/mese/custom)
+- Riepilogo incassi in cima all'Archivio
+- Ricerca per numero scontrino o cliente
+- Chiusura cassa giornaliera con fondo iniziale
+- Export CSV scontrini per commercialista
+- Tastiera numerica touch-friendly
+
+### Priorita BASSA — Sicurezza
+- Conferma prima di salvare il cambio di regime documenti (evita click accidentali)
+- Log accessi/azioni critiche
+- Timeout sessione per inattivita
