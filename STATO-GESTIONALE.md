@@ -1,3 +1,22 @@
+# REGOLA FISSA PER OGNI NUOVA FUNZIONALITA'
+
+Ogni nuova funzionalita' deve essere costruita e testata per:
+1. Desktop (1280px+)
+2. Tablet (768px - 1024px)
+3. Mobile (375px - 430px)
+
+Check obbligatori:
+- Pulsanti w-full sm:w-auto (mai full-width su desktop)
+- Grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-X
+- Padding p-3 sm:p-4 lg:p-6
+- Font text-sm sm:text-base lg:text-lg
+- Modali scrollabili senza scroll orizzontale
+- Tabelle scrollabili o trasformate in card su mobile
+
+Nessuna eccezione. Se non e' responsive, non e' finita.
+
+---
+
 # STATO GESTIONALE RIGHETTI 1967
 Data ultimo aggiornamento: 02/10/2026 (sera)
 
@@ -844,3 +863,38 @@ Se qualcosa va storto:
 - [ ] Formazione Righetti fatta
 
 Quando tutti i check sono verdi: SIAMO ONLINE.
+
+
+---
+
+## TODO / ROADMAP (aggiornata 05/10/2026)
+
+### PRIORITA ALTA
+
+#### 1. Design System Pulsanti + Responsive
+- Pulsanti full-width -> auto-width (w-full sm:w-auto)
+- Pagine: ChiusuraCassaTab, ReportCommercialistaTab, TestiTemplateTab, SicurezzaTab
+- Creare components/Button.tsx con varianti
+
+#### 2. Responsive Mobile/Tablet — REGOLA OBBLIGATORIA
+- OGNI funzionalita' testata su Mobile (375-430px), Tablet (768-1024px), Desktop (1280px+)
+- Check: layout ok, pulsanti 44px+, testi 14px+, tabelle scrollabili, modali senza scroll orizzontale
+
+#### 3. Analytics Clienti — Fix Pulsanti
+- TestiTemplateTab, ReportCommercialistaTab, ChiusuraCassaTab, SicurezzaTab
+
+### PRIORITA MEDIA
+
+#### 4. Agenda orari per giorno
+#### 5. Collegamento Automazioni -> Azione manuale
+#### 6. Grouping madre/figli in Archivio
+#### 7. Filtri ricerca in Archivio scontrini
+#### 8. Riepilogo incassi in Archivio
+#### 9. Motore automatico promemoria (backend)
+#### 10. Integrazione API reali (FPT, ADE, RCH, Epson)
+
+### PRIORITA BASSA
+#### 11. Push App Cliente (PWA)
+#### 12. Annullo/storno Fatture + DDT
+#### 13. Indici SQL
+#### 14. Migrazione PDF su Storage
