@@ -12,6 +12,7 @@ import {
   type Operatore,
   type VoceSelezionata,
 } from '../lib/appuntamenti';
+import { getFasceDaDataISO, type Fascia } from '../lib/agenda-config';
 
 interface AgendaGiornalieraProps {
   data: string;
@@ -128,6 +129,11 @@ export function AgendaGiornaliera({
     return lista;
   }, [agendaConfig.oraApertura, agendaConfig.oraChiusura, agendaConfig.granularitaMinuti]);
 
+  // Fasce del giorno corrente (dal config orariGiorni)
+  const fasceOggi = useMemo(() => {
+    return getFasceDaDataISO(agendaConfig, data);
+  }, [agendaConfig, data]);
+
   const altezzaSlot = useMemo(() => {
     if (slots.length === 0) return 22;
     // Su mobile (< 768px): slot da 28px per dare aria e leggibilita (30 min = 56px)
@@ -148,6 +154,22 @@ export function AgendaGiornaliera({
     nuovoOperatore?: Operatore;
     messaggio: string;
   } | null>(null);
+
+  // Modale avviso click su cella chiusa
+  const [avvisoFuoriOrario, setAvvisoFuoriOrario] = useState<{
+    operatore: Operatore;
+    ora: string;
+    motivo: string;
+  } | null>(null);
+
+  // Info "fuori orario" per blocco corrente
+  function bloccoFuoriOrario(oraInizio: string, oraFine: string): boolean {
+    if (!fasceOggi || fasceOggi.length === 0) return false;
+    // Se l'inizio O la fine cadono fuori da ogni fascia
+    const dentroInizio = fasceOggi.some((f) => oraInizio >= f.inizio && oraInizio < f.fine);
+    const dentroFine = fasceOggi.some((f) => oraFine > f.inizio && oraFine <= f.fine);
+    return !dentroInizio || !dentroFine;
+  }
 
   useEffect(() => {
     if (!colRef.current) return;
@@ -660,8 +682,20 @@ export function AgendaGiornaliera({
               <SfondoColonna
                 operatore={op}
                 slots={slots}
-                onClickSlot={onClickSlot}
+                onClickSlot={(operatore, ora) => {
+                  // Se cella chiusa → apri modale avviso
+                  if (fasceOggi && fasceOggi.length > 0) {
+                    const dentro = fasceOggi.some((f) => ora >= f.inizio && ora < f.fine);
+                    if (!dentro) {
+                      setAvvisoFuoriOrario({ operatore, ora, motivo: '' });
+                      return;
+                    }
+                  }
+                  onClickSlot(operatore, ora);
+                }}
                 altezzaSlot={altezzaSlot}
+                fasceGiorno={fasceOggi}
+                slotMinuti={agendaConfig.granularitaMinuti}
               />
               {(blocchiPerOperatore[op] || []).map((b, i) => (
                 <BloccoRnd
@@ -679,12 +713,90 @@ export function AgendaGiornaliera({
                   }
                   onResizeStop={(h) => handleResizeStop(b.app, b.voceIndex, h)}
                   isHighlighted={highlightAppuntamentoId === b.app.id}
+                  fuoriOrario={bloccoFuoriOrario(b.oraInizio, b.oraFine)}
                 />
               ))}
             </div>
           ))}
         </div>
       </div>
+
+      {/* Modale avviso: creazione appuntamento fuori orario */}
+      {avvisoFuoriOrario && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[95]"
+          onClick={() => setAvvisoFuoriOrario(null)}
+        >
+          <div
+            className="bg-white rounded-apple shadow-apple-lg max-w-sm w-full p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-amber-100 flex items-center justify-center text-2xl">
+                ⚠️
+              </div>
+              <h3 className="text-base font-bold text-apple-darkgray mb-2">
+                Fuori orario di apertura
+              </h3>
+              <p className="text-xs text-apple-gray leading-relaxed">
+                Stai creando un appuntamento alle <strong>{avvisoFuoriOrario.ora}</strong> di un
+                orario fuori dalle fasce configurate.
+                {fasceOggi && fasceOggi.length > 0 && (
+                  <>
+                    <br />
+                    <span className="text-[11px]">
+                      Orari di oggi:{' '}
+                      <strong>{fasceOggi.map((f) => `${f.inizio}-${f.fine}`).join(' · ')}</strong>
+                    </span>
+                  </>
+                )}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                Motivo (facoltativo)
+              </label>
+              <textarea
+                value={avvisoFuoriOrario.motivo}
+                onChange={(e) =>
+                  setAvvisoFuoriOrario({ ...avvisoFuoriOrario, motivo: e.target.value })
+                }
+                placeholder="Es. cliente in ritardo, urgenza, straordinario..."
+                rows={3}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-apple text-sm text-apple-darkgray placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none"
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => setAvvisoFuoriOrario(null)}
+                className="flex-1 px-4 py-2.5 rounded-apple bg-gray-100 text-apple-darkgray text-sm font-medium hover:bg-gray-200 transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const { operatore, ora, motivo } = avvisoFuoriOrario;
+                  // Salva il motivo in localStorage per il form (opzionale, il form lo può leggere)
+                  if (motivo.trim()) {
+                    try {
+                      localStorage.setItem('cassa_motivo_fuori_orario', motivo.trim());
+                    } catch {}
+                  }
+                  setAvvisoFuoriOrario(null);
+                  onClickSlot(operatore, ora);
+                }}
+                className="flex-1 px-4 py-2.5 rounded-apple bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 transition-colors shadow-apple"
+              >
+                Procedi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -694,26 +806,69 @@ function SfondoColonna({
   slots,
   onClickSlot,
   altezzaSlot,
+  fasceGiorno,
+  slotMinuti,
 }: {
   operatore: Operatore;
   slots: string[];
   onClickSlot: (operatore: Operatore, ora: string) => void;
   altezzaSlot: number;
+  fasceGiorno?: Fascia[];
+  slotMinuti?: number;
 }) {
+  // Ritorna true se lo slot è DENTRO una fascia aperta
+  function isSlotAperto(slot: string): boolean {
+    if (!fasceGiorno || fasceGiorno.length === 0) return true; // nessuna config → tutto aperto
+    return fasceGiorno.some((f) => slot >= f.inizio && slot < f.fine);
+  }
+
+  // Ritorna info del blocco "Chiuso" se lo slot è il PRIMO di un gruppo chiuso
+  function infoBloccoChiuso(index: number): { durata: string } | null {
+    if (!fasceGiorno || fasceGiorno.length === 0) return null;
+    if (isSlotAperto(slots[index])) return null;
+    // Se lo slot precedente era chiuso → non sono il primo, non metto label
+    if (index > 0 && !isSlotAperto(slots[index - 1])) return null;
+    // Conto quanti slot consecutivi sono chiusi
+    let count = 0;
+    for (let i = index; i < slots.length; i++) {
+      if (isSlotAperto(slots[i])) break;
+      count++;
+    }
+    const minuti = count * (slotMinuti || 15);
+    const h = Math.floor(minuti / 60);
+    const m = minuti % 60;
+    const durata = h > 0 && m > 0 ? `${h}h ${m}m` : h > 0 ? `${h}h` : `${m}m`;
+    return { durata };
+  }
+
   return (
     <>
-      {slots.map((slot) => (
-        <button
-          key={`${operatore}-${slot}`}
-          type="button"
-          onClick={() => onClickSlot(operatore, slot)}
-          style={{ height: `${altezzaSlot}px` }}
-          className={`w-full block border-b transition-colors hover:bg-blue-50/60 ${
-            slot.endsWith(':00') ? 'border-gray-200/60' : 'border-gray-100'
-          }`}
-          aria-label={`Aggiungi appuntamento ${operatore} alle ${slot}`}
-        />
-      ))}
+      {slots.map((slot, index) => {
+        const aperto = isSlotAperto(slot);
+        const bloccoChiuso = infoBloccoChiuso(index);
+        return (
+          <button
+            key={`${operatore}-${slot}`}
+            type="button"
+            onClick={() => onClickSlot(operatore, slot)}
+            style={{ height: `${altezzaSlot}px` }}
+            className={`w-full block border-b transition-colors relative ${
+              aperto
+                ? slot.endsWith(':00')
+                  ? 'border-gray-200/60 hover:bg-blue-50/60'
+                  : 'border-gray-100 hover:bg-blue-50/60'
+                : 'bg-gray-100 border-gray-100 hover:bg-gray-200/70'
+            }`}
+            aria-label={`${aperto ? 'Aggiungi appuntamento' : 'Slot chiuso (fuori orario)'} ${operatore} alle ${slot}`}
+          >
+            {bloccoChiuso && (
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap pointer-events-none">
+                Chiuso {bloccoChiuso.durata}
+              </span>
+            )}
+          </button>
+        );
+      })}
     </>
   );
 }
@@ -730,6 +885,7 @@ interface BloccoRndProps {
   onDragStop: (deltaY: number, deltaX: number) => void;
   onResizeStop: (height: number) => void;
   isHighlighted?: boolean;
+  fuoriOrario?: boolean;
 }
 
 function BloccoRnd({
@@ -743,6 +899,7 @@ function BloccoRnd({
   onDragStop,
   onResizeStop,
   isHighlighted,
+  fuoriOrario,
 }: BloccoRndProps) {
   const { config: agendaConfig } = useAgendaConfig();
 
@@ -847,6 +1004,11 @@ function BloccoRnd({
       className="group"
       style={{ zIndex: 10 }}
     >
+      {fuoriOrario && (
+        <div className="absolute -top-1.5 -right-1.5 z-20 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-md" title="Fuori orario di apertura">
+          ⚠
+        </div>
+      )}
       <div
         onClick={(e) => {
           if (isDraggingRef.current) {
