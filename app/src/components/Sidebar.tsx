@@ -27,6 +27,7 @@ const menuItems: MenuItem[] = [
   { id: 'fatture', label: 'Fatture', icon: '📄', soloRegime: 'fatture' },
   { id: 'ddt', label: 'DDT', icon: '📋', soloRegime: 'fatture' },
   { id: 'cassa_fiscale', label: 'Cassa Fiscale', icon: '🧾', soloRegime: 'scontrini' },
+  { id: 'analytics', label: 'Analytics', icon: '📊' },
   { id: 'prodotti', label: 'Prodotti', icon: '📦' },
   { id: 'servizi', label: 'Servizi', icon: '🛠️' },
   { id: 'agenda', label: 'Agenda', icon: '📅' },

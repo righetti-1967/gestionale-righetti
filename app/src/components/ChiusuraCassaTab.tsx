@@ -9,6 +9,7 @@ import {
 import { formatEuro } from '../lib/fatture';
 import { useDatiAziendali } from '../lib/useDatiAziendali';
 import { Toast, type ToastTipo } from './Toast';
+import { Button } from './Button';
 
 interface ChiusuraCassaTabProps {
   onChiusuraSalvata?: () => void;
@@ -393,24 +394,29 @@ export function ChiusuraCassaTab({ onChiusuraSalvata }: ChiusuraCassaTabProps) {
           </div>
 
           {/* Azioni */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
+          <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+            <Button
+              variant="primary"
+              size="md"
+              icon={salvando ? '⏳' : chiusuraEsistente ? '🔄' : '💾'}
               onClick={handleSalva}
               disabled={salvando}
-              className="flex-1 px-4 py-3 bg-apple-blue text-white rounded-apple font-bold text-sm hover:bg-blue-600 transition-colors shadow-apple disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {salvando
-                ? '⏳ Salvataggio...'
+                ? 'Salvataggio...'
                 : chiusuraEsistente
-                ? '🔄 Aggiorna chiusura'
-                : '💾 Salva chiusura cassa'}
-            </button>
-            <button
+                ? 'Aggiorna chiusura'
+                : 'Salva chiusura cassa'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="md"
+              icon="🖨️"
               onClick={handleStampaZ}
-              className="flex-1 px-4 py-3 bg-apple-darkgray text-white rounded-apple font-bold text-sm hover:bg-gray-700 transition-colors shadow-apple"
+              className="!bg-apple-darkgray !text-white !border-transparent hover:!bg-gray-700"
             >
-              🖨️ Stampa Chiusura Z
-            </button>
+              Stampa Chiusura Z
+            </Button>
           </div>
         </>
       )}

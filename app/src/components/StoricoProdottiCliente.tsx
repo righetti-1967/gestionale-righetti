@@ -311,67 +311,6 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
         )}
       </div>
 
-      {/* 🆕 Card Totale Spesa + Fiches */}
-      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-apple p-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {/* Scontrini */}
-          <div className="text-center sm:text-left">
-            <p className="text-[10px] text-apple-gray uppercase tracking-wide font-semibold">
-              🧾 Scontrini
-            </p>
-            <p className="text-base font-bold text-apple-darkgray mt-0.5">
-              {totaleSpesa.scontrini.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
-            </p>
-          </div>
-
-          {/* Fatture */}
-          <div className="text-center sm:text-left">
-            <p className="text-[10px] text-apple-gray uppercase tracking-wide font-semibold">
-              📄 Fatture
-            </p>
-            <p className="text-base font-bold text-apple-darkgray mt-0.5">
-              {totaleSpesa.fatture.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
-            </p>
-          </div>
-
-          {/* TOTALE */}
-          <div className="text-center sm:text-left">
-            <p className="text-[10px] text-green-800 uppercase tracking-wide font-bold">
-              💰 Totale Spesa
-            </p>
-            <p className="text-lg font-bold text-green-700 mt-0.5">
-              {totaleSpesa.totale.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
-            </p>
-          </div>
-
-          {/* Fiches media */}
-          <div className="text-center sm:text-left">
-            <p className="text-[10px] text-apple-gray uppercase tracking-wide font-semibold">
-              📊 Fiches media
-            </p>
-            <p className="text-base font-bold text-apple-darkgray mt-0.5">
-              {totaleSpesa.fichesMedia.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
-            </p>
-          </div>
-        </div>
-
-        {/* Sottoriga con scontrino medio + passaggi */}
-        <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-green-200/60 text-[11px] text-apple-gray">
-          <span>
-            <strong className="text-apple-darkgray">{totaleSpesa.numeroDocumenti}</strong> documenti
-          </span>
-          <span>
-            <strong className="text-apple-darkgray">{totaleSpesa.numFiches}</strong> fiches totali
-          </span>
-          <span>
-            Scontrino medio:{' '}
-            <strong className="text-apple-darkgray">
-              {totaleSpesa.scontrinoMedio.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
-            </strong>
-          </span>
-        </div>
-      </div>
-
       {/* Segmented control stile Apple per passare da Tutti / Prodotti / Servizi */}
       <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-apple w-fit">
         <button

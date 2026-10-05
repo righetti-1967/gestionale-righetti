@@ -15,6 +15,7 @@ import { Prodotti } from './pages/Prodotti';
 import { CassaFiscale } from './pages/CassaFiscale';
 import { Percorsi } from './pages/Percorsi';
 import { Impostazioni } from './pages/Impostazioni';
+import { Analytics } from './pages/Analytics';
 import { PaginaFirmaiPad } from './components/PaginaFirmaiPad';
 import { PaginaFirmaDdtIPad } from './components/PaginaFirmaDdtIPad';
 import { PaginaFirmaFatturaIPad } from './components/PaginaFirmaFatturaIPad';
@@ -177,6 +178,7 @@ function AppGestionale() {
           {currentPage === 'prodotti' && <Prodotti />}
           {currentPage === 'percorsi' && <Percorsi onNavigate={setCurrentPage} />}
           {currentPage === 'cassa_fiscale' && <CassaFiscale />}
+          {currentPage === 'analytics' && <Analytics />}
           {currentPage === 'impostazioni' && <Impostazioni />}
         </main>
       </div>

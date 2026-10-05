@@ -350,7 +350,7 @@ export async function generaPdfReportChiusureA4(
 
   let y = 12;
 
-  // Header azienda
+  // === HEADER ===
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.text(normalizza(azienda.ragioneSociale || 'Studio'), margine, y);
@@ -380,7 +380,7 @@ export async function generaPdfReportChiusureA4(
 
   y += 3;
 
-  // Titolo
+  // === TITOLO ===
   doc.setFillColor(0, 122, 255);
   doc.rect(margine, y, larghezzaUtile, 10, 'F');
   doc.setTextColor(255, 255, 255);
@@ -396,110 +396,138 @@ export async function generaPdfReportChiusureA4(
 
   doc.setTextColor(0, 0, 0);
 
-  // Intestazioni colonne
-  const colonne = [
-    { label: 'Giorno', x: margine + 2, w: 18, align: 'left' as const },
-    { label: 'N°', x: margine + 22, w: 8, align: 'right' as const },
-    { label: 'Servizi', x: margine + 50, w: 20, align: 'right' as const },
-    { label: 'Prodotti', x: margine + 72, w: 20, align: 'right' as const },
-    { label: 'Sconto', x: margine + 94, w: 18, align: 'right' as const },
-    { label: 'Contanti', x: margine + 114, w: 20, align: 'right' as const },
-    { label: 'Carta', x: margine + 136, w: 18, align: 'right' as const },
-    { label: 'Prepagate', x: margine + 156, w: 20, align: 'right' as const },
-    { label: 'Bonifico', x: margine + 178, w: 20, align: 'right' as const },
-    { label: 'Altro', x: margine + 200, w: 16, align: 'right' as const },
-    { label: 'Totale', x: margine + 232, w: 22, align: 'right' as const },
-    { label: 'IVA', x: margine + 256, w: 18, align: 'right' as const },
-    { label: 'Diff.', x: larghezza - margine - 2, w: 14, align: 'right' as const },
-  ];
+  // === COLONNE (layout calibrato su 297mm con 10mm margini) ===
+  // Totale disponibile: 277mm
+  // Larghezze: 24 + 10 + 24 + 24 + 22 + 22 + 20 + 22 + 22 + 18 + 26 + 22 + 21 = 277
+  const colWidths = {
+    giorno: 24,      // "Giorno"
+    n: 10,           // "N°"
+    servizi: 24,
+    prodotti: 24,
+    sconto: 22,
+    contanti: 22,
+    carta: 20,
+    prepagate: 22,
+    bonifico: 22,
+    altro: 18,
+    totale: 26,
+    iva: 22,
+    diff: 21,        // "Diff."
+  };
 
+  // Posizioni X (allineamento a destra per importi, sinistra per giorno)
+  const colX = {
+    giorno: margine,
+    n: margine + colWidths.giorno + colWidths.n,
+    servizi: margine + colWidths.giorno + colWidths.n + colWidths.servizi,
+    prodotti: margine + colWidths.giorno + colWidths.n + colWidths.servizi + colWidths.prodotti,
+    sconto: margine + colWidths.giorno + colWidths.n + colWidths.servizi + colWidths.prodotti + colWidths.sconto,
+    contanti: margine + colWidths.giorno + colWidths.n + colWidths.servizi + colWidths.prodotti + colWidths.sconto + colWidths.contanti,
+    carta: margine + colWidths.giorno + colWidths.n + colWidths.servizi + colWidths.prodotti + colWidths.sconto + colWidths.contanti + colWidths.carta,
+    prepagate: margine + colWidths.giorno + colWidths.n + colWidths.servizi + colWidths.prodotti + colWidths.sconto + colWidths.contanti + colWidths.carta + colWidths.prepagate,
+    bonifico: margine + colWidths.giorno + colWidths.n + colWidths.servizi + colWidths.prodotti + colWidths.sconto + colWidths.contanti + colWidths.carta + colWidths.prepagate + colWidths.bonifico,
+    altro: margine + colWidths.giorno + colWidths.n + colWidths.servizi + colWidths.prodotti + colWidths.sconto + colWidths.contanti + colWidths.carta + colWidths.prepagate + colWidths.bonifico + colWidths.altro,
+    totale: margine + colWidths.giorno + colWidths.n + colWidths.servizi + colWidths.prodotti + colWidths.sconto + colWidths.contanti + colWidths.carta + colWidths.prepagate + colWidths.bonifico + colWidths.altro + colWidths.totale,
+    iva: margine + colWidths.giorno + colWidths.n + colWidths.servizi + colWidths.prodotti + colWidths.sconto + colWidths.contanti + colWidths.carta + colWidths.prepagate + colWidths.bonifico + colWidths.altro + colWidths.totale + colWidths.iva,
+    diff: larghezza - margine,
+  };
+
+  // === INTESTAZIONI COLONNE ===
   doc.setFillColor(240, 240, 245);
-  doc.rect(margine, y, larghezzaUtile, 7, 'F');
+  doc.rect(margine, y, larghezzaUtile, 6, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  for (const c of colonne) {
-    doc.text(normalizza(c.label), c.x + (c.align === 'right' ? c.w : 0), y + 5, {
-      align: c.align,
-    });
-  }
+  doc.setFontSize(6.5);
+
+  doc.text('Giorno', colX.giorno + 2, y + 5);
+  doc.text('N°', colX.n, y + 5, { align: 'right' });
+  doc.text('Servizi', colX.servizi, y + 5, { align: 'right' });
+  doc.text('Prodotti', colX.prodotti, y + 5, { align: 'right' });
+  doc.text('Sconto', colX.sconto, y + 5, { align: 'right' });
+  doc.text('Contanti', colX.contanti, y + 5, { align: 'right' });
+  doc.text('Carta', colX.carta, y + 5, { align: 'right' });
+  doc.text('Prepagate', colX.prepagate, y + 5, { align: 'right' });
+  doc.text('Bonifico', colX.bonifico, y + 5, { align: 'right' });
+  doc.text('Altro', colX.altro, y + 5, { align: 'right' });
+  doc.text('Totale', colX.totale, y + 5, { align: 'right' });
+  doc.text('IVA', colX.iva, y + 5, { align: 'right' });
+  doc.text('Diff.', colX.diff, y + 5, { align: 'right' });
   y += 7;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(6);
 
-  // Righe giornaliere
+  // === RIGHE GIORNALIERE ===
   for (const r of report.righe) {
-    // Evidenzia weekend
     const isWeekend = r.giornoSettimana === 'Sab' || r.giornoSettimana === 'Dom';
     if (isWeekend) {
       doc.setFillColor(250, 250, 252);
-      doc.rect(margine, y, larghezzaUtile, 5.5, 'F');
+      doc.rect(margine, y, larghezzaUtile, 4.5, 'F');
     }
 
     const giornoLabel = `${r.giorno} ${r.giornoSettimana}`;
-    doc.text(normalizza(giornoLabel), margine + 2, y + 4);
-    doc.text(String(r.numeroScontrini), colonne[1].x + colonne[1].w, y + 4, { align: 'right' });
-    doc.text(formatEuroPdf(r.serviziLordo), colonne[2].x + colonne[2].w, y + 4, { align: 'right' });
-    doc.text(formatEuroPdf(r.prodottiLordo), colonne[3].x + colonne[3].w, y + 4, { align: 'right' });
-    doc.text(formatEuroPdf(r.sconto), colonne[4].x + colonne[4].w, y + 4, { align: 'right' });
-    doc.text(formatEuroPdf(r.contanti), colonne[5].x + colonne[5].w, y + 4, { align: 'right' });
-    doc.text(formatEuroPdf(r.carta), colonne[6].x + colonne[6].w, y + 4, { align: 'right' });
-    doc.text(formatEuroPdf(r.prepagate), colonne[7].x + colonne[7].w, y + 4, { align: 'right' });
-    doc.text(formatEuroPdf(r.bonifico), colonne[8].x + colonne[8].w, y + 4, { align: 'right' });
-    doc.text(formatEuroPdf(r.altro), colonne[9].x + colonne[9].w, y + 4, { align: 'right' });
+    doc.text(normalizza(giornoLabel), colX.giorno + 2, y + 4);
+    doc.text(String(r.numeroScontrini), colX.n, y + 4, { align: 'right' });
+    doc.text(formatEuroPdf(r.serviziLordo), colX.servizi, y + 4, { align: 'right' });
+    doc.text(formatEuroPdf(r.prodottiLordo), colX.prodotti, y + 4, { align: 'right' });
+    doc.text(formatEuroPdf(r.sconto), colX.sconto, y + 4, { align: 'right' });
+    doc.text(formatEuroPdf(r.contanti), colX.contanti, y + 4, { align: 'right' });
+    doc.text(formatEuroPdf(r.carta), colX.carta, y + 4, { align: 'right' });
+    doc.text(formatEuroPdf(r.prepagate), colX.prepagate, y + 4, { align: 'right' });
+    doc.text(formatEuroPdf(r.bonifico), colX.bonifico, y + 4, { align: 'right' });
+    doc.text(formatEuroPdf(r.altro), colX.altro, y + 4, { align: 'right' });
 
     doc.setFont('helvetica', 'bold');
-    doc.text(formatEuroPdf(r.totaleLordo), colonne[10].x + colonne[10].w, y + 4, { align: 'right' });
+    doc.text(formatEuroPdf(r.totaleLordo), colX.totale, y + 4, { align: 'right' });
     doc.setFont('helvetica', 'normal');
-    doc.text(formatEuroPdf(r.totaleIva), colonne[11].x + colonne[11].w, y + 4, { align: 'right' });
+    doc.text(formatEuroPdf(r.totaleIva), colX.iva, y + 4, { align: 'right' });
 
-    // Diff cassa (se presente)
-    if (r.differenzaCassa != null) {
+    // Diff. cassa — SOLO se esiste chiusura E differenza != 0
+    if (r.differenzaCassa != null && Math.abs(r.differenzaCassa) >= 0.01) {
       const diff = r.differenzaCassa;
-      if (Math.abs(diff) < 0.01) {
-        doc.setTextColor(0, 150, 0);
-      } else if (Math.abs(diff) <= 5) {
+      if (Math.abs(diff) <= 5) {
         doc.setTextColor(200, 120, 0);
       } else {
         doc.setTextColor(200, 0, 0);
       }
+      doc.setFont('helvetica', 'bold');
       doc.text(
         (diff >= 0 ? '+' : '') + formatEuroPdf(diff),
-        colonne[12].x + colonne[12].w,
+        colX.diff,
         y + 4,
         { align: 'right' }
       );
+      doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
     } else {
       doc.setTextColor(180, 180, 180);
-      doc.text('—', colonne[12].x + colonne[12].w, y + 4, { align: 'right' });
+      doc.text('—', colX.diff, y + 4, { align: 'right' });
       doc.setTextColor(0, 0, 0);
     }
 
-    y += 5.5;
+    y += 4.5;
     doc.setDrawColor(240, 240, 245);
     doc.line(margine, y, larghezza - margine, y);
   }
 
-  // Riga totali
+  // === RIGA TOTALI ===
   y += 2;
   doc.setFillColor(230, 240, 255);
   doc.rect(margine, y, larghezzaUtile, 7, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
 
-  doc.text('TOTALE', margine + 2, y + 5);
-  doc.text(String(report.totaliMese.numeroScontrini), colonne[1].x + colonne[1].w, y + 5, { align: 'right' });
-  doc.text(formatEuroPdf(report.totaliMese.serviziLordo), colonne[2].x + colonne[2].w, y + 5, { align: 'right' });
-  doc.text(formatEuroPdf(report.totaliMese.prodottiLordo), colonne[3].x + colonne[3].w, y + 5, { align: 'right' });
-  doc.text(formatEuroPdf(report.totaliMese.sconto), colonne[4].x + colonne[4].w, y + 5, { align: 'right' });
-  doc.text(formatEuroPdf(report.totaliMese.contanti), colonne[5].x + colonne[5].w, y + 5, { align: 'right' });
-  doc.text(formatEuroPdf(report.totaliMese.carta), colonne[6].x + colonne[6].w, y + 5, { align: 'right' });
-  doc.text(formatEuroPdf(report.totaliMese.prepagate), colonne[7].x + colonne[7].w, y + 5, { align: 'right' });
-  doc.text(formatEuroPdf(report.totaliMese.bonifico), colonne[8].x + colonne[8].w, y + 5, { align: 'right' });
-  doc.text(formatEuroPdf(report.totaliMese.altro), colonne[9].x + colonne[9].w, y + 5, { align: 'right' });
-  doc.text(formatEuroPdf(report.totaliMese.totaleLordo), colonne[10].x + colonne[10].w, y + 5, { align: 'right' });
-  doc.text(formatEuroPdf(report.totaliMese.totaleIva), colonne[11].x + colonne[11].w, y + 5, { align: 'right' });
+  doc.text('TOTALE', colX.giorno + 2, y + 5);
+  doc.text(String(report.totaliMese.numeroScontrini), colX.n, y + 5, { align: 'right' });
+  doc.text(formatEuroPdf(report.totaliMese.serviziLordo), colX.servizi, y + 5, { align: 'right' });
+  doc.text(formatEuroPdf(report.totaliMese.prodottiLordo), colX.prodotti, y + 5, { align: 'right' });
+  doc.text(formatEuroPdf(report.totaliMese.sconto), colX.sconto, y + 5, { align: 'right' });
+  doc.text(formatEuroPdf(report.totaliMese.contanti), colX.contanti, y + 5, { align: 'right' });
+  doc.text(formatEuroPdf(report.totaliMese.carta), colX.carta, y + 5, { align: 'right' });
+  doc.text(formatEuroPdf(report.totaliMese.prepagate), colX.prepagate, y + 5, { align: 'right' });
+  doc.text(formatEuroPdf(report.totaliMese.bonifico), colX.bonifico, y + 5, { align: 'right' });
+  doc.text(formatEuroPdf(report.totaliMese.altro), colX.altro, y + 5, { align: 'right' });
+  doc.text(formatEuroPdf(report.totaliMese.totaleLordo), colX.totale, y + 5, { align: 'right' });
+  doc.text(formatEuroPdf(report.totaliMese.totaleIva), colX.iva, y + 5, { align: 'right' });
 
   const diffTotale = report.totaliMese.differenzaCassa;
   if (Math.abs(diffTotale) < 0.01) {
@@ -511,22 +539,20 @@ export async function generaPdfReportChiusureA4(
   }
   doc.text(
     (diffTotale >= 0 ? '+' : '') + formatEuroPdf(diffTotale),
-    colonne[12].x + colonne[12].w,
+    colX.diff,
     y + 5,
     { align: 'right' }
   );
   doc.setTextColor(0, 0, 0);
 
-  y += 10;
-
-  // Footer
+  // === FOOTER (sotto la riga totali, in fondo) ===
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
   doc.setTextColor(150, 150, 150);
   doc.text(
     normalizza(`${azienda.ragioneSociale} - P.IVA ${azienda.partitaIva} - Generato il ${new Date().toLocaleString('it-IT')}`),
     larghezza / 2,
-    altezza - 5,
+    y + 12,
     { align: 'center' }
   );
 

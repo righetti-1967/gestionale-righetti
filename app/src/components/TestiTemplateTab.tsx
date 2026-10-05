@@ -10,6 +10,7 @@ import {
   ripristinaTestoTemplate,
 } from '../lib/testiTemplate';
 import { Toast, type ToastTipo } from './Toast';
+import { Button } from './Button';
 
 type Gruppo = 'email' | 'whatsapp' | 'pdf';
 
@@ -129,7 +130,6 @@ export function TestiTemplateTab() {
       const nuovo =
         corpo.substring(0, start) + token + corpo.substring(end);
       setCorpo(nuovo);
-      // Riporta il cursore dopo la variabile
       setTimeout(() => {
         textarea.focus();
         textarea.setSelectionRange(start + token.length, start + token.length);
@@ -141,7 +141,7 @@ export function TestiTemplateTab() {
 
   if (!testi) {
     return (
-      <div className="bg-white rounded-apple shadow-apple p-12 text-center text-apple-gray text-sm">
+      <div className="bg-white rounded-apple shadow-apple p-8 sm:p-12 text-center text-apple-gray text-sm">
         Caricamento testi...
       </div>
     );
@@ -150,10 +150,10 @@ export function TestiTemplateTab() {
   return (
     <div className="space-y-4">
       {/* Card intro */}
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-apple p-4 shadow-apple">
-        <div className="flex items-start gap-3">
-          <span className="text-2xl">📝</span>
-          <div>
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-apple p-3 sm:p-4 shadow-apple">
+        <div className="flex items-start gap-2 sm:gap-3">
+          <span className="text-xl sm:text-2xl shrink-0">📝</span>
+          <div className="min-w-0">
             <h3 className="text-sm font-bold text-apple-darkgray">
               Testi Messaggi
             </h3>
@@ -182,7 +182,7 @@ export function TestiTemplateTab() {
               );
               if (primoDelGruppo) setChiaveAttiva(primoDelGruppo);
             }}
-            className={`px-4 py-2 rounded-apple text-sm font-semibold transition-all ${
+            className={`px-3 sm:px-4 py-2 rounded-apple text-xs sm:text-sm font-semibold transition-all ${
               gruppoAttivo === g.id
                 ? 'bg-apple-blue text-white shadow-apple'
                 : 'bg-white text-apple-darkgray border border-gray-200 hover:bg-gray-50'
@@ -195,7 +195,7 @@ export function TestiTemplateTab() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Sidebar chiavi del gruppo */}
-        <div className="lg:col-span-1 space-y-1">
+        <div className="lg:col-span-1 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0 -mx-1 px-1 lg:mx-0 lg:px-0">
           {chiaviDelGruppo.map((k) => {
             const attivo = chiaveAttiva === k;
             const personalizzato = testi[k].corpo !== DEFAULT_TESTI[k].corpo;
@@ -203,7 +203,7 @@ export function TestiTemplateTab() {
               <button
                 key={k}
                 onClick={() => setChiaveAttiva(k)}
-                className={`w-full text-left px-3 py-2.5 rounded-apple text-xs font-medium transition-all flex items-center gap-2 ${
+                className={`shrink-0 lg:shrink lg:w-full text-left px-3 py-2.5 rounded-apple text-xs font-medium transition-all flex items-center gap-2 whitespace-nowrap lg:whitespace-normal ${
                   attivo
                     ? 'bg-apple-blue text-white shadow-apple'
                     : 'bg-white text-apple-darkgray hover:bg-gray-50 border border-gray-200'
@@ -221,8 +221,8 @@ export function TestiTemplateTab() {
 
         {/* Editor */}
         <div className="lg:col-span-3 bg-white rounded-apple shadow-apple p-4 sm:p-6 space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-base font-bold text-apple-darkgray">
+          <div className="flex items-start sm:items-center justify-between gap-3 flex-wrap">
+            <h3 className="text-sm sm:text-base font-bold text-apple-darkgray">
               {ETICHETTE_CHIAVI[chiaveAttiva].icona} {ETICHETTE_CHIAVI[chiaveAttiva].label}
             </h3>
             {testi[chiaveAttiva].corpo !== DEFAULT_TESTI[chiaveAttiva].corpo && (
@@ -254,7 +254,7 @@ export function TestiTemplateTab() {
               Variabili disponibili (clicca per inserire)
             </label>
             <div className="flex flex-wrap gap-1.5">
-              {variabiliDisponibili.map((v) => (
+              {variabiliDisponibili.map((v: string) => (
                 <button
                   key={v}
                   type="button"
@@ -285,21 +285,23 @@ export function TestiTemplateTab() {
           </div>
 
           {/* Azioni */}
-          <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-            <button
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3 pt-2 border-t border-gray-100">
+            <Button
+              variant="secondary"
+              size="md"
               onClick={handleRipristina}
               disabled={salvando}
-              className="px-4 py-2.5 bg-gray-100 text-apple-darkgray rounded-apple font-medium text-sm hover:bg-gray-200 transition-colors disabled:opacity-50"
             >
               🔄 Ripristina default
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
               onClick={handleSalva}
               disabled={salvando || !testoModificato}
-              className="flex-1 px-4 py-2.5 bg-apple-blue text-white rounded-apple font-semibold text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {salvando ? '⏳ Salvataggio...' : '💾 Salva testo'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

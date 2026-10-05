@@ -44,6 +44,7 @@ interface RigaCarrello {
 
 type TabPagina = 'cassa' | 'archivio' | 'riscatta' | 'chiusura' | 'report';
 type FiltroTipo = 'tutti' | 'fisico' | 'digitale';
+type FiltroData = 'oggi' | 'ieri' | 'settimana' | 'mese' | 'anno' | 'custom' | 'tutti';
 type ScontoTipo = 'percentuale' | 'importo';
 
 interface PercorsoConResiduo {
@@ -92,6 +93,11 @@ export function CassaFiscale() {
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('tutti');
   const [scontrinoAperto, setScontrinoAperto] = useState<Scontrino | null>(null);
 
+  // Filtri data archivio
+  const [filtroData, setFiltroData] = useState<FiltroData>('tutti');
+  const [customDataInizio, setCustomDataInizio] = useState('');
+  const [customDataFine, setCustomDataFine] = useState('');
+
   // Riscatta
   const [percorsiConResiduo, setPercorsiConResiduo] = useState<PercorsoConResiduo[]>([]);
   const [caricandoPercorsi, setCaricandoPercorsi] = useState(false);
@@ -121,6 +127,16 @@ export function CassaFiscale() {
   } | null>(null);
 
   const modalitaCassa: ModalitaCassa = azienda.cassaModalita || 'digitale';
+
+  // Leggi filtro data da localStorage (se impostato da Dashboard)
+  useEffect(() => {
+    const filtroSalvato = localStorage.getItem('cassa_filtro_data');
+    if (filtroSalvato) {
+      setFiltroData(filtroSalvato as FiltroData);
+      setTab('archivio');
+      localStorage.removeItem('cassa_filtro_data');
+    }
+  }, []);
 
   useEffect(() => {
     async function carica() {
@@ -417,10 +433,68 @@ export function CassaFiscale() {
     return clienti.filter((c) => c.nome_cognome.toLowerCase().includes(q));
   }, [clienti, ricercaCliente]);
 
+  // Calcola range date in base al filtro
+  const rangeDate = useMemo(() => {
+    const oggi = new Date();
+    const toISO = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const g = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${g}`;
+    };
+
+    if (filtroData === 'oggi') {
+      return { inizio: toISO(oggi), fine: toISO(oggi) };
+    }
+    if (filtroData === 'ieri') {
+      const ieri = new Date(oggi);
+      ieri.setDate(oggi.getDate() - 1);
+      return { inizio: toISO(ieri), fine: toISO(ieri) };
+    }
+    if (filtroData === 'settimana') {
+      const giornoSett = oggi.getDay();
+      const diff = giornoSett === 0 ? 6 : giornoSett - 1;
+      const lunedi = new Date(oggi);
+      lunedi.setDate(oggi.getDate() - diff);
+      const domenica = new Date(lunedi);
+      domenica.setDate(lunedi.getDate() + 6);
+      return { inizio: toISO(lunedi), fine: toISO(domenica) };
+    }
+    if (filtroData === 'mese') {
+      const inizio = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+      const fine = new Date(oggi.getFullYear(), oggi.getMonth() + 1, 0);
+      return { inizio: toISO(inizio), fine: toISO(fine) };
+    }
+    if (filtroData === 'anno') {
+      return {
+        inizio: `${oggi.getFullYear()}-01-01`,
+        fine: `${oggi.getFullYear()}-12-31`,
+      };
+    }
+    if (filtroData === 'custom' && customDataInizio && customDataFine) {
+      return { inizio: customDataInizio, fine: customDataFine };
+    }
+    return null;
+  }, [filtroData, customDataInizio, customDataFine]);
+
   const scontriniFiltrati = useMemo(() => {
-    if (filtroTipo === 'tutti') return scontrini;
-    return scontrini.filter((s) => s.modalita_cassa === filtroTipo);
-  }, [scontrini, filtroTipo]);
+    let risultato = scontrini;
+
+    // Filtro tipo (fisico/digitale)
+    if (filtroTipo !== 'tutti') {
+      risultato = risultato.filter((s) => s.modalita_cassa === filtroTipo);
+    }
+
+    // Filtro data
+    if (rangeDate) {
+      risultato = risultato.filter((s) => {
+        const data = s.data_emissione;
+        return data >= rangeDate.inizio && data <= rangeDate.fine;
+      });
+    }
+
+    return risultato;
+  }, [scontrini, filtroTipo, rangeDate]);
 
   const contatoriArchivio = useMemo(() => {
     return {
@@ -1081,6 +1155,68 @@ export function CassaFiscale() {
               📱 Digitali ({contatoriArchivio.digitale})
             </button>
           </div>
+
+          {/* Filtri data */}
+          <div className="flex flex-wrap items-center gap-2">
+            {([
+              { id: 'tutti', label: '📋 Tutti' },
+              { id: 'oggi', label: '☀️ Oggi' },
+              { id: 'ieri', label: '🌙 Ieri' },
+              { id: 'settimana', label: '📆 Settimana' },
+              { id: 'mese', label: '📅 Mese' },
+              { id: 'anno', label: '🗓️ Anno' },
+              { id: 'custom', label: '⚙️ Custom' },
+            ] as const).map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFiltroData(f.id)}
+                className={`px-3 py-1.5 rounded-apple text-xs font-semibold transition-all ${
+                  filtroData === f.id
+                    ? 'bg-purple-600 text-white shadow-apple'
+                    : 'bg-gray-100 text-apple-darkgray hover:bg-gray-200'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Date custom */}
+          {filtroData === 'custom' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-apple-gray mb-1.5">
+                  Data inizio
+                </label>
+                <input
+                  type="date"
+                  value={customDataInizio}
+                  onChange={(e) => setCustomDataInizio(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-apple text-sm focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-apple-gray mb-1.5">
+                  Data fine
+                </label>
+                <input
+                  type="date"
+                  value={customDataFine}
+                  onChange={(e) => setCustomDataFine(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-apple text-sm focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Indicatore risultati */}
+          {rangeDate && (
+            <p className="text-xs text-apple-gray italic">
+              Mostrati <strong className="text-apple-darkgray">{scontriniFiltrati.length}</strong> scontrini
+              {' '}dal {new Date(rangeDate.inizio + 'T00:00:00').toLocaleDateString('it-IT')}
+              {' '}al {new Date(rangeDate.fine + 'T00:00:00').toLocaleDateString('it-IT')}
+            </p>
+          )}
 
           {caricandoArchivio ? (
             <div className="bg-white rounded-apple shadow-apple p-12 text-center text-apple-gray text-sm">

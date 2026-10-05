@@ -30,6 +30,7 @@ import { ListaPercorsiCliente } from '../components/ListaPercorsiCliente';
 import { ListaAppuntamentiCliente } from '../components/ListaAppuntamentiCliente';
 import { FormScaricoSeduta } from '../components/FormScaricoSeduta';
 import { StoricoProdottiCliente } from '../components/StoricoProdottiCliente';
+import { CardKpiCliente } from '../components/CardKpiCliente';
 import { FirmaPrivacy } from '../components/FirmaPrivacy';
 import { DialogoFirmaPrivacy } from '../components/DialogoFirmaPrivacy';
 import { MenuSceltaPdf } from '../components/MenuSceltaPdf';
@@ -1125,6 +1126,11 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
                   setPercorsoDettaglio({ ...dati, cliente });
                 }}
               />
+            </div>
+
+            {/* 🆕 Card KPI Cliente (Totale Spesa + Fiches Media) */}
+            <div className="mb-6">
+              <CardKpiCliente clienteId={clienteSelezionato.id} />
             </div>
 
             <ListaAppuntamentiCliente

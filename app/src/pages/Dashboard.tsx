@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { getFatture } from "../lib/fatture";
+import { getScontrini, type Scontrino } from "../lib/scontrini";
+import { useDatiAziendali } from "../lib/useDatiAziendali";
 import { getClienti } from "../lib/clienti";
 import { getTuttiPercorsi } from "../lib/percorsi";
 import { getProdotti } from "../lib/prodotti";
@@ -24,8 +26,16 @@ interface Attivita {
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
+  const { dati: azienda } = useDatiAziendali();
+  const regime = azienda.regimeDocumenti || 'fatture';
+
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState<string | null>(null);
+
+  // Scontrini (regime scontrini)
+  const [scontrini, setScontrini] = useState<Scontrino[]>([]);
+  const [meseScontrini, setMeseScontrini] = useState<number>(new Date().getMonth());
+  const [annoScontrini, setAnnoScontrini] = useState<number>(new Date().getFullYear());
 
   // Statistiche
   const [tutteFatture, setTutteFatture] = useState<any[]>([]);
@@ -61,6 +71,51 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     })
     .reduce((sum, f) => sum + Number(f.lordo_ivato || 0), 0);
 
+  // === KPI SCONTRINI ===
+  const kpiScontrini = (() => {
+    const oggi = new Date();
+    const oggiISO = oggi.toISOString().split('T')[0];
+
+    let incassoOggi = 0;
+    let incassoMese = 0;
+    let incassoAnno = 0;
+    let scontriniOggi = 0;
+    let scontriniMese = 0;
+    let scontriniAnno = 0;
+
+    for (const s of scontrini) {
+      const d = new Date(s.data_emissione);
+      const importo = Number(s.totale_lordo || 0);
+
+      // Oggi (sempre oggi reale)
+      if (s.data_emissione === oggiISO) {
+        incassoOggi += importo;
+        scontriniOggi += 1;
+      }
+
+      // Mese selezionato
+      if (d.getFullYear() === annoScontrini && d.getMonth() === meseScontrini) {
+        incassoMese += importo;
+        scontriniMese += 1;
+      }
+
+      // Anno selezionato
+      if (d.getFullYear() === annoScontrini) {
+        incassoAnno += importo;
+        scontriniAnno += 1;
+      }
+    }
+
+    return {
+      incassoOggi: Number(incassoOggi.toFixed(2)),
+      incassoMese: Number(incassoMese.toFixed(2)),
+      incassoAnno: Number(incassoAnno.toFixed(2)),
+      scontriniOggi,
+      scontriniMese,
+      scontriniAnno,
+    };
+  })();
+
   useEffect(() => {
     async function carica() {
       try {
@@ -72,14 +127,17 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         tra90Giorni.setDate(tra90Giorni.getDate() + 90);
         const dataFine90 = tra90Giorni.toISOString().split('T')[0];
 
-        const [fatture, clienti, percorsi, prodotti, scarichi, appuntamenti] = await Promise.all([
+        const [fatture, clienti, percorsi, prodotti, scarichi, appuntamenti, scontriniList] = await Promise.all([
           getFatture().catch(() => []),
           getClienti(),
           getTuttiPercorsi(),
           getProdotti(),
-          getTuttiScarichi(),
+          getTuttiScarichi().catch(() => []),
           getAppuntamenti(oggiStringa, dataFine90),
+          getScontrini().catch(() => []),
         ]);
+
+        setScontrini(scontriniList.filter((s) => !s.annullato && s.tipo === 'madre'));
 
         // Mese corrente
         const oggi = new Date();
@@ -237,7 +295,204 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       )}
 
       {/* Card statistiche */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-8 gap-3 sm:gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 mb-6">
+
+        {/* === RIGA 1: ECONOMICI === */}
+
+        {/* Card Fatturato Mese con selettori (regime fatture) */}
+        {regime === 'fatture' && (
+          <>
+            <div className="bg-white rounded-apple shadow-apple p-2.5 sm:p-4 text-left flex flex-col justify-between overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
+                <span className="text-lg sm:text-xl shrink-0">💰</span>
+                <div className="flex items-center gap-1 min-w-0">
+                  <select
+                    value={meseFatturato}
+                    onChange={(e) => setMeseFatturato(Number(e.target.value))}
+                    className="text-[10px] font-semibold bg-apple-lightgray border border-gray-200 rounded px-1.5 py-0.5 text-apple-darkgray focus:outline-none cursor-pointer max-w-[70px] sm:max-w-none"
+                  >
+                    {MESI_NOMI.map((m, idx) => (
+                      <option key={idx} value={idx}>{m}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={annoFatturato}
+                    onChange={(e) => setAnnoFatturato(Number(e.target.value))}
+                    className="text-[10px] font-semibold bg-apple-lightgray border border-gray-200 rounded px-1 py-0.5 text-apple-darkgray focus:outline-none cursor-pointer max-w-[45px] sm:max-w-none"
+                  >
+                    {ANNI_DISPONIBILI.map((a) => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-apple-gray mb-1">
+                  Fatturato {MESI_NOMI[meseFatturato]}
+                </p>
+                <p className="text-base sm:text-lg font-bold text-green-600">
+                  {formatEuro(fatturatoPeriodoSelezionato)}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onNavigate?.("fatture")}
+              className="bg-white rounded-apple shadow-apple p-2.5 sm:p-4 text-left hover:shadow-apple-lg transition-all cursor-pointer flex flex-col justify-between"
+            >
+              <div className="flex items-start justify-between mb-2">
+                <span className="text-lg sm:text-xl">📈</span>
+                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                  Anno {annoFatturato}
+                </span>
+              </div>
+              <div>
+                <p className="text-xs text-apple-gray mb-1">Totale Anno {annoFatturato}</p>
+                <p className="text-base sm:text-lg font-bold text-apple-blue">{formatEuro(fatturatoAnnoSelezionato)}</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => onNavigate?.('fatture')}
+              className="bg-white rounded-apple shadow-apple p-2.5 sm:p-4 text-left hover:shadow-apple-lg transition-all"
+            >
+              <div className="flex items-start justify-between mb-2">
+                <span className="text-lg sm:text-xl">📄</span>
+              </div>
+              <p className="text-xs text-apple-gray mb-1">Proforma in attesa</p>
+              <p className={`text-xl font-bold ${proformaInAttesa > 0 ? 'text-orange-600' : 'text-apple-darkgray'}`}>
+                {proformaInAttesa}
+              </p>
+              <p className="text-xs text-apple-gray mt-1">{formatEuro(proformaTotale)}</p>
+            </button>
+          </>
+        )}
+
+        {/* Card Incasso Oggi (regime scontrini) */}
+        {regime === 'scontrini' && (
+          <>
+            <button
+              onClick={() => {
+                localStorage.setItem('cassa_filtro_data', 'oggi');
+                onNavigate?.('cassa_fiscale');
+              }}
+              className="bg-white rounded-apple shadow-apple p-2.5 sm:p-4 text-left hover:shadow-apple-lg transition-all cursor-pointer flex flex-col justify-between"
+            >
+              <div className="flex items-start justify-between mb-2">
+                <span className="text-lg sm:text-xl">💰</span>
+                <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                  Oggi
+                </span>
+              </div>
+              <div>
+                <p className="text-xs text-apple-gray mb-1">Incasso Oggi</p>
+                <p className="text-base sm:text-lg font-bold text-green-600">
+                  {formatEuro(kpiScontrini.incassoOggi)}
+                </p>
+                <p className="text-[10px] text-apple-gray mt-1">
+                  {kpiScontrini.scontriniOggi} {kpiScontrini.scontriniOggi === 1 ? 'scontrino' : 'scontrini'}
+                </p>
+              </div>
+            </button>
+
+            <div className="bg-white rounded-apple shadow-apple p-2.5 sm:p-4 text-left flex flex-col justify-between overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
+                <span className="text-lg sm:text-xl shrink-0">📊</span>
+                <div className="flex items-center gap-1 min-w-0">
+                  <select
+                    value={meseScontrini}
+                    onChange={(e) => setMeseScontrini(Number(e.target.value))}
+                    className="text-[10px] font-semibold bg-apple-lightgray border border-gray-200 rounded px-1.5 py-0.5 text-apple-darkgray focus:outline-none cursor-pointer max-w-[70px] sm:max-w-none"
+                  >
+                    {MESI_NOMI.map((m, idx) => (
+                      <option key={idx} value={idx}>{m}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={annoScontrini}
+                    onChange={(e) => setAnnoScontrini(Number(e.target.value))}
+                    className="text-[10px] font-semibold bg-apple-lightgray border border-gray-200 rounded px-1 py-0.5 text-apple-darkgray focus:outline-none cursor-pointer max-w-[45px] sm:max-w-none"
+                  >
+                    {ANNI_DISPONIBILI.map((a) => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  localStorage.setItem('cassa_filtro_data', 'mese');
+                  onNavigate?.('cassa_fiscale');
+                }}
+                className="text-left"
+              >
+                <p className="text-xs text-apple-gray mb-1">
+                  Incasso {MESI_NOMI[meseScontrini]}
+                </p>
+                <p className="text-base sm:text-lg font-bold text-apple-blue">
+                  {formatEuro(kpiScontrini.incassoMese)}
+                </p>
+                <p className="text-[10px] text-apple-gray mt-1">
+                  {kpiScontrini.scontriniMese} {kpiScontrini.scontriniMese === 1 ? 'scontrino' : 'scontrini'}
+                </p>
+              </button>
+            </div>
+
+            <div className="bg-white rounded-apple shadow-apple p-2.5 sm:p-4 text-left flex flex-col justify-between overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
+                <span className="text-lg sm:text-xl shrink-0">📈</span>
+                <select
+                  value={annoScontrini}
+                  onChange={(e) => setAnnoScontrini(Number(e.target.value))}
+                  className="text-[10px] font-semibold bg-apple-lightgray border border-gray-200 rounded px-1.5 py-0.5 text-apple-darkgray focus:outline-none cursor-pointer"
+                >
+                  {ANNI_DISPONIBILI.map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={() => {
+                  localStorage.setItem('cassa_filtro_data', 'anno');
+                  onNavigate?.('cassa_fiscale');
+                }}
+                className="text-left"
+              >
+                <p className="text-xs text-apple-gray mb-1">
+                  Incasso Anno {annoScontrini}
+                </p>
+                <p className="text-base sm:text-lg font-bold text-purple-700">
+                  {formatEuro(kpiScontrini.incassoAnno)}
+                </p>
+                <p className="text-[10px] text-apple-gray mt-1">
+                  {kpiScontrini.scontriniAnno} {kpiScontrini.scontriniAnno === 1 ? 'scontrino' : 'scontrini'}
+                </p>
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Card Analytics (visibile in entrambi i regimi) */}
+        <button
+          onClick={() => onNavigate?.('analytics')}
+          className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-apple shadow-apple p-2.5 sm:p-4 text-left hover:shadow-apple-lg transition-all cursor-pointer flex flex-col justify-between"
+        >
+          <div className="flex items-start justify-between mb-2">
+            <span className="text-lg sm:text-xl">📊</span>
+          </div>
+          <div>
+            <p className="text-xs font-bold text-indigo-700 mb-1">Analytics</p>
+            <p className="text-[10px] text-apple-gray">
+              Report completo clienti
+            </p>
+            <p className="text-xs font-semibold text-indigo-600 mt-2">
+              Apri →
+            </p>
+          </div>
+        </button>
+
+        {/* === RIGA 2: OPERATIVI === */}
+
         {/* Card Pending */}
         <button
           onClick={() => {
@@ -247,14 +502,14 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             }
           }}
           disabled={appuntamentiPending === 0}
-          className={`rounded-apple shadow-apple p-3 sm:p-5 text-left transition-all ${
+          className={`rounded-apple shadow-apple p-2.5 sm:p-4 text-left transition-all ${
             appuntamentiPending > 0
               ? 'bg-red-50 border-2 border-red-300 hover:shadow-apple-lg cursor-pointer'
               : 'bg-white border-2 border-transparent cursor-default'
           }`}
         >
-          <div className="flex items-start justify-between mb-3">
-            <span className="text-xl sm:text-2xl">⏳</span>
+          <div className="flex items-start justify-between mb-2">
+            <span className="text-lg sm:text-xl">⏳</span>
           </div>
           <p className={`text-xs mb-1 ${appuntamentiPending > 0 ? 'text-red-700 font-semibold' : 'text-apple-gray'}`}>
             Pending
@@ -273,14 +528,14 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             }
           }}
           disabled={appuntamentiDaRiprogrammare === 0}
-          className={`rounded-apple shadow-apple p-3 sm:p-5 text-left transition-all ${
+          className={`rounded-apple shadow-apple p-2.5 sm:p-4 text-left transition-all ${
             appuntamentiDaRiprogrammare > 0
               ? 'bg-orange-50 border-2 border-orange-300 hover:shadow-apple-lg cursor-pointer'
               : 'bg-white border-2 border-transparent cursor-default'
           }`}
         >
-          <div className="flex items-start justify-between mb-3">
-            <span className="text-xl sm:text-2xl">🔄</span>
+          <div className="flex items-start justify-between mb-2">
+            <span className="text-lg sm:text-xl">🔄</span>
           </div>
           <p className={`text-xs mb-1 ${appuntamentiDaRiprogrammare > 0 ? 'text-orange-700 font-semibold' : 'text-apple-gray'}`}>
             Rebooking
@@ -290,80 +545,13 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </p>
         </button>
 
-        {/* Card Fatturato Mese con selettori */}
-        <div className="bg-white rounded-apple shadow-apple p-3 sm:p-5 text-left flex flex-col justify-between overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
-            <span className="text-xl sm:text-2xl shrink-0">💰</span>
-            <div className="flex items-center gap-1 min-w-0">
-              <select
-                value={meseFatturato}
-                onChange={(e) => setMeseFatturato(Number(e.target.value))}
-                className="text-[10px] font-semibold bg-apple-lightgray border border-gray-200 rounded px-1.5 py-0.5 text-apple-darkgray focus:outline-none cursor-pointer max-w-[70px] sm:max-w-none"
-              >
-                {MESI_NOMI.map((m, idx) => (
-                  <option key={idx} value={idx}>{m}</option>
-                ))}
-              </select>
-              <select
-                value={annoFatturato}
-                onChange={(e) => setAnnoFatturato(Number(e.target.value))}
-                className="text-[10px] font-semibold bg-apple-lightgray border border-gray-200 rounded px-1 py-0.5 text-apple-darkgray focus:outline-none cursor-pointer max-w-[45px] sm:max-w-none"
-              >
-                {ANNI_DISPONIBILI.map((a) => (
-                  <option key={a} value={a}>{a}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div>
-            <p className="text-xs text-apple-gray mb-1">
-              Fatturato {MESI_NOMI[meseFatturato]}
-            </p>
-            <p className="text-lg sm:text-xl font-bold text-green-600">
-              {formatEuro(fatturatoPeriodoSelezionato)}
-            </p>
-          </div>
-        </div>
-
-        {/* Card Fatturato Anno */}
-        <button
-          onClick={() => onNavigate?.("fatture")}
-          className="bg-white rounded-apple shadow-apple p-3 sm:p-5 text-left hover:shadow-apple-lg transition-all cursor-pointer flex flex-col justify-between"
-        >
-          <div className="flex items-start justify-between mb-3">
-            <span className="text-xl sm:text-2xl">📈</span>
-            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
-              Anno {annoFatturato}
-            </span>
-          </div>
-          <div>
-            <p className="text-xs text-apple-gray mb-1">Totale Anno {annoFatturato}</p>
-            <p className="text-lg sm:text-xl font-bold text-apple-blue">{formatEuro(fatturatoAnnoSelezionato)}</p>
-          </div>
-        </button>
-
-        {/* Card Proforma in attesa */}
-        <button
-          onClick={() => onNavigate?.('fatture')}
-          className="bg-white rounded-apple shadow-apple p-3 sm:p-5 text-left hover:shadow-apple-lg transition-all"
-        >
-          <div className="flex items-start justify-between mb-3">
-            <span className="text-xl sm:text-2xl">📄</span>
-          </div>
-          <p className="text-xs text-apple-gray mb-1">Proforma in attesa</p>
-          <p className={`text-xl font-bold ${proformaInAttesa > 0 ? 'text-orange-600' : 'text-apple-darkgray'}`}>
-            {proformaInAttesa}
-          </p>
-          <p className="text-xs text-apple-gray mt-1">{formatEuro(proformaTotale)}</p>
-        </button>
-
         {/* Card Clienti Totali */}
         <button
           onClick={() => onNavigate?.('clienti')}
-          className="bg-white rounded-apple shadow-apple p-3 sm:p-5 text-left hover:shadow-apple-lg transition-all"
+          className="bg-white rounded-apple shadow-apple p-2.5 sm:p-4 text-left hover:shadow-apple-lg transition-all"
         >
-          <div className="flex items-start justify-between mb-3">
-            <span className="text-xl sm:text-2xl">👥</span>
+          <div className="flex items-start justify-between mb-2">
+            <span className="text-lg sm:text-xl">👥</span>
           </div>
           <p className="text-xs text-apple-gray mb-1">Clienti Totali</p>
           <p className="text-xl font-bold text-apple-darkgray">{clientiTotali}</p>
@@ -372,22 +560,24 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         {/* Card Percorsi Attivi */}
         <button
           onClick={() => onNavigate?.('percorsi')}
-          className="bg-white rounded-apple shadow-apple p-3 sm:p-5 text-left hover:shadow-apple-lg transition-all"
+          className="bg-white rounded-apple shadow-apple p-2.5 sm:p-4 text-left hover:shadow-apple-lg transition-all"
         >
-          <div className="flex items-start justify-between mb-3">
-            <span className="text-xl sm:text-2xl">🎯</span>
+          <div className="flex items-start justify-between mb-2">
+            <span className="text-lg sm:text-xl">🎯</span>
           </div>
           <p className="text-xs text-apple-gray mb-1">Percorsi Attivi</p>
           <p className="text-xl font-bold text-apple-darkgray">{percorsiAttivi}</p>
         </button>
 
+        {/* === RIGA 3: ALERT === */}
+
         {/* Card Sotto scorta */}
         <button
           onClick={() => onNavigate?.('prodotti')}
-          className="bg-white rounded-apple shadow-apple p-3 sm:p-5 text-left hover:shadow-apple-lg transition-all"
+          className="bg-white rounded-apple shadow-apple p-2.5 sm:p-4 text-left hover:shadow-apple-lg transition-all"
         >
-          <div className="flex items-start justify-between mb-3">
-            <span className="text-xl sm:text-2xl">⚠️</span>
+          <div className="flex items-start justify-between mb-2">
+            <span className="text-lg sm:text-xl">⚠️</span>
           </div>
           <p className="text-xs text-apple-gray mb-1">Sotto scorta</p>
           <p className={`text-xl font-bold ${prodottiSottoScorta > 0 ? 'text-red-600' : 'text-apple-darkgray'}`}>

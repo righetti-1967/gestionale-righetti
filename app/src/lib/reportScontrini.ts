@@ -275,9 +275,13 @@ export async function generaPdfRiepilogo(
   const margine = 15;
   const larghezzaUtile = larghezza - 2 * margine;
 
+  // Griglia di riferimento (colonne a frazione della larghezza utile)
+  const colSX = margine;                        // colonna sinistra
+  const colDX = margine + larghezzaUtile / 2;   // colonna destra
+
   let y = 15;
 
-  // Header azienda
+  // === HEADER AZIENDA ===
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.text(normalizza(azienda.ragioneSociale || 'Studio'), margine, y);
@@ -295,7 +299,7 @@ export async function generaPdfRiepilogo(
     y += 8;
   }
 
-  // Titolo documento
+  // === TITOLO ===
   doc.setFillColor(0, 122, 255);
   doc.rect(margine, y, larghezzaUtile, 12, 'F');
   doc.setTextColor(255, 255, 255);
@@ -306,136 +310,148 @@ export async function generaPdfRiepilogo(
 
   doc.setTextColor(0, 0, 0);
 
-  // Periodo
+  // === PERIODO + DESTINATARIO ===
   const dataInizioIt = new Date(dataInizio).toLocaleDateString('it-IT');
   const dataFineIt = new Date(dataFine).toLocaleDateString('it-IT');
 
-  doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('Periodo:', margine, y);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Periodo:', colSX, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(`dal ${dataInizioIt} al ${dataFineIt}`, margine + 20, y);
-  y += 8;
+  doc.text(`dal ${dataInizioIt} al ${dataFineIt}`, colSX + 20, y);
+  y += 6;
 
-  // Destinatario commercialista
   const nomeComm = fatturazione.nomeCommercialista || fatturazione.emailCommercialista || '';
   if (nomeComm) {
     doc.setFontSize(9);
-    doc.text('Destinatario:', margine, y);
     doc.setFont('helvetica', 'bold');
-    doc.text(normalizza(nomeComm), margine + 25, y);
-    y += 8;
+    doc.text('Destinatario:', colSX, y);
     doc.setFont('helvetica', 'normal');
+    doc.text(normalizza(nomeComm), colSX + 25, y);
+    y += 6;
   }
+  y += 4;
 
-  // Riepilogo generale
+  // === RIEPILOGO GENERALE ===
+  const boxH = 32;
   doc.setFillColor(245, 245, 248);
-  doc.rect(margine, y, larghezzaUtile, 30, 'F');
-  y += 6;
+  doc.rect(margine, y, larghezzaUtile, boxH, 'F');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('RIEPILOGO GENERALE', margine + 4, y);
-  y += 6;
+  doc.text('RIEPILOGO GENERALE', margine + 6, y + 7);
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  const colSx = margine + 4;
-  const colDx = larghezza / 2 + 10;
 
-  doc.text(`Numero scontrini emessi:`, colSx, y);
+  // Riga 1
+  const rowY1 = y + 15;
+  doc.text('Numero scontrini emessi:', colSX + 6, rowY1);
   doc.setFont('helvetica', 'bold');
-  doc.text(`${riepilogo.numeroScontrini}`, colSx + 50, y);
+  doc.text(`${riepilogo.numeroScontrini}`, colSX + 60, rowY1);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Totale lordo:`, colDx, y);
+  doc.text('Totale lordo:', colDX, rowY1);
   doc.setFont('helvetica', 'bold');
-  doc.text(formatEuroPdf(riepilogo.totaleLordo), colDx + 30, y);
-  y += 6;
+  doc.text(formatEuroPdf(riepilogo.totaleLordo), larghezza - margine - 6, rowY1, { align: 'right' });
 
+  // Riga 2
+  const rowY2 = y + 22;
   doc.setFont('helvetica', 'normal');
-  doc.text(`Totale imponibile:`, colSx, y);
+  doc.text('Totale imponibile:', colSX + 6, rowY2);
   doc.setFont('helvetica', 'bold');
-  doc.text(formatEuroPdf(riepilogo.totaleNetto), colSx + 50, y);
+  doc.text(formatEuroPdf(riepilogo.totaleNetto), colSX + 60, rowY2);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Totale IVA:`, colDx, y);
+  doc.text('Totale IVA:', colDX, rowY2);
   doc.setFont('helvetica', 'bold');
-  doc.text(formatEuroPdf(riepilogo.totaleIva), colDx + 30, y);
-  y += 10;
+  doc.text(formatEuroPdf(riepilogo.totaleIva), larghezza - margine - 6, rowY2, { align: 'right' });
 
-  // Dettaglio IVA per aliquota
+  y += boxH + 8;
+
+  // === DETTAGLIO IVA ===
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.text('DETTAGLIO IVA', margine, y);
   y += 5;
 
-  // Intestazione tabella
+  // Colonne allineate (rapporti fissi sulla larghezza utile)
+  const colAliquota = margine + 4;
+  const colImponibile = margine + larghezzaUtile * 0.45;
+  const colIva = margine + larghezzaUtile * 0.65;
+  const colLordo = larghezza - margine - 4;
+
   doc.setFillColor(230, 230, 235);
   doc.rect(margine, y, larghezzaUtile, 7, 'F');
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.text('Aliquota', margine + 4, y + 5);
-  doc.text('Imponibile', larghezza - 60, y + 5, { align: 'right' });
-  doc.text('IVA', larghezza - 35, y + 5, { align: 'right' });
-  doc.text('Lordo', larghezza - 5, y + 5, { align: 'right' });
+  doc.text('Aliquota', colAliquota, y + 5);
+  doc.text('Imponibile', colImponibile, y + 5, { align: 'right' });
+  doc.text('IVA', colIva, y + 5, { align: 'right' });
+  doc.text('Lordo', colLordo, y + 5, { align: 'right' });
   y += 7;
 
   doc.setFont('helvetica', 'normal');
   for (const r of riepilogo.ivaPerAliquota) {
-    doc.text(`${r.aliquota}%`, margine + 4, y + 4);
-    doc.text(formatEuroPdf(r.imponibile), larghezza - 60, y + 4, { align: 'right' });
-    doc.text(formatEuroPdf(r.iva), larghezza - 35, y + 4, { align: 'right' });
-    doc.text(formatEuroPdf(r.lordo), larghezza - 5, y + 4, { align: 'right' });
+    doc.text(`${r.aliquota}%`, colAliquota, y + 4);
+    doc.text(formatEuroPdf(r.imponibile), colImponibile, y + 4, { align: 'right' });
+    doc.text(formatEuroPdf(r.iva), colIva, y + 4, { align: 'right' });
+    doc.text(formatEuroPdf(r.lordo), colLordo, y + 4, { align: 'right' });
     y += 5;
     doc.setDrawColor(240, 240, 245);
     doc.line(margine, y, larghezza - margine, y);
   }
-  y += 6;
+  y += 8;
 
-  // Dettaglio metodi pagamento
+  // === DETTAGLIO METODI PAGAMENTO ===
   if (riepilogo.perMetodo.length > 0) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.text('DETTAGLIO METODI PAGAMENTO', margine, y);
     y += 5;
 
+    const colMetodo = margine + 4;
+    const colNScontrini = margine + larghezzaUtile * 0.6;
+    const colTotale = larghezza - margine - 4;
+
     doc.setFillColor(230, 230, 235);
     doc.rect(margine, y, larghezzaUtile, 7, 'F');
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
-    doc.text('Metodo', margine + 4, y + 5);
-    doc.text('N. scontrini', larghezza - 60, y + 5, { align: 'right' });
-    doc.text('Totale', larghezza - 5, y + 5, { align: 'right' });
+    doc.text('Metodo', colMetodo, y + 5);
+    doc.text('N. scontrini', colNScontrini, y + 5, { align: 'right' });
+    doc.text('Totale', colTotale, y + 5, { align: 'right' });
     y += 7;
 
     doc.setFont('helvetica', 'normal');
     for (const m of riepilogo.perMetodo) {
-      doc.text(m.metodo, margine + 4, y + 4);
-      doc.text(`${m.numeroScontrini}`, larghezza - 60, y + 4, { align: 'right' });
-      doc.text(formatEuroPdf(m.totale), larghezza - 5, y + 4, { align: 'right' });
+      doc.text(normalizza(m.metodo), colMetodo, y + 4);
+      doc.text(`${m.numeroScontrini}`, colNScontrini, y + 4, { align: 'right' });
+      doc.text(formatEuroPdf(m.totale), colTotale, y + 4, { align: 'right' });
       y += 5;
       doc.setDrawColor(240, 240, 245);
       doc.line(margine, y, larghezza - margine, y);
     }
-    y += 6;
+    y += 8;
   }
 
-  // Annullati (trasparenza)
+  // === ANNULLATI ===
   if (riepilogo.numeroAnnullati > 0) {
     doc.setFillColor(255, 245, 240);
-    doc.rect(margine, y, larghezzaUtile, 12, 'F');
+    doc.rect(margine, y, larghezzaUtile, 14, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(200, 50, 0);
-    doc.text('SCONTRINI ANNULLATI NEL PERIODO', margine + 4, y + 5);
+    doc.text('SCONTRINI ANNULLATI NEL PERIODO', margine + 6, y + 6);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(0, 0, 0);
     doc.text(
       `N. ${riepilogo.numeroAnnullati} - Totale annullato: ${formatEuroPdf(riepilogo.totaleAnnullati)}`,
-      margine + 4,
-      y + 10
+      margine + 6,
+      y + 11
     );
-    y += 15;
+    y += 18;
   }
 
-  // Footer
+  // === FOOTER ===
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
   doc.setTextColor(150, 150, 150);

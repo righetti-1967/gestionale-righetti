@@ -21,7 +21,16 @@ import {
   renderTemplate,
   formatEuroIt,
 } from '../lib/testiTemplate';
+import {
+  calcolaReportCompetenza,
+  type ReportCompetenza,
+} from '../lib/reportCompetenza';
+import {
+  generaPdfCompetenza,
+  scaricaCsvCompetenza,
+} from '../lib/pdfCompetenza';
 import { Toast, type ToastTipo } from './Toast';
+import { Button } from './Button';
 
 type PeriodoPreset = 'mese' | 'mese-scorso' | 'anno' | 'custom';
 
@@ -46,6 +55,12 @@ export function ReportCommercialistaTab() {
   const [scaricandoPdfChiusure, setScaricandoPdfChiusure] = useState(false);
   const [scaricandoCsvChiusure, setScaricandoCsvChiusure] = useState(false);
 
+  // Report competenza
+  const [annoCompetenza, setAnnoCompetenza] = useState<number>(new Date().getFullYear());
+  const [reportCompetenza, setReportCompetenza] = useState<ReportCompetenza | null>(null);
+  const [caricandoCompetenza, setCaricandoCompetenza] = useState(false);
+  const [scaricandoPdfCompetenza, setScaricandoPdfCompetenza] = useState(false);
+
   // Init preset corrente (mese) + carica config commercialista
   useEffect(() => {
     const { inizio, fine } = primiGiorniMese();
@@ -57,6 +72,28 @@ export function ReportCommercialistaTab() {
       setNomeCommercialista(c.nomeCommercialista || '');
     });
   }, []);
+
+  // Carica report competenza quando cambia anno
+  useEffect(() => {
+    let annullato = false;
+    async function carica() {
+      try {
+        setCaricandoCompetenza(true);
+        const r = await calcolaReportCompetenza(annoCompetenza);
+        if (!annullato) setReportCompetenza(r);
+      } catch (err: any) {
+        if (!annullato) {
+          setToast({ message: '❌ ' + (err?.message || 'Errore'), tipo: 'error' });
+        }
+      } finally {
+        if (!annullato) setCaricandoCompetenza(false);
+      }
+    }
+    carica();
+    return () => {
+      annullato = true;
+    };
+  }, [annoCompetenza]);
 
   // Applica preset quando cambia
   useEffect(() => {
@@ -152,7 +189,6 @@ export function ReportCommercialistaTab() {
       setInviandoEmail(true);
       const { base64, nomeFile } = await generaPdfRiepilogoBase64(dataInizio, dataFine);
 
-      // Leggi template personalizzato
       const template = await getTestoTemplate('email_report_commercialista');
       const variabili = {
         commercialista: nomeCommercialista || 'Commercialista',
@@ -184,6 +220,29 @@ export function ReportCommercialistaTab() {
       });
     } finally {
       setInviandoEmail(false);
+    }
+  }
+
+  async function handleScaricaPdfCompetenza() {
+    if (!reportCompetenza) return;
+    try {
+      setScaricandoPdfCompetenza(true);
+      await generaPdfCompetenza(reportCompetenza, true);
+      setToast({ message: '✅ PDF competenza scaricato', tipo: 'success' });
+    } catch (err: any) {
+      setToast({ message: '❌ ' + (err?.message || 'Errore PDF'), tipo: 'error' });
+    } finally {
+      setScaricandoPdfCompetenza(false);
+    }
+  }
+
+  function handleScaricaCsvCompetenza() {
+    if (!reportCompetenza) return;
+    try {
+      scaricaCsvCompetenza(reportCompetenza);
+      setToast({ message: '✅ CSV competenza scaricato', tipo: 'success' });
+    } catch (err: any) {
+      setToast({ message: '❌ ' + (err?.message || 'Errore CSV'), tipo: 'error' });
     }
   }
 
@@ -219,22 +278,123 @@ export function ReportCommercialistaTab() {
 
   return (
     <div className="space-y-4">
+      {/* ===== REPORT COMPETENZA PERCORSI ===== */}
+      <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-apple p-4 sm:p-6 shadow-apple">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="min-w-0">
+            <h3 className="text-sm sm:text-base font-bold text-apple-darkgray">
+              📊 Report Competenza Percorsi
+            </h3>
+            <p className="text-xs text-apple-gray mt-0.5">
+              Risconto passivo 31/12 per SRL in regime di competenza
+            </p>
+          </div>
+          <span className="text-2xl shrink-0">🧮</span>
+        </div>
+
+        {/* Selettore anno */}
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+            Anno di riferimento
+          </label>
+          <select
+            value={annoCompetenza}
+            onChange={(e) => setAnnoCompetenza(Number(e.target.value))}
+            className="w-full sm:w-40 px-3 py-2.5 bg-white border border-gray-200 rounded-apple text-sm font-semibold text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-purple-300/40"
+          >
+            {[2023, 2024, 2025, 2026, 2027].map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+        </div>
+
+        {caricandoCompetenza ? (
+          <div className="text-center py-6 text-sm text-apple-gray">
+            Calcolo competenza...
+          </div>
+        ) : reportCompetenza ? (
+          <div className="space-y-3">
+            {/* KPI box */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+              <div className="bg-white rounded-apple border border-gray-200 p-3">
+                <p className="text-[10px] text-apple-gray uppercase font-semibold">
+                  Percorsi venduti
+                </p>
+                <p className="text-sm sm:text-base font-bold text-apple-darkgray mt-1">
+                  {reportCompetenza.totaleVenduto.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+                </p>
+              </div>
+              <div className="bg-white rounded-apple border border-gray-200 p-3">
+                <p className="text-[10px] text-apple-gray uppercase font-semibold">
+                  Consumato
+                </p>
+                <p className="text-sm sm:text-base font-bold text-apple-blue mt-1">
+                  −{reportCompetenza.totaleUtilizzato.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+                </p>
+              </div>
+              <div className="bg-green-50 rounded-apple border border-green-200 p-3">
+                <p className="text-[10px] text-green-800 uppercase font-bold">
+                  Risconto 31/12
+                </p>
+                <p className="text-base sm:text-lg font-bold text-green-700 mt-1">
+                  {reportCompetenza.totaleResiduo.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}
+                </p>
+              </div>
+            </div>
+
+            {/* Info percorsi vecchi */}
+            {reportCompetenza.percorsiPrecedenti.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-apple p-3 text-xs">
+                <p className="text-amber-800">
+                  <strong>⚠️ {reportCompetenza.percorsiPrecedenti.length} percorsi</strong> venduti in anni precedenti ma ancora aperti — residuo totale:{' '}
+                  <strong>{reportCompetenza.totaleResiduoPrecedenti.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}</strong>
+                </p>
+              </div>
+            )}
+
+            {/* Bottoni export */}
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3">
+              <Button
+                variant="purple"
+                size="md"
+                onClick={handleScaricaPdfCompetenza}
+                disabled={scaricandoPdfCompetenza}
+              >
+                {scaricandoPdfCompetenza ? '⏳...' : '📄 PDF A4'}
+              </Button>
+              <Button
+                variant="success"
+                size="md"
+                onClick={handleScaricaCsvCompetenza}
+              >
+                📊 CSV Excel
+              </Button>
+            </div>
+
+            <p className="text-[11px] text-apple-gray italic">
+              📋 Il report include: dettaglio per cliente, dettaglio percorsi anno corrente,
+              percorsi anni precedenti ancora aperti.
+            </p>
+          </div>
+        ) : null}
+      </div>
+
       {/* ===== REPORT CHIUSURE MENSILE ===== */}
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-apple p-4 sm:p-6 shadow-apple">
         <div className="flex items-start justify-between gap-3 mb-4">
-          <div>
-            <h3 className="text-sm font-bold text-apple-darkgray">
+          <div className="min-w-0">
+            <h3 className="text-sm sm:text-base font-bold text-apple-darkgray">
               📊 Report Chiusure Cassa Mensile
             </h3>
             <p className="text-xs text-apple-gray mt-0.5">
               Tabella giorno-per-giorno stile gestionale (per commercialista)
             </p>
           </div>
-          <span className="text-2xl">📈</span>
+          <span className="text-2xl shrink-0">📈</span>
         </div>
 
         {/* Selettori mese/anno */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
           <div>
             <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
               Mese
@@ -277,21 +437,23 @@ export function ReportCommercialistaTab() {
         </div>
 
         {/* Pulsanti export */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
+        <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3">
+          <Button
+            variant="primary"
+            size="md"
             onClick={handleScaricaPdfChiusure}
             disabled={scaricandoPdfChiusure}
-            className="px-4 py-3 bg-apple-blue text-white rounded-apple font-semibold text-sm hover:bg-blue-600 transition-colors shadow-apple disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {scaricandoPdfChiusure ? '⏳...' : '📄 PDF A4'}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="success"
+            size="md"
             onClick={handleScaricaCsvChiusure}
             disabled={scaricandoCsvChiusure}
-            className="px-4 py-3 bg-green-600 text-white rounded-apple font-semibold text-sm hover:bg-green-700 transition-colors shadow-apple disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {scaricandoCsvChiusure ? '⏳...' : '📊 CSV Excel'}
-          </button>
+          </Button>
         </div>
 
         <p className="text-[11px] text-apple-gray mt-3 italic">
@@ -363,13 +525,13 @@ export function ReportCommercialistaTab() {
 
       {/* Riepilogo */}
       {caricando ? (
-        <div className="bg-white rounded-apple shadow-apple p-12 text-center text-apple-gray text-sm">
+        <div className="bg-white rounded-apple shadow-apple p-8 sm:p-12 text-center text-apple-gray text-sm">
           Caricamento riepilogo...
         </div>
       ) : riepilogo ? (
         <>
           {/* Card principali */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             <CardRiepilogo
               icon="🧾"
               label="Scontrini"
@@ -406,12 +568,12 @@ export function ReportCommercialistaTab() {
               {riepilogo.ivaPerAliquota.map((r) => (
                 <div
                   key={r.aliquota}
-                  className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-apple text-sm"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 py-2 px-3 bg-gray-50 rounded-apple text-sm"
                 >
                   <span className="font-semibold text-apple-darkgray">
                     Aliquota {r.aliquota}%
                   </span>
-                  <div className="flex gap-4 text-xs">
+                  <div className="flex flex-wrap gap-2 sm:gap-4 text-xs">
                     <span className="text-apple-gray">
                       Imp.: <strong className="text-apple-darkgray">{formatEuro(r.imponibile)}</strong>
                     </span>
@@ -436,10 +598,10 @@ export function ReportCommercialistaTab() {
               {riepilogo.perMetodo.map((m) => (
                 <div
                   key={m.metodo}
-                  className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-apple text-sm"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 py-2 px-3 bg-gray-50 rounded-apple text-sm"
                 >
                   <span className="font-semibold text-apple-darkgray">{m.metodo}</span>
-                  <div className="flex gap-4 text-xs">
+                  <div className="flex flex-wrap gap-2 sm:gap-4 text-xs">
                     <span className="text-apple-gray">
                       N: <strong className="text-apple-darkgray">{m.numeroScontrini}</strong>
                     </span>
@@ -475,33 +637,36 @@ export function ReportCommercialistaTab() {
               📤 Esporta / Invia
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-              <button
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3 mb-4">
+              <Button
+                variant="success"
+                size="md"
                 onClick={handleScaricaCsv}
                 disabled={scaricandoCsv || riepilogo.numeroScontrini === 0}
-                className="px-4 py-3 bg-green-600 text-white rounded-apple font-semibold text-sm hover:bg-green-700 transition-colors shadow-apple disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {scaricandoCsv ? '⏳...' : '📊 Esporta CSV'}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
                 onClick={handleScaricaPdf}
                 disabled={scaricandoPdf || riepilogo.numeroScontrini === 0}
-                className="px-4 py-3 bg-apple-blue text-white rounded-apple font-semibold text-sm hover:bg-blue-600 transition-colors shadow-apple disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {scaricandoPdf ? '⏳...' : '📄 Esporta PDF'}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="purple"
+                size="md"
                 onClick={handleInviaEmail}
                 disabled={inviandoEmail || !emailCommercialista || riepilogo.numeroScontrini === 0}
-                className="px-4 py-3 bg-purple-600 text-white rounded-apple font-semibold text-sm hover:bg-purple-700 transition-colors shadow-apple disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {inviandoEmail ? '⏳...' : '📧 Invia Commercialista'}
-              </button>
+              </Button>
             </div>
 
             {/* Info commercialista */}
             <div className="bg-gray-50 rounded-apple p-3 text-xs">
-              <p className="text-apple-gray">
+              <p className="text-apple-gray break-words">
                 <strong>Destinatario:</strong>{' '}
                 {emailCommercialista
                   ? `${nomeCommercialista || 'Commercialista'} <${emailCommercialista}>`
@@ -557,7 +722,7 @@ function CardRiepilogo({
       <p className="text-[10px] font-bold uppercase tracking-wide opacity-80">
         {icon} {label}
       </p>
-      <p className={`text-lg font-bold mt-1 ${evidenzia ? 'text-xl' : ''}`}>
+      <p className={`text-base sm:text-lg font-bold mt-1 ${evidenzia ? 'sm:text-xl' : ''}`}>
         {valore}
       </p>
     </div>
