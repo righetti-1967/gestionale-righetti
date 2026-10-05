@@ -275,11 +275,11 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto"
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-apple shadow-apple-lg max-w-2xl w-full my-8 p-6"
+        className="bg-white rounded-apple shadow-apple-lg max-w-2xl w-full p-4 sm:p-6 my-auto max-h-[95vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-6">
