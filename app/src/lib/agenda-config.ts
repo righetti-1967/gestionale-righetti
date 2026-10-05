@@ -267,6 +267,36 @@ export function getOrariGiorno(config: ConfigAgenda, giorno: number): OrarioGior
   };
 }
 
+/**
+ * Ritorna le fasce di un giorno da una data ISO (YYYY-MM-DD).
+ * USA orariGiorni se presente, altrimenti fallback a oraApertura/oraChiusura/giorniLavorativi.
+ */
+export function getFasceDaDataISO(config: ConfigAgenda, dataISO: string): Fascia[] {
+  const [y, m, d] = dataISO.split('-').map(Number);
+  const giornoSett = new Date(y, m - 1, d).getDay();
+  return getOrariGiorno(config, giornoSett).fasce;
+}
+
+/**
+ * Verifica se un orario HH:MM (o HH:MM:SS) è dentro le fasce del giorno.
+ * Ritorna anche il motivo se fuori.
+ */
+export function verificaOrarioInFasce(
+  config: ConfigAgenda,
+  dataISO: string,
+  oraHHMM: string
+): { dentro: boolean; motivo?: string } {
+  const oraShort = oraHHMM.slice(0, 5);
+  const fasce = getFasceDaDataISO(config, dataISO);
+  if (fasce.length === 0) {
+    return { dentro: false, motivo: 'Giorno chiuso' };
+  }
+  const dentro = fasce.some((f) => oraShort >= f.inizio && oraShort < f.fine);
+  if (dentro) return { dentro: true };
+  const range = fasce.map((f) => `${f.inizio}-${f.fine}`).join(' · ');
+  return { dentro: false, motivo: `Fuori orario (${range})` };
+}
+
 /** Genera un ID univoco per una nuova categoria */
 export function generaIdCategoria(): string {
   return `cat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;

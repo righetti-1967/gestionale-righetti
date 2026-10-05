@@ -965,7 +965,7 @@ export function CassaFiscale() {
                     <div className="min-w-0">
                       <p className="text-xs text-apple-gray">Cliente</p>
                       <p className="text-sm font-semibold text-apple-darkgray truncate">
-                        {clienteSelezionato.nome_cognome}
+                        {clienteSelezionato?.nome_cognome}
                       </p>
                     </div>
                     <button

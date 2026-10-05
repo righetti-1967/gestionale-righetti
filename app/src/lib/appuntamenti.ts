@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import type { Cliente } from './clienti';
-import { AGENDA_DEFAULT, type ConfigAgenda } from './agenda-config';
+import { AGENDA_DEFAULT, type ConfigAgenda, type Fascia, getOrariGiorno, getAgendaConfigSync } from './agenda-config';
 
 export type Operatore = string;
 export type StatoAppuntamento = 'pending' | 'prenotato' | 'confermato' | 'completato' | 'cancellato';
@@ -87,6 +87,58 @@ export let OPERATORI: Record<
 export function setConfigAgenda(config: ConfigAgenda): void {
   _configAgenda = config;
   aggiornaCostantiAgenda(config);
+}
+
+/**
+ * Ritorna le fasce orarie per una data specifica (YYYY-MM-DD).
+ * Usa getOrariGiorno per gestire backward compat.
+ */
+export function getFasceGiornoData(dataISO: string): Fascia[] {
+  const config = getAgendaConfigSync();
+  // Parse data per capire il giorno settimana (0=Dom...6=Sab)
+  const [y, m, d] = dataISO.split('-').map(Number);
+  const data = new Date(y, m - 1, d);
+  const giornoSett = data.getDay();
+  return getOrariGiorno(config, giornoSett).fasce;
+}
+
+/**
+ * Verifica se un orario (HH:MM) è dentro le fasce del giorno specificato.
+ * Ritorna true anche se è a cavallo di una fascia (start incluso, end escluso).
+ */
+export function isDentroFasce(dataISO: string, oraHHMM: string): boolean {
+  const fasce = getFasceGiornoData(dataISO);
+  if (fasce.length === 0) return false;
+  for (const f of fasce) {
+    if (oraHHMM >= f.inizio && oraHHMM < f.fine) return true;
+  }
+  return false;
+}
+
+/**
+ * Verifica se un appuntamento (data + ora inizio) cade dentro le fasce.
+ * Ritorna dettagli per eventuale UI.
+ */
+export function verificaOrarioAppuntamento(
+  dataISO: string,
+  oraHHMM: string
+): { dentro: boolean; motivo?: string } {
+  const config = getAgendaConfigSync();
+  const [y, m, d] = dataISO.split('-').map(Number);
+  const giornoSett = new Date(y, m - 1, d).getDay();
+  const giorno = getOrariGiorno(config, giornoSett);
+
+  if (!giorno.aperto || giorno.fasce.length === 0) {
+    return { dentro: false, motivo: 'Giorno chiuso' };
+  }
+
+  const dentro = giorno.fasce.some((f) => oraHHMM >= f.inizio && oraHHMM < f.fine);
+  if (!dentro) {
+    const range = giorno.fasce.map((f) => `${f.inizio}-${f.fine}`).join(' · ');
+    return { dentro: false, motivo: `Fuori orario di apertura (${range})` };
+  }
+
+  return { dentro: true };
 }
 
 export function aggiornaCostantiAgenda(config: ConfigAgenda): void {
