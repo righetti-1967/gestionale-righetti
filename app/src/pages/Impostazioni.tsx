@@ -26,6 +26,7 @@ import {
   type ConfigAgenda,
   type CategoriaServizio,
   type OperatoreConfig,
+  type Fascia,
 } from '../lib/agenda-config';
 import { aggiornaCostantiAgenda } from '../lib/appuntamenti';
 import { getServizi, type Servizio } from '../lib/servizi';
@@ -2388,6 +2389,11 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
   const [nuovoOpRuolo, setNuovoOpRuolo] = useState('');
   const [nuovoOpColore, setNuovoOpColore] = useState('blue');
 
+  // Modale orari giorno
+  const [giornoModale, setGiornoModale] = useState<number | null>(null);
+  const [fasceModale, setFasceModale] = useState<Fascia[]>([]);
+  const [apertoModale, setApertoModale] = useState(false);
+
   useEffect(() => {
     async function carica() {
       try {
@@ -2451,6 +2457,189 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
       else set.add(giorno);
       return { ...c, giorniLavorativi: Array.from(set).sort() };
     });
+  }
+
+  // === Orari per giorno (fasce multiple) ===
+  function getFasceGiorno(giorno: number): Fascia[] {
+    const orari = config.orariGiorni?.[giorno];
+    if (orari) return orari.fasce;
+    // Fallback: se manca, usa orari globali + giorni lavorativi
+    if (config.giorniLavorativi.includes(giorno)) {
+      return [{ inizio: config.oraApertura, fine: config.oraChiusura }];
+    }
+    return [];
+  }
+
+  function isGiornoAperto(giorno: number): boolean {
+    const orari = config.orariGiorni?.[giorno];
+    if (orari) return orari.aperto;
+    return config.giorniLavorativi.includes(giorno);
+  }
+
+  function toggleGiornoAperto(giorno: number) {
+    setConfig((c) => {
+      const nuovi = { ...(c.orariGiorni || {}) };
+      const attuale = nuovi[giorno] || {
+        aperto: c.giorniLavorativi.includes(giorno),
+        fasce: c.giorniLavorativi.includes(giorno)
+          ? [{ inizio: c.oraApertura, fine: c.oraChiusura }]
+          : [],
+      };
+      if (attuale.aperto) {
+        nuovi[giorno] = { aperto: false, fasce: [] };
+      } else {
+        nuovi[giorno] = {
+          aperto: true,
+          fasce: attuale.fasce.length > 0 ? attuale.fasce : [{ inizio: c.oraApertura, fine: c.oraChiusura }],
+        };
+      }
+      // Sincronizza giorniLavorativi per backward compat
+      const giorni = Object.entries(nuovi)
+        .filter(([_, o]) => o.aperto)
+        .map(([g]) => Number(g))
+        .sort();
+      return { ...c, orariGiorni: nuovi, giorniLavorativi: giorni };
+    });
+  }
+
+  function cambiaFascia(giorno: number, indice: number, campo: 'inizio' | 'fine', valore: string) {
+    setConfig((c) => {
+      const nuovi = { ...(c.orariGiorni || {}) };
+      const attuale = nuovi[giorno] || {
+        aperto: c.giorniLavorativi.includes(giorno),
+        fasce: [{ inizio: c.oraApertura, fine: c.oraChiusura }],
+      };
+      const fasce = [...attuale.fasce];
+      fasce[indice] = { ...fasce[indice], [campo]: valore };
+      nuovi[giorno] = { ...attuale, fasce };
+      return { ...c, orariGiorni: nuovi };
+    });
+  }
+
+  function aggiungiFascia(giorno: number) {
+    setConfig((c) => {
+      const nuovi = { ...(c.orariGiorni || {}) };
+      const attuale = nuovi[giorno] || {
+        aperto: c.giorniLavorativi.includes(giorno),
+        fasce: [{ inizio: c.oraApertura, fine: c.oraChiusura }],
+      };
+      const ultima = attuale.fasce[attuale.fasce.length - 1];
+      const nuovaFascia = ultima
+        ? { inizio: ultima.fine, fine: ultima.fine }
+        : { inizio: c.oraApertura, fine: c.oraChiusura };
+      nuovi[giorno] = {
+        aperto: true,
+        fasce: [...attuale.fasce, nuovaFascia],
+      };
+      // Sincronizza giorniLavorativi
+      const giorni = Object.entries(nuovi)
+        .filter(([_, o]) => o.aperto)
+        .map(([g]) => Number(g))
+        .sort();
+      return { ...c, orariGiorni: nuovi, giorniLavorativi: giorni };
+    });
+  }
+
+  function rimuoviFascia(giorno: number, indice: number) {
+    setConfig((c) => {
+      const nuovi = { ...(c.orariGiorni || {}) };
+      const attuale = nuovi[giorno];
+      if (!attuale) return c;
+      const fasce = attuale.fasce.filter((_, i) => i !== indice);
+      if (fasce.length === 0) {
+        nuovi[giorno] = { aperto: false, fasce: [] };
+      } else {
+        nuovi[giorno] = { ...attuale, fasce };
+      }
+      const giorni = Object.entries(nuovi)
+        .filter(([_, o]) => o.aperto)
+        .map(([g]) => Number(g))
+        .sort();
+      return { ...c, orariGiorni: nuovi, giorniLavorativi: giorni };
+    });
+  }
+
+  // === Modale orari giorno ===
+  function apriModaleGiorno(giorno: number) {
+    const orari = config.orariGiorni?.[giorno];
+    const aperto = orari?.aperto ?? config.giorniLavorativi.includes(giorno);
+    const fasce = orari?.fasce && orari.fasce.length > 0
+      ? orari.fasce
+      : aperto
+        ? [{ inizio: config.oraApertura, fine: config.oraChiusura }]
+        : [];
+    setFasceModale(fasce);
+    setApertoModale(aperto);
+    setGiornoModale(giorno);
+  }
+
+  function chiudiModaleGiorno() {
+    setGiornoModale(null);
+    setFasceModale([]);
+    setApertoModale(false);
+  }
+
+  function salvaModaleGiorno() {
+    if (giornoModale === null) return;
+    // Valida: se aperto, deve avere almeno una fascia valida
+    if (apertoModale && fasceModale.length === 0) {
+      alert('Aggiungi almeno una fascia oraria per aprire il giorno.');
+      return;
+    }
+    // Valida: inizio < fine per ogni fascia
+    for (const f of fasceModale) {
+      if (f.inizio >= f.fine) {
+        alert(`Fascia non valida: ${f.inizio} → ${f.fine}. L'orario di fine deve essere dopo quello di inizio.`);
+        return;
+      }
+    }
+    setConfig((c) => {
+      const nuovi = { ...(c.orariGiorni || {}) };
+      nuovi[giornoModale] = {
+        aperto: apertoModale,
+        fasce: apertoModale ? fasceModale : [],
+      };
+      const giorni = Object.entries(nuovi)
+        .filter(([_, o]) => o.aperto)
+        .map(([g]) => Number(g))
+        .sort();
+      return { ...c, orariGiorni: nuovi, giorniLavorativi: giorni };
+    });
+    chiudiModaleGiorno();
+  }
+
+  function aggiungiFasciaModale() {
+    const ultima = fasceModale[fasceModale.length - 1];
+    const nuova = ultima
+      ? { inizio: ultima.fine, fine: ultima.fine }
+      : { inizio: config.oraApertura, fine: config.oraChiusura };
+    setFasceModale((f) => [...f, nuova]);
+  }
+
+  function rimuoviFasciaModale(indice: number) {
+    setFasceModale((f) => f.filter((_, i) => i !== indice));
+  }
+
+  function cambiaFasciaModale(indice: number, campo: 'inizio' | 'fine', valore: string) {
+    setFasceModale((f) =>
+      f.map((fascia, i) => (i === indice ? { ...fascia, [campo]: valore } : fascia))
+    );
+  }
+
+  function riepilogoGiorno(giorno: number): string {
+    const orari = config.orariGiorni?.[giorno];
+    const aperto = orari?.aperto ?? config.giorniLavorativi.includes(giorno);
+    if (!aperto) return 'Chiuso';
+    const fasce = orari?.fasce && orari.fasce.length > 0
+      ? orari.fasce
+      : [{ inizio: config.oraApertura, fine: config.oraChiusura }];
+    if (fasce.length === 1) {
+      return `${fasce[0].inizio}-${fasce[0].fine}`;
+    }
+    if (fasce.length <= 2) {
+      return fasce.map((f) => `${f.inizio}-${f.fine}`).join(' · ');
+    }
+    return `${fasce[0].inizio}-${fasce[0].fine} · +${fasce.length - 1}`;
   }
 
   function toggleOperatore(opId: string) {
@@ -2618,27 +2807,153 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
         </div>
       </Card>
 
-      <Card title="Giorni lavorativi" subtitle="Seleziona i giorni in cui l'agenda è attiva.">
-        <div className="flex flex-wrap gap-2">
+      <Card
+        title="Orari per giorno"
+        subtitle="Clicca un giorno per configurare le fasce orarie (es. mattina + pomeriggio)."
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           {GIORNI_SETTIMANA.map((g) => {
-            const attivo = config.giorniLavorativi.includes(g.value);
+            const aperto = isGiornoAperto(g.value);
+            const riepilogo = riepilogoGiorno(g.value);
             return (
               <button
                 key={g.value}
                 type="button"
-                onClick={() => toggleGiorno(g.value)}
-                className={`px-3.5 py-1.5 rounded-apple text-xs font-medium transition-all ${
-                  attivo
-                    ? 'bg-apple-blue text-white shadow-apple'
-                    : 'bg-gray-100 text-apple-darkgray hover:bg-gray-200'
+                onClick={() => apriModaleGiorno(g.value)}
+                className={`text-left p-3 rounded-apple border-2 transition-all hover:shadow-apple ${
+                  aperto
+                    ? 'bg-blue-50 border-blue-300 hover:border-blue-500 hover:bg-blue-100'
+                    : 'bg-gray-50 border-gray-200 hover:border-gray-300'
                 }`}
               >
-                {g.label}
+                <p className={`text-xs font-bold ${aperto ? 'text-apple-blue' : 'text-apple-gray'}`}>
+                  {g.label}
+                </p>
+                <p className={`text-[10px] mt-1 truncate ${aperto ? 'text-apple-blue font-semibold' : 'text-apple-gray italic'}`}>
+                  {riepilogo}
+                </p>
               </button>
             );
           })}
         </div>
       </Card>
+
+      {/* Modale orari giorno */}
+      {giornoModale !== null && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[90]"
+          onClick={chiudiModaleGiorno}
+        >
+          <div
+            className="bg-white rounded-apple shadow-apple-lg max-w-sm w-full p-5 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-apple-darkgray">
+                {GIORNI_SETTIMANA.find((g) => g.value === giornoModale)?.label}
+              </h3>
+              <button
+                type="button"
+                onClick={chiudiModaleGiorno}
+                className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-apple-gray text-xs flex items-center justify-center transition-colors"
+                aria-label="Chiudi"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Toggle aperto */}
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-apple mb-4">
+              <button
+                type="button"
+                onClick={() => setApertoModale((a) => !a)}
+                className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0 ${
+                  apertoModale
+                    ? 'bg-apple-blue border-apple-blue text-white'
+                    : 'bg-white border-gray-300'
+                }`}
+                aria-label={apertoModale ? 'Chiudi giorno' : 'Apri giorno'}
+              >
+                {apertoModale && <span className="text-[10px] font-bold">✓</span>}
+              </button>
+              <button
+                type="button"
+                onClick={() => setApertoModale((a) => !a)}
+                className="flex-1 text-left"
+              >
+                <p className="text-sm font-semibold text-apple-darkgray">
+                  {apertoModale ? 'Aperto' : 'Chiuso'}
+                </p>
+              </button>
+            </div>
+
+            {/* Fasce */}
+            {apertoModale && (
+              <div className="space-y-3 mb-4">
+                <p className="text-xs font-semibold text-apple-gray uppercase tracking-wide">
+                  Fasce orarie
+                </p>
+                {fasceModale.length === 0 && (
+                  <p className="text-xs text-apple-gray italic text-center py-3">
+                    Nessuna fascia. Aggiungine una qui sotto.
+                  </p>
+                )}
+                {fasceModale.map((f, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={f.inizio}
+                      onChange={(e) => cambiaFasciaModale(i, 'inizio', e.target.value)}
+                      className="flex-1 min-w-0 px-2.5 py-2 rounded-apple bg-gray-50 border border-gray-200 text-xs text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                    />
+                    <span className="text-apple-gray text-xs shrink-0">→</span>
+                    <input
+                      type="time"
+                      value={f.fine}
+                      onChange={(e) => cambiaFasciaModale(i, 'fine', e.target.value)}
+                      className="flex-1 min-w-0 px-2.5 py-2 rounded-apple bg-gray-50 border border-gray-200 text-xs text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => rimuoviFasciaModale(i)}
+                      className="shrink-0 w-7 h-7 rounded-apple flex items-center justify-center text-apple-gray hover:text-red-500 hover:bg-red-50 transition-colors text-xs"
+                      title="Rimuovi fascia"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={aggiungiFasciaModale}
+                  className="w-full px-3 py-2 rounded-apple bg-blue-50 hover:bg-blue-100 text-apple-blue text-xs font-semibold transition-colors"
+                >
+                  + Aggiungi fascia
+                </button>
+              </div>
+            )}
+
+            {/* Azioni */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={chiudiModaleGiorno}
+                className="flex-1 px-4 py-2.5 rounded-apple bg-gray-100 text-apple-darkgray text-sm font-medium hover:bg-gray-200 transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={salvaModaleGiorno}
+                className="flex-1 px-4 py-2.5 rounded-apple bg-apple-blue text-white text-sm font-semibold hover:bg-blue-600 transition-colors shadow-apple"
+              >
+                Salva
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Card title="Granularità griglia" subtitle="Dimensione degli slot orari in agenda.">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

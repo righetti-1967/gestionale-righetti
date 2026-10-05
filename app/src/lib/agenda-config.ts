@@ -17,10 +17,24 @@ export interface OperatoreConfig {
   colore: string;    // "blue", "green", ecc.
 }
 
+export interface Fascia {
+  inizio: string;  // "09:00"
+  fine: string;    // "13:00"
+}
+
+export interface OrarioGiorno {
+  aperto: boolean;
+  fasce: Fascia[];
+}
+
 export interface ConfigAgenda {
-  // Orari
+  // Orari globali (backward compat + fallback)
   oraApertura: string;           // "08:30"
   oraChiusura: string;           // "19:00"
+
+  // Orari per giorno settimana (0=Dom, 1=Lun, ..., 6=Sab).
+  // Se mancante, viene generato automaticamente da oraApertura/oraChiusura/giorniLavorativi.
+  orariGiorni?: Record<number, OrarioGiorno>;
 
   // Giorni lavorativi (0=Dom, 1=Lun, ..., 6=Sab)
   giorniLavorativi: number[];    // [4, 5, 6] default attuale
@@ -56,6 +70,15 @@ export const AGENDA_DEFAULT: ConfigAgenda = {
   oraApertura: '09:00',
   oraChiusura: '18:00',
   giorniLavorativi: [2, 3, 4, 5, 6],  // Mar, Mer, Gio, Ven, Sab
+  orariGiorni: {
+    0: { aperto: false, fasce: [] },
+    1: { aperto: false, fasce: [] },
+    2: { aperto: true, fasce: [{ inizio: '09:00', fine: '18:00' }] },
+    3: { aperto: true, fasce: [{ inizio: '09:00', fine: '18:00' }] },
+    4: { aperto: true, fasce: [{ inizio: '09:00', fine: '18:00' }] },
+    5: { aperto: true, fasce: [{ inizio: '09:00', fine: '18:00' }] },
+    6: { aperto: true, fasce: [{ inizio: '09:00', fine: '18:00' }] },
+  },
   granularitaMinuti: 15,
   operatori: OPERATORI_DEFAULT,
   operatoriVisibili: ['luca', 'lorenzo'],
@@ -119,14 +142,51 @@ function adatta(raw: unknown): ConfigAgenda {
     generico: typeof r.coloriTipi?.generico === 'string' ? r.coloriTipi.generico : 'gray',
   };
 
+  const oraAperturaFinale = typeof r.oraApertura === 'string' && r.oraApertura.match(/^\d{2}:\d{2}$/)
+    ? r.oraApertura
+    : AGENDA_DEFAULT.oraApertura;
+  const oraChiusuraFinale = typeof r.oraChiusura === 'string' && r.oraChiusura.match(/^\d{2}:\d{2}$/)
+    ? r.oraChiusura
+    : AGENDA_DEFAULT.oraChiusura;
+  const giorniFinali = giorni.length > 0 ? giorni : AGENDA_DEFAULT.giorniLavorativi;
+
+  // Parsing orariGiorni (se presente), altrimenti backward compat
+  let orariGiorni: Record<number, OrarioGiorno> | undefined = undefined;
+  if (r.orariGiorni && typeof r.orariGiorni === 'object') {
+    orariGiorni = {};
+    for (let g = 0; g <= 6; g++) {
+      const entry = r.orariGiorni[g];
+      if (!entry || typeof entry !== 'object') continue;
+      const fasce: Fascia[] = Array.isArray(entry.fasce)
+        ? entry.fasce
+            .filter((f: any) =>
+              f && typeof f.inizio === 'string' && typeof f.fine === 'string' &&
+              f.inizio.match(/^\d{2}:\d{2}$/) && f.fine.match(/^\d{2}:\d{2}$/)
+            )
+            .map((f: any) => ({ inizio: f.inizio, fine: f.fine }))
+        : [];
+      orariGiorni[g] = {
+        aperto: Boolean(entry.aperto) && fasce.length > 0,
+        fasce,
+      };
+    }
+  } else {
+    // BACKWARD COMPAT: genera orariGiorni da dati legacy
+    orariGiorni = {};
+    for (let g = 0; g <= 6; g++) {
+      const aperto = giorniFinali.includes(g);
+      orariGiorni[g] = {
+        aperto,
+        fasce: aperto ? [{ inizio: oraAperturaFinale, fine: oraChiusuraFinale }] : [],
+      };
+    }
+  }
+
   return {
-    oraApertura: typeof r.oraApertura === 'string' && r.oraApertura.match(/^\d{2}:\d{2}$/)
-      ? r.oraApertura
-      : AGENDA_DEFAULT.oraApertura,
-    oraChiusura: typeof r.oraChiusura === 'string' && r.oraChiusura.match(/^\d{2}:\d{2}$/)
-      ? r.oraChiusura
-      : AGENDA_DEFAULT.oraChiusura,
-    giorniLavorativi: giorni.length > 0 ? giorni : AGENDA_DEFAULT.giorniLavorativi,
+    oraApertura: oraAperturaFinale,
+    oraChiusura: oraChiusuraFinale,
+    orariGiorni,
+    giorniLavorativi: giorniFinali,
     granularitaMinuti: granularita,
     operatori,
     operatoriVisibili: operatoriVisibili.length > 0 ? operatoriVisibili : [operatori[0].id],
@@ -190,6 +250,21 @@ export async function salvaAgendaConfig(config: ConfigAgenda): Promise<void> {
     );
   if (error) throw error;
   cache = config;
+}
+
+/**
+ * Ritorna le fasce orarie di un giorno della settimana.
+ * Fallback: se orariGiorni manca, usa oraApertura/oraChiusura e giorniLavorativi.
+ */
+export function getOrariGiorno(config: ConfigAgenda, giorno: number): OrarioGiorno {
+  if (config.orariGiorni && config.orariGiorni[giorno]) {
+    return config.orariGiorni[giorno];
+  }
+  const aperto = config.giorniLavorativi.includes(giorno);
+  return {
+    aperto,
+    fasce: aperto ? [{ inizio: config.oraApertura, fine: config.oraChiusura }] : [],
+  };
 }
 
 /** Genera un ID univoco per una nuova categoria */
