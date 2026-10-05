@@ -469,6 +469,8 @@ export function FormScaricoSeduta({
                           <label className="text-xs font-medium text-apple-gray">Scarica:</label>
                           <input
                             type="number"
+
+                            inputMode="numeric"
                             min="0"
                             max={r.quantita_residua}
                             step="1"
@@ -603,6 +605,8 @@ export function FormScaricoSeduta({
                     <div className="w-16 shrink-0">
                       <input
                         type="number"
+
+                        inputMode="numeric"
                         min="1"
                         value={extra.quantita}
                         onChange={(e) =>

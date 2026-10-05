@@ -1,4 +1,6 @@
 import { supabase } from './supabase';
+import { wrapEmailHtml } from './emailWrapper';
+import { caricaDatiAziendali } from './datiAziendali';
 
 /**
  * Client API per il backend FastAPI su Railway.
@@ -271,10 +273,22 @@ export async function inviaEmailConConfig(payload: {
     throw new Error('Nessun provider email configurato. Vai in Impostazioni → Comunicazioni.');
   }
 
+  // Wrappa il corpo in un template HTML professionale (logo + firma aziendale)
+  let corpoWrappato = payload.corpo_html;
+  try {
+    const azienda = await caricaDatiAziendali();
+    if (azienda) {
+      corpoWrappato = wrapEmailHtml(payload.corpo_html, azienda);
+    }
+  } catch (err) {
+    console.warn('⚠️ Impossibile caricare dati aziendali per wrapper email:', err);
+    // In caso di errore, manda il corpo originale
+  }
+
   return inviaEmail({
     destinatario: payload.destinatario,
     oggetto: payload.oggetto,
-    corpo_html: payload.corpo_html,
+    corpo_html: corpoWrappato,
     corpo_testo: payload.corpo_testo,
     from_name: config.fromName || config.from_name || payload.from_name,
     google_script_url: googleScriptUrl || undefined,

@@ -321,6 +321,7 @@ export async function inviaScontrinoEmail(
     cognome,
     azienda: azienda.ragioneSociale || '',
     data: formatDataIt(scontrino.data_emissione),
+    data_estesa: (() => { try { const d = new Date(scontrino.data_emissione + 'T00:00:00'); const s = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); return s.charAt(0).toUpperCase() + s.slice(1); } catch { return scontrino.data_emissione; } })(),
     numero_documento: scontrino.numero_scontrino,
     importo: formatEuroIt(scontrino.totale_lordo),
   };

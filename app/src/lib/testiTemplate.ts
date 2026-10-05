@@ -59,6 +59,31 @@ export interface VariabiliDisponibili {
 // DEFAULT — Testi di base (fallback se l'utente non ha personalizzato)
 // ============================================================
 
+
+/**
+ * Ritorna "Lunedì 5 Ottobre 2026" da "2026-10-05" o "2026-10-05T..."
+ */
+export function dataEstesaIT(dataISO: string): string {
+  try {
+    const soloData = dataISO.slice(0, 10);
+    const d = new Date(soloData + 'T00:00:00');
+    const s = d.toLocaleDateString('it-IT', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  } catch {
+    return dataISO;
+  }
+}
+
+/** Data di oggi in formato esteso (Lunedì 5 Ottobre 2026) */
+export function oggiEstesoIT(): string {
+  return dataEstesaIT(new Date().toISOString().split('T')[0]);
+}
+
 export const DEFAULT_TESTI: Record<ChiaveTesto, TestoTemplate> = {
   email_privacy: {
     chiave: 'email_privacy',
@@ -181,7 +206,7 @@ Grazie,
     oggetto: 'Promemoria appuntamento — {data} ore {ora}',
     corpo: `Ciao {nome},
 
-ti ricordiamo il tuo appuntamento di {data} alle ore {ora}.
+ti ricordiamo il tuo appuntamento di {data_estesa} alle ore {ora}.
 
 Grazie e a presto!
 {azienda}`,
@@ -192,7 +217,7 @@ Grazie e a presto!
     oggetto: 'Promemoria Check-Up — {data} ore {ora}',
     corpo: `Ciao {nome},
 
-ti ricordiamo la tua prima visita presso il nostro Studio per il tuo "Check-Up Gratuito" di {data} alle ore {ora}.
+ti ricordiamo la tua prima visita presso il nostro Studio per il tuo "Check-Up Gratuito" di {data_estesa} alle ore {ora}.
 
 Ti aspettiamo!
 {azienda}`,
@@ -203,7 +228,7 @@ Ti aspettiamo!
     oggetto: 'Come stai dopo la seduta?',
     corpo: `Ciao {nome},
 
-come stai dopo la seduta di {data}?
+come stai dopo la seduta di {data_estesa}?
 
 Se hai bisogno di chiarimenti o vuoi prenotare il prossimo appuntamento, contattaci pure.
 
@@ -248,7 +273,7 @@ A presto,
   whatsapp_promemoria: {
     chiave: 'whatsapp_promemoria',
     oggetto: null,
-    corpo: `Ciao {nome}, ti ricordiamo il tuo appuntamento di {data} alle ore {ora}.
+    corpo: `Ciao {nome}, ti ricordiamo il tuo appuntamento di {data_estesa} alle ore {ora}.
 
 Grazie e a presto!
 {azienda}`,
@@ -257,7 +282,7 @@ Grazie e a presto!
   whatsapp_post_seduta: {
     chiave: 'whatsapp_post_seduta',
     oggetto: null,
-    corpo: `Ciao {nome}, come stai dopo la seduta di {data}?
+    corpo: `Ciao {nome}, come stai dopo la seduta di {data_estesa}?
 
 Se hai bisogno di chiarimenti o vuoi prenotare il prossimo appuntamento, contattaci pure.
 

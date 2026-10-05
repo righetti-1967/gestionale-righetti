@@ -31,6 +31,7 @@ import { ListaAppuntamentiCliente } from '../components/ListaAppuntamentiCliente
 import { FormScaricoSeduta } from '../components/FormScaricoSeduta';
 import { StoricoProdottiCliente } from '../components/StoricoProdottiCliente';
 import { CardKpiCliente } from '../components/CardKpiCliente';
+import { ModaleInviaTemplate } from '../components/ModaleInviaTemplate';
 import { FirmaPrivacy } from '../components/FirmaPrivacy';
 import { DialogoFirmaPrivacy } from '../components/DialogoFirmaPrivacy';
 import { MenuSceltaPdf } from '../components/MenuSceltaPdf';
@@ -71,6 +72,10 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
   const [errore, setErrore] = useState<string | null>(null);
   const [ricerca, setRicerca] = useState('');
   const [clienteSelezionato, setClienteSelezionato] = useState<Cliente | null>(null);
+  const [modaleTemplate, setModaleTemplate] = useState<{
+    chiave: 'email_post_seduta' | 'email_compleanno' | 'email_riattivazione';
+    cliente: Cliente;
+  } | null>(null);
   const [clienteDaModificare, setClienteDaModificare] = useState<Cliente | null>(null);
   const [clienteDaFirmare, setClienteDaFirmare] = useState<Cliente | null>(null);
   const [clienteAppenaCreato, setClienteAppenaCreato] = useState<Cliente | null>(null);
@@ -443,6 +448,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
         cognome,
         azienda: azienda.ragioneSociale || '',
         data: new Date().toLocaleDateString('it-IT'),
+        data_estesa: (await import('../lib/testiTemplate')).dataEstesaIT(new Date().toISOString().split('T')[0]),
       };
       const oggettoCustom = renderTemplate(template.oggetto || 'Informativa Privacy GDPR', variabili);
       const corpoHtml = renderTemplate(template.corpo, variabili);
@@ -1027,6 +1033,42 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
               </p>
             </div>
 
+            {/* === AZIONI RAPIDE === */}
+            <div className="mb-6 p-4 rounded-apple bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200">
+              <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-3">
+                ⚡ Azioni rapide
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() =>
+                    setModaleTemplate({ chiave: 'email_post_seduta', cliente: clienteSelezionato })
+                  }
+                  className="px-3 py-2.5 rounded-apple bg-white hover:bg-indigo-50 border border-indigo-200 text-xs font-semibold text-apple-darkgray transition-colors flex flex-col items-center gap-1"
+                >
+                  <span className="text-lg">📸</span>
+                  <span className="truncate">Post-seduta</span>
+                </button>
+                <button
+                  onClick={() =>
+                    setModaleTemplate({ chiave: 'email_compleanno', cliente: clienteSelezionato })
+                  }
+                  className="px-3 py-2.5 rounded-apple bg-white hover:bg-pink-50 border border-pink-200 text-xs font-semibold text-apple-darkgray transition-colors flex flex-col items-center gap-1"
+                >
+                  <span className="text-lg">🎂</span>
+                  <span className="truncate">Auguri</span>
+                </button>
+                <button
+                  onClick={() =>
+                    setModaleTemplate({ chiave: 'email_riattivazione', cliente: clienteSelezionato })
+                  }
+                  className="px-3 py-2.5 rounded-apple bg-white hover:bg-amber-50 border border-amber-200 text-xs font-semibold text-apple-darkgray transition-colors flex flex-col items-center gap-1"
+                >
+                  <span className="text-lg">💤</span>
+                  <span className="truncate">Riattiva</span>
+                </button>
+              </div>
+            </div>
+
             <div
               className={`mb-6 p-3 rounded-apple ${
                 clienteSelezionato.privacy_firmata
@@ -1448,6 +1490,24 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
             caricaClienti();
             setToastMessage('Appuntamento fissato! Il cliente è stato rimosso dal rebooking.');
             setToastTipo('success');
+          }}
+        />
+      )}
+
+      {modaleTemplate && (
+        <ModaleInviaTemplate
+          chiave={modaleTemplate.chiave}
+          cliente={modaleTemplate.cliente}
+          onClose={() => setModaleTemplate(null)}
+          onSuccess={(msg) => {
+            setToastMessage(msg);
+            setToastTipo('success');
+            setTimeout(() => setToastMessage(''), 3000);
+          }}
+          onError={(msg) => {
+            setToastMessage(msg);
+            setToastTipo('error');
+            setTimeout(() => setToastMessage(''), 3000);
           }}
         />
       )}

@@ -302,6 +302,8 @@ export function FormRiscattaPercorso({
                           </label>
                           <input
                             type="number"
+
+                            inputMode="numeric"
                             min="0"
                             max={riga.quantita_residua}
                             step="1"

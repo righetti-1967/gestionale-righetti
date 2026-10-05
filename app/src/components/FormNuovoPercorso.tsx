@@ -486,6 +486,8 @@ export function FormNuovoPercorso({
               <span className="text-apple-gray">Prezzo finale concordato</span>
               <input
                 type="number"
+
+                inputMode="decimal"
                 value={totaleFinale}
                 onChange={(e) => setTotaleFinale(e.target.value)}
                 placeholder="0.00"
@@ -632,6 +634,8 @@ function RigaItem({
         <div className="flex items-center gap-1">
           <input
             type="number"
+
+            inputMode="decimal"
             step="0.01"
             min="0"
             value={riga.prezzo_listino_lordo}
@@ -652,6 +656,8 @@ function RigaItem({
           </button>
           <input
             type="number"
+
+            inputMode="decimal"
             min="1"
             value={riga.quantita}
             onChange={(e) => onQuantita(Math.max(1, parseInt(e.target.value) || 1))}

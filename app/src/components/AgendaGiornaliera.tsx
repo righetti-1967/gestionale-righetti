@@ -1004,7 +1004,7 @@ function BloccoRnd({
       className="group"
       style={{ zIndex: 10 }}
     >
-      {fuoriOrario && (
+      {fuoriOrario && app.is_blocco !== true && (
         <div className="absolute -top-1.5 -right-1.5 z-20 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-md" title="Fuori orario di apertura">
           ⚠
         </div>

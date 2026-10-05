@@ -1079,6 +1079,8 @@ export function CassaFiscale() {
                           <span className="text-[10px] text-apple-gray">🏷️ Sconto</span>
                           <input
                             type="number"
+
+                            inputMode="decimal"
                             min="0"
                             step={r.sconto_tipo === 'percentuale' ? '1' : '0.01'}
                             value={r.sconto_valore || ''}
@@ -1143,6 +1145,8 @@ export function CassaFiscale() {
                       <div className="flex items-center gap-1">
                         <input
                           type="number"
+
+                          inputMode="decimal"
                           min="0"
                           step={scontoTotaleTipo === 'percentuale' ? '1' : '0.01'}
                           value={scontoTotaleValore || ''}
