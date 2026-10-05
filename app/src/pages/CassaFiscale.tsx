@@ -1165,17 +1165,21 @@ export function CassaFiscale() {
               </div>
 
               <div className="px-4 py-2.5 border-b border-gray-200/60 shrink-0">
-                {clienteFiltroArchivio ? (
+                {clienteSelezionato ? (
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-xs text-apple-gray">Cliente</p>
                       <p className="text-sm font-semibold text-apple-darkgray truncate">
-                        {clienteSelezionato?.nome_cognome}
+                        {clienteSelezionato.nome_cognome}
                       </p>
                     </div>
                     <button
-                      onClick={() => setClienteFiltroArchivio(null)}
+                      onClick={() => {
+                        setClienteSelezionato(null);
+                        setClienteAttivoDraft({ clienteId: null });
+                      }}
                       className="text-xs text-apple-blue hover:underline shrink-0"
+                      title="Rimuovi cliente"
                     >
                       Cambia
                     </button>
