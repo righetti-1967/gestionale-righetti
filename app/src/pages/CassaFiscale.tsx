@@ -97,6 +97,10 @@ export function CassaFiscale() {
   const [filtroData, setFiltroData] = useState<FiltroData>('tutti');
   const [customDataInizio, setCustomDataInizio] = useState('');
   const [customDataFine, setCustomDataFine] = useState('');
+  const [ricercaArchivio, setRicercaArchivio] = useState('');
+  const [clienteFiltroArchivio, setClienteFiltroArchivio] = useState<{ id: number; nome_cognome: string } | null>(null);
+  const [mostraAutocomplete, setMostraAutocomplete] = useState(false);
+  const [indiceAutocomplete, setIndiceAutocomplete] = useState(0);
 
   // Riscatta
   const [percorsiConResiduo, setPercorsiConResiduo] = useState<PercorsoConResiduo[]>([]);
@@ -246,7 +250,8 @@ export function CassaFiscale() {
   }, [vociDaPreselezionare, prodotti, servizi]);
 
   useEffect(() => {
-    if (tab !== 'archivio') return;
+    // Carica SEMPRE gli scontrini (per il badge "Archivio (N)")
+    // e ricarica quando entri nel tab (per dati freschi)
     async function caricaArchivio() {
       try {
         setCaricandoArchivio(true);
@@ -477,6 +482,32 @@ export function CassaFiscale() {
     return null;
   }, [filtroData, customDataInizio, customDataFine]);
 
+  // === Clienti unici dagli scontrini (per autocomplete) ===
+  const clientiUnici = useMemo(() => {
+    const mappa = new Map<number, { id: number; nome: string; conteggio: number }>();
+    for (const s of scontrini) {
+      if (!s.cliente?.id || !s.cliente.nome_cognome) continue;
+      const esistente = mappa.get(s.cliente.id);
+      if (esistente) {
+        esistente.conteggio += 1;
+      } else {
+        mappa.set(s.cliente.id, {
+          id: s.cliente.id,
+          nome: s.cliente.nome_cognome,
+          conteggio: 1,
+        });
+      }
+    }
+    return Array.from(mappa.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [scontrini]);
+
+  // === Suggerimenti autocomplete in base a ricercaArchivio ===
+  const suggerimentiClienti = useMemo(() => {
+    const q = ricercaArchivio.toLowerCase().trim();
+    if (q.length < 2 || clienteFiltroArchivio) return [];
+    return clientiUnici.filter((c) => c.nome.toLowerCase().includes(q)).slice(0, 6);
+  }, [ricercaArchivio, clientiUnici, clienteFiltroArchivio]);
+
   const scontriniFiltrati = useMemo(() => {
     let risultato = scontrini;
 
@@ -493,8 +524,88 @@ export function CassaFiscale() {
       });
     }
 
+    // Filtro ricerca cliente / numero scontrino
+    if (clienteFiltroArchivio) {
+      // Filtro ESATTO per cliente selezionato
+      risultato = risultato.filter((s) => s.cliente?.id === clienteFiltroArchivio.id);
+    } else if (ricercaArchivio.trim()) {
+      // Filtro parziale (testo libero)
+      const q = ricercaArchivio.toLowerCase().trim();
+      risultato = risultato.filter((s) => {
+        const nomeCliente = s.cliente?.nome_cognome.toLowerCase() || '';
+        const numero = s.numero_scontrino.toLowerCase();
+        return nomeCliente.includes(q) || numero.includes(q);
+      });
+    }
+
     return risultato;
-  }, [scontrini, filtroTipo, rangeDate]);
+  }, [scontrini, filtroTipo, rangeDate, ricercaArchivio, clienteFiltroArchivio]);
+
+  // === Riepilogo incassi periodo ===
+  const riepilogoPeriodo = useMemo(() => {
+    const attivi = scontriniFiltrati.filter((s) => !s.annullato);
+    const totaleLordo = attivi.reduce((sum, s) => sum + Number(s.totale_lordo || 0), 0);
+    const totaleNetto = attivi.reduce((sum, s) => sum + Number(s.totale_netto || 0), 0);
+    const totaleIva = attivi.reduce((sum, s) => sum + Number(s.iva_importo || 0), 0);
+    return {
+      totaleLordo,
+      totaleNetto,
+      totaleIva,
+      numeroScontrini: attivi.length,
+      numeroAnnullati: scontriniFiltrati.filter((s) => s.annullato).length,
+    };
+  }, [scontriniFiltrati]);
+
+  // === Grouping madre + figli consecutivi ===
+  const scontriniRaggruppati = useMemo(() => {
+    const figliPerMadre = new Map<number, Scontrino[]>();
+    const madri: Scontrino[] = [];
+
+    for (const s of scontriniFiltrati) {
+      if (s.tipo === 'figlio' && s.scontrino_madre_id) {
+        const arr = figliPerMadre.get(s.scontrino_madre_id) || [];
+        arr.push(s);
+        figliPerMadre.set(s.scontrino_madre_id, arr);
+      } else {
+        madri.push(s);
+      }
+    }
+
+    // Ordina madri per data + ora (desc = più recenti prima)
+    madri.sort((a, b) => {
+      const da = `${a.data_emissione} ${a.ora_emissione || '00:00'}`;
+      const db = `${b.data_emissione} ${b.ora_emissione || '00:00'}`;
+      return db.localeCompare(da);
+    });
+
+    // Appiattisci: madre seguita dai suoi figli (figli per data asc)
+    const risultato: Array<{ scontrino: Scontrino; isFiglio: boolean; madreNumero: string | null }> = [];
+    for (const madre of madri) {
+      risultato.push({ scontrino: madre, isFiglio: false, madreNumero: null });
+      const figli = figliPerMadre.get(madre.id) || [];
+      figli.sort((a, b) => {
+        const da = `${a.data_emissione} ${a.ora_emissione || '00:00'}`;
+        const db = `${b.data_emissione} ${b.ora_emissione || '00:00'}`;
+        return da.localeCompare(db);
+      });
+      for (const figlio of figli) {
+        risultato.push({ scontrino: figlio, isFiglio: true, madreNumero: madre.numero_scontrino });
+      }
+    }
+    return risultato;
+  }, [scontriniFiltrati]);
+
+  // === Stato espansione gruppi ===
+  const [gruppiEspansi, setGruppiEspansi] = useState<Set<number>>(new Set());
+
+  function toggleGruppo(madreId: number) {
+    setGruppiEspansi((prev) => {
+      const nuovo = new Set(prev);
+      if (nuovo.has(madreId)) nuovo.delete(madreId);
+      else nuovo.add(madreId);
+      return nuovo;
+    });
+  }
 
   const contatoriArchivio = useMemo(() => {
     return {
@@ -587,7 +698,7 @@ export function CassaFiscale() {
     if (carrello.length === 0) return;
     if (!confirm('Svuotare il carrello?')) return;
     setCarrello([]);
-    setClienteSelezionato(null);
+    setClienteFiltroArchivio(null);
     setNote('');
     setScontoTotaleValore(0);
   }
@@ -652,7 +763,7 @@ export function CassaFiscale() {
         tipo: 'success',
       });
       setCarrello([]);
-      setClienteSelezionato(null);
+      setClienteFiltroArchivio(null);
       setNote('');
       setScontoTotaleValore(0);
     } catch (err: unknown) {
@@ -688,10 +799,10 @@ export function CassaFiscale() {
           )}
         </div>
 
-        <div className="inline-flex bg-gray-100 rounded-apple p-1 flex-wrap">
+        <div className="grid grid-cols-2 lg:inline-flex bg-gray-100 rounded-apple p-1 gap-1 lg:gap-0 w-full lg:w-auto">
           <button
             onClick={() => setTab('cassa')}
-            className={`px-4 sm:px-5 py-2 rounded-apple text-xs sm:text-sm font-semibold transition-all ${
+            className={`px-3 sm:px-5 py-2.5 lg:py-2 rounded-apple text-xs sm:text-sm font-semibold transition-all whitespace-nowrap text-left lg:text-center ${
               tab === 'cassa' ? 'bg-white text-apple-darkgray shadow-apple' : 'text-apple-gray hover:text-apple-darkgray'
             }`}
           >
@@ -699,7 +810,7 @@ export function CassaFiscale() {
           </button>
           <button
             onClick={() => setTab('archivio')}
-            className={`px-4 sm:px-5 py-2 rounded-apple text-xs sm:text-sm font-semibold transition-all ${
+            className={`px-3 sm:px-5 py-2.5 lg:py-2 rounded-apple text-xs sm:text-sm font-semibold transition-all whitespace-nowrap text-left lg:text-center ${
               tab === 'archivio' ? 'bg-white text-apple-darkgray shadow-apple' : 'text-apple-gray hover:text-apple-darkgray'
             }`}
           >
@@ -707,27 +818,27 @@ export function CassaFiscale() {
           </button>
           <button
             onClick={() => setTab('riscatta')}
-            className={`px-4 sm:px-5 py-2 rounded-apple text-xs sm:text-sm font-semibold transition-all ${
+            className={`px-3 sm:px-5 py-2.5 lg:py-2 rounded-apple text-xs sm:text-sm font-semibold transition-all whitespace-nowrap text-left lg:text-center ${
               tab === 'riscatta' ? 'bg-white text-purple-700 shadow-apple' : 'text-apple-gray hover:text-purple-700'
             }`}
           >
-            🎫 Riscatta Percorso
+            🎫 Riscatta
           </button>
           <button
             onClick={() => setTab('chiusura')}
-            className={`px-4 sm:px-5 py-2 rounded-apple text-xs sm:text-sm font-semibold transition-all ${
+            className={`px-3 sm:px-5 py-2.5 lg:py-2 rounded-apple text-xs sm:text-sm font-semibold transition-all whitespace-nowrap text-left lg:text-center ${
               tab === 'chiusura' ? 'bg-white text-green-700 shadow-apple' : 'text-apple-gray hover:text-green-700'
             }`}
           >
-            💰 Chiusura Cassa
+            💰 Chiusura
           </button>
           <button
             onClick={() => setTab('report')}
-            className={`px-4 sm:px-5 py-2 rounded-apple text-xs sm:text-sm font-semibold transition-all ${
+            className={`px-3 sm:px-5 py-2.5 lg:py-2 rounded-apple text-xs sm:text-sm font-semibold transition-all whitespace-nowrap text-left lg:text-center ${
               tab === 'report' ? 'bg-white text-blue-700 shadow-apple' : 'text-apple-gray hover:text-blue-700'
             }`}
           >
-            📊 Report Commercialista
+            📊 Report
           </button>
         </div>
       </div>
@@ -753,23 +864,23 @@ export function CassaFiscale() {
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setTabCatalogo('servizi')}
-                className={`flex-1 px-4 py-2.5 rounded-apple text-sm font-semibold transition-all ${
+                className={`px-3 py-1.5 rounded-apple text-xs font-semibold transition-all ${
                   tabCatalogo === 'servizi'
                     ? 'bg-apple-blue text-white shadow-apple'
-                    : 'bg-white text-apple-darkgray hover:bg-gray-50 border border-gray-200'
+                    : 'bg-gray-100 text-apple-darkgray hover:bg-gray-200'
                 }`}
               >
                 🛠️ Servizi ({servizi.length})
               </button>
               <button
                 onClick={() => setTabCatalogo('prodotti')}
-                className={`flex-1 px-4 py-2.5 rounded-apple text-sm font-semibold transition-all ${
+                className={`px-3 py-1.5 rounded-apple text-xs font-semibold transition-all ${
                   tabCatalogo === 'prodotti'
                     ? 'bg-apple-blue text-white shadow-apple'
-                    : 'bg-white text-apple-darkgray hover:bg-gray-50 border border-gray-200'
+                    : 'bg-gray-100 text-apple-darkgray hover:bg-gray-200'
                 }`}
               >
                 📦 Prodotti ({prodotti.length})
@@ -849,7 +960,7 @@ export function CassaFiscale() {
               </div>
 
               <div className="px-4 py-2.5 border-b border-gray-200/60 shrink-0">
-                {clienteSelezionato ? (
+                {clienteFiltroArchivio ? (
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-xs text-apple-gray">Cliente</p>
@@ -858,7 +969,7 @@ export function CassaFiscale() {
                       </p>
                     </div>
                     <button
-                      onClick={() => setClienteSelezionato(null)}
+                      onClick={() => setClienteFiltroArchivio(null)}
                       className="text-xs text-apple-blue hover:underline shrink-0"
                     >
                       Cambia
@@ -1209,13 +1320,189 @@ export function CassaFiscale() {
             </div>
           )}
 
+          {/* Ricerca cliente / numero scontrino con autocomplete */}
+          <div className="relative">
+            {clienteFiltroArchivio ? (
+              // Pill cliente selezionato
+              <div className="flex items-center gap-2 bg-white rounded-apple shadow-apple px-3 py-2">
+                <span className="text-apple-blue text-base">👤</span>
+                <span className="flex-1 text-sm font-semibold text-apple-darkgray truncate">
+                  {clienteFiltroArchivio.nome_cognome}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClienteFiltroArchivio(null);
+                    setRicercaArchivio('');
+                  }}
+                  className="shrink-0 w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 text-apple-gray text-xs flex items-center justify-center transition-colors"
+                  aria-label="Rimuovi filtro cliente"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-apple-gray text-sm pointer-events-none">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Cerca cliente o numero scontrino..."
+                  value={ricercaArchivio}
+                  onChange={(e) => {
+                    setRicercaArchivio(e.target.value);
+                    setMostraAutocomplete(true);
+                    setIndiceAutocomplete(0);
+                  }}
+                  onFocus={() => setMostraAutocomplete(true)}
+                  onBlur={() => {
+                    // Delay per permettere il click sul dropdown
+                    setTimeout(() => setMostraAutocomplete(false), 150);
+                  }}
+                  onKeyDown={(e) => {
+                    if (!mostraAutocomplete || suggerimentiClienti.length === 0) return;
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      setIndiceAutocomplete((i) => Math.min(i + 1, suggerimentiClienti.length - 1));
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      setIndiceAutocomplete((i) => Math.max(i - 1, 0));
+                    } else if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const scelto = suggerimentiClienti[indiceAutocomplete];
+                      if (scelto) {
+                        setClienteFiltroArchivio({ id: scelto.id, nome_cognome: scelto.nome });
+                        setRicercaArchivio('');
+                        setMostraAutocomplete(false);
+                      }
+                    } else if (e.key === 'Escape') {
+                      setMostraAutocomplete(false);
+                    }
+                  }}
+                  className="w-full pl-11 pr-10 py-2.5 sm:py-3 bg-white rounded-apple shadow-apple text-sm placeholder:text-apple-gray focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                />
+                {ricercaArchivio && (
+                  <button
+                    type="button"
+                    onClick={() => setRicercaArchivio('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 text-apple-gray text-xs flex items-center justify-center transition-colors"
+                    aria-label="Cancella ricerca"
+                  >
+                    ✕
+                  </button>
+                )}
+
+                {/* Dropdown autocomplete */}
+                {mostraAutocomplete && suggerimentiClienti.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-apple shadow-apple-lg border border-gray-100 overflow-hidden z-20 max-h-[60vh] overflow-y-auto">
+                    {suggerimentiClienti.map((c, i) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setClienteFiltroArchivio({ id: c.id, nome_cognome: c.nome });
+                          setRicercaArchivio('');
+                          setMostraAutocomplete(false);
+                        }}
+                        onMouseEnter={() => setIndiceAutocomplete(i)}
+                        className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors ${
+                          i === indiceAutocomplete ? 'bg-blue-50' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className="shrink-0 text-apple-blue text-sm">👤</span>
+                        <span className="flex-1 text-sm font-medium text-apple-darkgray truncate">
+                          {c.nome}
+                        </span>
+                        <span className="shrink-0 text-[10px] text-apple-gray">
+                          {c.conteggio} {c.conteggio === 1 ? 'scontrino' : 'scontrini'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
           {/* Indicatore risultati */}
-          {rangeDate && (
+          {(rangeDate || ricercaArchivio.trim() || clienteFiltroArchivio) && (
             <p className="text-xs text-apple-gray italic">
               Mostrati <strong className="text-apple-darkgray">{scontriniFiltrati.length}</strong> scontrini
-              {' '}dal {new Date(rangeDate.inizio + 'T00:00:00').toLocaleDateString('it-IT')}
-              {' '}al {new Date(rangeDate.fine + 'T00:00:00').toLocaleDateString('it-IT')}
+              {rangeDate && (
+                <>
+                  {' '}dal {new Date(rangeDate.inizio + 'T00:00:00').toLocaleDateString('it-IT')}
+                  {' '}al {new Date(rangeDate.fine + 'T00:00:00').toLocaleDateString('it-IT')}
+                </>
+              )}
+              {clienteFiltroArchivio && (
+                <>
+                  {' '}di <strong className="text-apple-darkgray">{clienteFiltroArchivio.nome_cognome || clienteFiltroArchivio.id}</strong>
+                </>
+              )}
+              {!clienteFiltroArchivio && ricercaArchivio.trim() && (
+                <>
+                  {' '}per "<strong className="text-apple-darkgray">{ricercaArchivio}</strong>"
+                </>
+              )}
             </p>
+          )}
+
+          {/* === RIEPILOGO PERIODO === */}
+          {!caricandoArchivio && scontriniFiltrati.length > 0 && (
+            <div className="bg-white rounded-apple shadow-apple p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide">
+                  📊 Riepilogo periodo
+                </h3>
+                {rangeDate && (
+                  <span className="text-[10px] text-apple-gray">
+                    {new Date(rangeDate.inizio + 'T00:00:00').toLocaleDateString('it-IT')} →{' '}
+                    {new Date(rangeDate.fine + 'T00:00:00').toLocaleDateString('it-IT')}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-apple p-2.5 sm:p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-apple-blue/80">
+                    🧾 Scontrini
+                  </p>
+                  <p className="text-base sm:text-lg font-bold text-apple-blue mt-0.5">
+                    {riepilogoPeriodo.numeroScontrini}
+                  </p>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-apple p-2.5 sm:p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-green-700/80">
+                    💶 Lordo
+                  </p>
+                  <p className="text-base sm:text-lg font-bold text-green-700 mt-0.5">
+                    {formatEuro(riepilogoPeriodo.totaleLordo)}
+                  </p>
+                </div>
+                <div className="bg-gray-50 border border-gray-200 rounded-apple p-2.5 sm:p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-apple-gray">
+                    📊 Imponibile
+                  </p>
+                  <p className="text-base sm:text-lg font-bold text-apple-darkgray mt-0.5">
+                    {formatEuro(riepilogoPeriodo.totaleNetto)}
+                  </p>
+                </div>
+                <div className="bg-purple-50 border border-purple-200 rounded-apple p-2.5 sm:p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-purple-700/80">
+                    💰 IVA 22%
+                  </p>
+                  <p className="text-base sm:text-lg font-bold text-purple-700 mt-0.5">
+                    {formatEuro(riepilogoPeriodo.totaleIva)}
+                  </p>
+                </div>
+              </div>
+              {riepilogoPeriodo.numeroAnnullati > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-100 text-xs">
+                  <span className="text-red-600 font-semibold">
+                    ⚠️ {riepilogoPeriodo.numeroAnnullati} scontrini annullati (esclusi dal totale)
+                  </span>
+                </div>
+              )}
+            </div>
           )}
 
           {caricandoArchivio ? (
@@ -1230,55 +1517,112 @@ export function CassaFiscale() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-apple shadow-apple overflow-hidden divide-y divide-gray-100">
-              {scontriniFiltrati.map((s) => {
+            <div className="bg-white rounded-apple shadow-apple overflow-hidden">
+              {scontriniRaggruppati.map(({ scontrino: s, isFiglio, madreNumero }, idx) => {
+                // 🔽 SKIP se è figlio e la madre non è espansa
+                if (isFiglio && s.scontrino_madre_id && !gruppiEspansi.has(s.scontrino_madre_id)) {
+                  return null;
+                }
                 const isFisico = s.modalita_cassa === 'fisico';
                 const dataIt = new Date(s.data_emissione).toLocaleDateString('it-IT', {
                   day: '2-digit',
                   month: 'short',
                   year: 'numeric',
                 });
+                const isMadre = !isFiglio;
+                const madreId = isMadre ? s.id : (s.scontrino_madre_id ?? null);
+                const espanso = madreId !== null ? gruppiEspansi.has(madreId) : false;
+                const numFigli = isMadre
+                  ? scontriniRaggruppati.filter((x) => x.isFiglio && x.scontrino.scontrino_madre_id === s.id).length
+                  : 0;
+
                 return (
-                  <button
+                  <div
                     key={s.id}
-                    onClick={() => setScontrinoAperto(s)}
-                    className="w-full text-left px-4 py-3 hover:bg-blue-50/40 transition-colors flex items-center gap-3"
+                    className={`${idx > 0 ? 'border-t border-gray-100' : ''} ${
+                      isFiglio ? 'bg-gray-50/40' : ''
+                    }`}
                   >
-                    <div className={`shrink-0 w-10 h-10 rounded-apple flex items-center justify-center text-lg ${
-                      isFisico ? 'bg-amber-100' : 'bg-blue-100'
-                    }`}>
-                      {isFisico ? '🖨️' : '📱'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold text-apple-darkgray truncate">
-                          {s.numero_scontrino}
-                        </p>
-                        {s.tipo === 'figlio' && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
-                            FIGLIO
-                          </span>
-                        )}
-                        {s.annullato && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">
-                            ANNULLATO
-                          </span>
-                        )}
+                    <button
+                      onClick={() => {
+                        if (isMadre && numFigli > 0) {
+                          toggleGruppo(s.id);
+                        } else {
+                          setScontrinoAperto(s);
+                        }
+                      }}
+                      className={`w-full text-left hover:bg-blue-50/40 transition-colors flex items-center gap-2 sm:gap-3 ${
+                        isFiglio ? 'pl-10 sm:pl-14 pr-4 py-2.5' : 'px-4 py-3'
+                      }`}
+                    >
+                      {isMadre && numFigli > 0 && (
+                        <span className={`shrink-0 text-apple-gray text-xs transition-transform ${espanso ? 'rotate-90' : ''}`}>
+                          ▶
+                        </span>
+                      )}
+                      <div className={`shrink-0 rounded-apple flex items-center justify-center ${
+                        isFiglio ? 'w-7 h-7 text-sm' : 'w-10 h-10 text-lg'
+                      } ${isFisico ? 'bg-amber-100' : isFiglio ? 'bg-purple-100' : 'bg-blue-100'}`}>
+                        {isFisico ? '🖨️' : isFiglio ? '📎' : '📱'}
                       </div>
-                      <p className="text-xs text-apple-gray mt-0.5">
-                        {dataIt} • {s.ora_emissione}
-                        {s.cliente && ` • ${s.cliente.nome_cognome}`}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-apple-darkgray">
-                        {formatEuro(s.totale_lordo)}
-                      </p>
-                      <p className="text-[10px] text-apple-gray uppercase">
-                        {s.metodo_pagamento || '—'}
-                      </p>
-                    </div>
-                  </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className={`${isFiglio ? 'text-xs' : 'text-sm'} font-bold text-apple-darkgray truncate`}>
+                            {s.numero_scontrino}
+                          </p>
+                          {isFiglio && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
+                              FIGLIO
+                            </span>
+                          )}
+                          {isMadre && numFigli > 0 && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-apple-blue">
+                              {numFigli} figli
+                            </span>
+                          )}
+                          {s.annullato && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">
+                              ANNULLATO
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-apple-gray mt-0.5 truncate">
+                          {dataIt} • {s.ora_emissione}
+                          {s.cliente && ` • ${s.cliente.nome_cognome}`}
+                          {isFiglio && madreNumero && ` • da ${madreNumero}`}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={`${isFiglio ? 'text-xs' : 'text-sm'} font-bold text-apple-darkgray`}>
+                          {formatEuro(s.totale_lordo)}
+                        </p>
+                        <p className="text-[10px] text-apple-gray uppercase">
+                          {s.metodo_pagamento || '—'}
+                        </p>
+                      </div>
+                      {isMadre && numFigli > 0 && (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setScontrinoAperto(s);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setScontrinoAperto(s);
+                            }
+                          }}
+                          className="shrink-0 ml-1 px-2 py-1 rounded-apple bg-blue-50 hover:bg-blue-100 text-apple-blue text-[10px] font-bold transition-colors cursor-pointer"
+                          title="Apri scontrino madre"
+                        >
+                          🔍 Apri
+                        </span>
+                      )}
+                    </button>
+                  </div>
                 );
               })}
             </div>

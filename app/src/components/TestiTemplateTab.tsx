@@ -194,8 +194,8 @@ export function TestiTemplateTab() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Sidebar chiavi del gruppo */}
-        <div className="lg:col-span-1 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0 -mx-1 px-1 lg:mx-0 lg:px-0">
+        {/* Sidebar chiavi del gruppo (mobile: grid 2 col tutti visibili, desktop: colonna) */}
+        <div className="lg:col-span-1 bg-white rounded-apple shadow-apple p-2 lg:p-0 lg:bg-transparent lg:shadow-none grid grid-cols-2 lg:flex lg:flex-col gap-1.5">
           {chiaviDelGruppo.map((k) => {
             const attivo = chiaveAttiva === k;
             const personalizzato = testi[k].corpo !== DEFAULT_TESTI[k].corpo;
@@ -203,16 +203,16 @@ export function TestiTemplateTab() {
               <button
                 key={k}
                 onClick={() => setChiaveAttiva(k)}
-                className={`shrink-0 lg:shrink lg:w-full text-left px-3 py-2.5 rounded-apple text-xs font-medium transition-all flex items-center gap-2 whitespace-nowrap lg:whitespace-normal ${
+                className={`w-full text-left px-2.5 py-2 lg:px-3 lg:py-2.5 rounded-apple text-[11px] lg:text-xs font-medium transition-all flex items-center gap-1.5 lg:gap-2 ${
                   attivo
                     ? 'bg-apple-blue text-white shadow-apple'
-                    : 'bg-white text-apple-darkgray hover:bg-gray-50 border border-gray-200'
+                    : 'bg-gray-50 lg:bg-white text-apple-darkgray hover:bg-gray-100 lg:hover:bg-gray-50 border border-gray-200'
                 }`}
               >
                 <span className="shrink-0">{ETICHETTE_CHIAVI[k].icona}</span>
-                <span className="flex-1 truncate">{ETICHETTE_CHIAVI[k].label}</span>
+                <span className="flex-1 leading-tight">{ETICHETTE_CHIAVI[k].label}</span>
                 {personalizzato && !attivo && (
-                  <span className="shrink-0 w-2 h-2 rounded-full bg-amber-500" title="Personalizzato" />
+                  <span className="shrink-0 w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full bg-amber-500" title="Personalizzato" />
                 )}
               </button>
             );
