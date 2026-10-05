@@ -951,8 +951,7 @@ export function CassaFiscale() {
                     <button
                       key={p.id}
                       onClick={() => aggiungiProdotto(p)}
-                      disabled={p.giacenza <= 0}
-                      className="bg-white rounded-apple shadow-apple p-3 text-left hover:bg-blue-50/60 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="bg-white rounded-apple shadow-apple p-3 text-left hover:bg-blue-50/60 active:scale-95 transition-all"
                     >
                       <p className="text-xs font-semibold text-apple-darkgray line-clamp-2 min-h-[2rem]">
                         {p.nome}
@@ -961,8 +960,23 @@ export function CassaFiscale() {
                         <p className="text-sm font-bold text-apple-blue">
                           {formatEuro(Number(p.prezzo_lordo))}
                         </p>
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${sottoScorta ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-apple-gray'}`}>
-                          {p.giacenza}
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            p.giacenza <= 0
+                              ? 'bg-red-500 text-white animate-pulse'
+                              : sottoScorta
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-gray-100 text-apple-gray'
+                          }`}
+                          title={
+                            p.giacenza < 0
+                              ? `Giacenza NEGATIVA: ${p.giacenza}`
+                              : p.giacenza === 0
+                              ? 'Giacenza esaurita'
+                              : `Giacenza: ${p.giacenza}`
+                          }
+                        >
+                          {p.giacenza < 0 ? `⚠ ${p.giacenza}` : p.giacenza === 0 ? '⚠ 0' : p.giacenza}
                         </span>
                       </div>
                     </button>
