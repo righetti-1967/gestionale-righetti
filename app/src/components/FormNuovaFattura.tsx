@@ -207,7 +207,14 @@ export function FormNuovaFattura({
       }
       try {
         const p = await getPercorsiCliente(clienteId);
-        const nonFatturati = p.filter((x) => !x.fattura_id);
+        // Filtro regime: un percorso non può essere fatturato se:
+        // 1. È già stato fatturato (fattura_id)
+        // 2. È già stato venduto con scontrino madre (scontrino_madre_id) → regime scontrini
+        const nonFatturati = p.filter((x) => {
+          if (x.fattura_id) return false;
+          if (x.scontrino_madre_id) return false;
+          return true;
+        });
         setPercorsiCliente(nonFatturati);
 
         if (!checkupIniziale && (!vociIniziali || vociIniziali.length === 0)) {

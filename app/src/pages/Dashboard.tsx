@@ -53,8 +53,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   // Attività
   const [attivita, setAttivita] = useState<Attivita[]>([]);
 
-  // Calcolo dinamico fatturato mese selezionato
-  const fatturatoPeriodoSelezionato = tutteFatture
+  // Calcolo fatturato mese (regime FATTURE)
+  const fatturatoPeriodoSelezionatoFatture = tutteFatture
     .filter((f) => {
       if (!f.data_incasso) return false;
       const d = new Date(f.data_incasso);
@@ -62,14 +62,36 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     })
     .reduce((sum, f) => sum + Number(f.lordo_ivato || 0), 0);
 
-  // Calcolo dinamico fatturato anno selezionato
-  const fatturatoAnnoSelezionato = tutteFatture
+  // Calcolo fatturato anno (regime FATTURE)
+  const fatturatoAnnoSelezionatoFatture = tutteFatture
     .filter((f) => {
       if (!f.data_incasso) return false;
       const d = new Date(f.data_incasso);
       return d.getFullYear() === annoFatturato;
     })
     .reduce((sum, f) => sum + Number(f.lordo_ivato || 0), 0);
+
+  // Calcolo fatturato mese (regime SCONTRINI)
+  const fatturatoPeriodoSelezionatoScontrini = scontrini
+    .filter((s) => {
+      const d = new Date(s.data_emissione + 'T00:00:00');
+      return d.getFullYear() === annoFatturato && d.getMonth() === meseFatturato;
+    })
+    .reduce((sum, s) => sum + Number(s.totale_lordo || 0), 0);
+
+  // Calcolo fatturato anno (regime SCONTRINI)
+  const fatturatoAnnoSelezionatoScontrini = scontrini
+    .filter((s) => {
+      const d = new Date(s.data_emissione + 'T00:00:00');
+      return d.getFullYear() === annoFatturato;
+    })
+    .reduce((sum, s) => sum + Number(s.totale_lordo || 0), 0);
+
+  // === Selettore finale in base al regime ===
+  const fatturatoPeriodoSelezionato =
+    regime === 'scontrini' ? fatturatoPeriodoSelezionatoScontrini : fatturatoPeriodoSelezionatoFatture;
+  const fatturatoAnnoSelezionato =
+    regime === 'scontrini' ? fatturatoAnnoSelezionatoScontrini : fatturatoAnnoSelezionatoFatture;
 
   // === KPI SCONTRINI ===
   const kpiScontrini = (() => {
@@ -154,10 +176,14 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         // 3) Clienti totali
         setClientiTotali(clienti.length);
 
-        // 4) Percorsi attivi (non completati, non terminati, non bloccati)
-        const percorsiAttiviCalc = percorsi.filter(
-          (p) => !p.terminato && !p.bloccato
-        ).length;
+        // 4) Percorsi attivi (non terminati, non bloccati, e NON già chiusi da un documento)
+        // Un percorso è "attivo" solo se non ha ancora scontrino madre né fattura collegati.
+        const percorsiAttiviCalc = percorsi.filter((p) => {
+          if (p.terminato || p.bloccato) return false;
+          if (p.scontrino_madre_id) return false; // già scontrinato
+          if (p.fattura_id) return false;         // già fatturato
+          return true;
+        }).length;
         setPercorsiAttivi(percorsiAttiviCalc);
 
         // 5) Prodotti sotto scorta
