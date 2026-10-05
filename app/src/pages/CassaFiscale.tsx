@@ -40,6 +40,8 @@ interface RigaCarrello {
   quantita: number;
   sconto_tipo: 'percentuale' | 'importo';
   sconto_valore: number;
+  is_extra?: boolean;
+  note_extra?: string;
 }
 
 type TabPagina = 'cassa' | 'archivio' | 'riscatta' | 'chiusura' | 'report';
@@ -108,6 +110,13 @@ export function CassaFiscale() {
   const [ricercaPercorso, setRicercaPercorso] = useState('');
   const [percorsoSelezionato, setPercorsoSelezionato] = useState<PercorsoConResiduo | null>(null);
   const [showNuovoPercorso, setShowNuovoPercorso] = useState(false);
+
+  // Modale EXTRA (voci fuori percorso con sconto 100%)
+  const [showModaleExtra, setShowModaleExtra] = useState<'prodotto' | 'servizio' | null>(null);
+  const [extraProdottoId, setExtraProdottoId] = useState<number | null>(null);
+  const [extraServizioId, setExtraServizioId] = useState<number | null>(null);
+  const [extraQuantita, setExtraQuantita] = useState(1);
+  const [extraNote, setExtraNote] = useState('');
   // ID percorso da riscattare automaticamente (da Percorsi.tsx via localStorage)
   const [percorsoAutoRiscattaId, setPercorsoAutoRiscattaId] = useState<number | null>(null);
 
@@ -724,6 +733,72 @@ export function CassaFiscale() {
     );
   }
 
+  function apriModaleExtraProdotto() {
+    setExtraProdottoId(prodotti[0]?.id ?? null);
+    setExtraServizioId(null);
+    setExtraQuantita(1);
+    setExtraNote('');
+    setShowModaleExtra('prodotto');
+  }
+
+  function apriModaleExtraServizio() {
+    setExtraServizioId(servizi[0]?.id ?? null);
+    setExtraProdottoId(null);
+    setExtraQuantita(1);
+    setExtraNote('');
+    setShowModaleExtra('servizio');
+  }
+
+  function confermaAggiungiExtra() {
+    if (showModaleExtra === 'prodotto') {
+      const p = prodotti.find((x) => x.id === extraProdottoId);
+      if (!p) {
+        setToast({ message: 'Seleziona un prodotto', tipo: 'error' });
+        return;
+      }
+      setCarrello((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(36).substring(7),
+          tipo: 'prodotto',
+          prodotto_id: p.id,
+          servizio_id: null,
+          nome: `${p.nome} (EXTRA Percorso)`,
+          prezzo_unitario_lordo: Number(p.prezzo_lordo) || 0,
+          quantita: extraQuantita,
+          sconto_tipo: 'percentuale',
+          sconto_valore: 100,
+          is_extra: true,
+          note_extra: extraNote.trim() || undefined,
+        },
+      ]);
+    } else if (showModaleExtra === 'servizio') {
+      const s = servizi.find((x) => x.id === extraServizioId);
+      if (!s) {
+        setToast({ message: 'Seleziona un servizio', tipo: 'error' });
+        return;
+      }
+      setCarrello((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(36).substring(7),
+          tipo: 'servizio',
+          prodotto_id: null,
+          servizio_id: s.id,
+          nome: `${s.nome} (EXTRA Percorso)`,
+          prezzo_unitario_lordo: Number(s.prezzo_lordo) || 0,
+          quantita: extraQuantita,
+          sconto_tipo: 'percentuale',
+          sconto_valore: 100,
+          is_extra: true,
+          note_extra: extraNote.trim() || undefined,
+        },
+      ]);
+    }
+    setShowModaleExtra(null);
+    setToast({ message: 'Voce EXTRA aggiunta (sconto 100%)', tipo: 'success' });
+  }
+
   function svuotaCarrello() {
     if (carrello.length === 0) return;
     if (!confirm('Svuotare il carrello?')) return;
@@ -1152,6 +1227,33 @@ export function CassaFiscale() {
                       <span>Subtotale</span>
                       <span>{formatEuro(totali.subtotale)}</span>
                     </div>
+
+                    {/* Voci EXTRA (visibili solo se cliente selezionato) */}
+                    {clienteSelezionato && (
+                      <div className="pt-2 mt-2 border-t border-gray-100">
+                        <p className="text-[10px] text-apple-gray uppercase font-semibold tracking-wide mb-2">
+                          🎁 Voci fuori percorso (sconto 100%)
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={apriModaleExtraProdotto}
+                            disabled={prodotti.length === 0}
+                            className="px-3 py-2 rounded-apple bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold hover:bg-amber-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                          >
+                            📦 + Prodotto Extra
+                          </button>
+                          <button
+                            type="button"
+                            onClick={apriModaleExtraServizio}
+                            disabled={servizi.length === 0}
+                            className="px-3 py-2 rounded-apple bg-purple-50 border border-purple-200 text-purple-800 text-xs font-semibold hover:bg-purple-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                          >
+                            🛠️ + Servizio Extra
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Sconto totale */}
                     <div className="flex items-center justify-between gap-2 py-0.5">
@@ -1879,6 +1981,133 @@ export function CassaFiscale() {
             setToast({ message: `✅ Percorso creato (ID ${percorsoId}) + Scontrino madre emesso`, tipo: 'success' });
           }}
         />
+      )}
+
+      {/* Modale EXTRA (voci fuori percorso con sconto 100%) */}
+      {showModaleExtra && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[85]"
+          onClick={() => setShowModaleExtra(null)}
+        >
+          <div
+            className="bg-white rounded-apple shadow-apple-lg max-w-md w-full p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-apple bg-amber-100 flex items-center justify-center text-amber-700 text-lg">
+                  🎁
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-apple-darkgray">
+                    {showModaleExtra === 'prodotto' ? 'Prodotto Extra' : 'Servizio Extra'}
+                  </h3>
+                  <p className="text-[10px] text-apple-gray">
+                    Voce fuori percorso — sconto 100%
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowModaleExtra(null)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-apple-gray text-xs flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {showModaleExtra === 'prodotto' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                    Prodotto
+                  </label>
+                  <select
+                    value={extraProdottoId ?? ''}
+                    onChange={(e) => setExtraProdottoId(Number(e.target.value) || null)}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  >
+                    <option value="">— Seleziona prodotto —</option>
+                    {prodotti.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome} — {formatEuro(Number(p.prezzo_lordo))}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                    Servizio
+                  </label>
+                  <select
+                    value={extraServizioId ?? ''}
+                    onChange={(e) => setExtraServizioId(Number(e.target.value) || null)}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  >
+                    <option value="">— Seleziona servizio —</option>
+                    {servizi.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nome} — {formatEuro(Number(s.prezzo_lordo))}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                  Quantità
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={extraQuantita}
+                  onChange={(e) => setExtraQuantita(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm text-apple-darkgray text-center font-bold focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                  Note (opzionale)
+                </label>
+                <textarea
+                  value={extraNote}
+                  onChange={(e) => setExtraNote(e.target.value)}
+                  placeholder="Es. Cliente fedele, promo compleanno..."
+                  rows={2}
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm text-apple-darkgray placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none"
+                />
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-apple p-3 text-xs text-amber-800">
+                ℹ️ La voce verrà aggiunta al carrello con <strong>sconto 100%</strong> (omaggio fuori percorso).
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-4 mt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowModaleExtra(null)}
+                className="flex-1 px-4 py-2.5 rounded-apple bg-gray-100 text-apple-darkgray text-sm font-medium hover:bg-gray-200 transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={confermaAggiungiExtra}
+                disabled={
+                  (showModaleExtra === 'prodotto' && !extraProdottoId) ||
+                  (showModaleExtra === 'servizio' && !extraServizioId)
+                }
+                className="flex-1 px-4 py-2.5 rounded-apple bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 transition-colors shadow-apple disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                🎁 Aggiungi al carrello
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {toast && (
