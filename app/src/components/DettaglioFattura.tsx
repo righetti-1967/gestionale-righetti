@@ -1,4 +1,6 @@
 import { getBrandInfo } from '../lib/brand';
+import { useAuth } from '../lib/auth';
+import { verificaPassword } from '../lib/sicurezza';
 import { inviaEmailConConfig } from '../lib/api';
 import { getCliente } from '../lib/clienti';
 import { useState } from 'react';
@@ -20,6 +22,7 @@ import {
   aggiornaFattura,
   eliminaFattura,
   type FatturaConCliente,
+  annullaFattura,
 } from '../lib/fatture';
 
 interface DettaglioFatturaProps {
@@ -29,6 +32,7 @@ interface DettaglioFatturaProps {
 }
 
 export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFatturaProps) {
+  const { user } = useAuth();
   const pagata = isPagata(fattura);
 
   const [showIncasso, setShowIncasso] = useState(false);
@@ -40,6 +44,14 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
   const [showModifica, setShowModifica] = useState(false);
   const [dicituraLegale, setDicituraLegale] = useState(fattura.dicitura_legale || '');
   const [noteInterne, setNoteInterne] = useState(fattura.note_interne || '');
+
+  // Modale annullo
+  const [showAnnulla, setShowAnnulla] = useState(false);
+  const [passwordAnnullo, setPasswordAnnullo] = useState('');
+  const [motivoAnnullo, setMotivoAnnullo] = useState('');
+  const [verificando, setVerificando] = useState(false);
+  const [annullando, setAnnullando] = useState(false);
+  const [erroreAnnullo, setErroreAnnullo] = useState<string | null>(null);
 
   const [showElimina, setShowElimina] = useState(false);
   const [showFirmaQR, setShowFirmaQR] = useState(false);
@@ -219,6 +231,48 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
     }
   }
 
+  async function handleAnnulla() {
+    setErroreAnnullo(null);
+
+    if (!passwordAnnullo.trim()) {
+      setErroreAnnullo('Inserisci la password gestionale');
+      return;
+    }
+    if (motivoAnnullo.trim().length < 10) {
+      setErroreAnnullo('Il motivo deve avere almeno 10 caratteri');
+      return;
+    }
+
+    try {
+      setVerificando(true);
+      const ok = await verificaPassword(passwordAnnullo.trim());
+      if (!ok) {
+        setErroreAnnullo('Password gestionale non corretta');
+        setVerificando(false);
+        return;
+      }
+
+      setAnnullando(true);
+      await annullaFattura({
+        id: fattura.id,
+        motivo: motivoAnnullo.trim(),
+        annullatoDa: user?.email || 'utente',
+      });
+
+      // Chiudi + ricarica
+      setShowAnnulla(false);
+      setPasswordAnnullo('');
+      setMotivoAnnullo('');
+      onUpdate();
+    } catch (err: any) {
+      console.error('Errore annullo:', err);
+      setErroreAnnullo(err?.message || 'Errore durante l\'annullamento');
+    } finally {
+      setVerificando(false);
+      setAnnullando(false);
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto"
@@ -236,6 +290,11 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
             <div>
               <h2 className="text-xl font-bold text-apple-darkgray">
                 Fattura {fattura.numero_fattura}
+                {fattura.annullato && (
+                  <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold uppercase">
+                    ❌ Annullata
+                  </span>
+                )}
               </h2>
               <p className="text-xs text-apple-gray">
                 ID: {fattura.id}
@@ -527,6 +586,84 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
           </div>
         )}
 
+        {showAnnulla && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[85]" onClick={() => !annullando && setShowAnnulla(false)}>
+            <div className="bg-white rounded-apple shadow-apple-lg max-w-md w-full p-5 sm:p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-11 h-11 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 text-xl shrink-0">
+                  🚫
+                </div>
+                <div>
+                  <p className="text-base font-bold text-apple-darkgray">
+                    Annullare la fattura {fattura.numero_fattura}?
+                  </p>
+                  <p className="text-xs text-apple-gray mt-1 leading-relaxed">
+                    L'annullo è <strong>tracciato</strong> (data, motivo, utente) e resta visibile nello storico.
+                    I percorsi collegati torneranno fatturabili.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3 mb-4">
+                <div>
+                  <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                    Password gestionale <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordAnnullo}
+                    onChange={(e) => setPasswordAnnullo(e.target.value)}
+                    placeholder="Inserisci la password"
+                    autoFocus
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                    Motivo dell'annullo <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={motivoAnnullo}
+                    onChange={(e) => setMotivoAnnullo(e.target.value)}
+                    placeholder="Es. Errore di battitura, cliente sbagliato, duplicato..."
+                    rows={3}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none"
+                  />
+                  <p className="text-[10px] text-apple-gray mt-1">
+                    Minimo 10 caratteri ({motivoAnnullo.trim().length}/10)
+                  </p>
+                </div>
+
+                {erroreAnnullo && (
+                  <div className="bg-red-50 border border-red-200 rounded-apple p-3 text-red-700 text-xs">
+                    ❌ {erroreAnnullo}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAnnulla(false)}
+                  disabled={annullando || verificando}
+                  className="flex-1 px-4 py-2.5 bg-gray-100 text-apple-darkgray rounded-apple font-medium text-sm hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAnnulla}
+                  disabled={annullando || verificando || !passwordAnnullo.trim() || motivoAnnullo.trim().length < 10}
+                  className="flex-1 px-4 py-2.5 bg-amber-500 text-white rounded-apple font-semibold text-sm hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {verificando ? '🔐 Verifica...' : annullando ? '⏳ Annullo...' : '🚫 Annulla fattura'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {showAvvisoIncasso && (
           <div
             className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[80]"
@@ -702,7 +839,19 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
             📄 Scarica PDF
           </button>
 
-          {!showElimina && (
+          {!showElimina && !showAnnulla && !fattura.annullato && (
+            <button
+              onClick={() => setShowAnnulla(true)}
+              disabled={salvando}
+              className="px-4 py-2.5 bg-amber-50 text-amber-700 rounded-apple font-medium text-sm hover:bg-amber-100 transition-colors disabled:opacity-50"
+              aria-label="Annulla fattura"
+              title="Annulla fattura (con tracciamento)"
+            >
+              🚫 Annulla
+            </button>
+          )}
+
+          {!showElimina && !showAnnulla && (
             <button
               onClick={() => setShowElimina(true)}
               disabled={salvando}

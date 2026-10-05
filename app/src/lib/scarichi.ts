@@ -162,6 +162,121 @@ export async function salvaFirmaScarico(
   return data;
 }
 
+export interface AnnullaScaricoParams {
+  id: number;
+  motivo: string;
+  annullatoDa: string;
+  ripristinoMagazzino: boolean;
+}
+
+/**
+ * Annulla un DDT (soft-delete tracciato).
+ *
+ * Regole:
+ * - Il campo `annullato` = true, più metadati
+ * - Se ripristinoMagazzino, crea movimenti di carico per i prodotti
+ * - Aggiunge segnalazione sulla scheda cliente
+ */
+export async function annullaScarico(params: AnnullaScaricoParams): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const { id, motivo, annullatoDa, ripristinoMagazzino } = params;
+
+  if (!motivo || motivo.trim().length < 10) {
+    throw new Error('Il motivo deve avere almeno 10 caratteri');
+  }
+
+  // 1. Leggi lo scarico
+  const { data: sc, error: errLettura } = await supabase
+    .from('scarichi_seduta')
+    .select('*, cliente:clienti(id, nome_cognome, segnalazioni_annulli)')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .single();
+
+  if (errLettura || !sc) {
+    throw new Error('DDT non trovato');
+  }
+
+  if (sc.annullato) {
+    throw new Error('DDT già annullato');
+  }
+
+  // 2. Se ripristinoMagazzino, crea movimenti di carico
+  if (ripristinoMagazzino && sc.righe && Array.isArray(sc.righe) && sc.righe.length > 0) {
+    const righeProdotto = sc.righe.filter(
+      (r: any) => r.tipo === 'prodotto' && r.prodotto_id && r.quantita > 0
+    );
+
+    for (const r of righeProdotto) {
+      try {
+        const { error: errMag } = await supabase
+          .from('movimenti_magazzino')
+          .insert({
+            user_id: user.id,
+            prodotto_id: r.prodotto_id,
+            tipo: 'carico',
+            quantita: r.quantita,
+            motivo: `Annullo DDT-${String(sc.numero_ddt).padStart(3, '0')}`,
+            note: `Ripristino merce - motivo: ${motivo}`,
+            data_movimento: new Date().toISOString().split('T')[0],
+          });
+
+        if (errMag) {
+          console.error('⚠️ Errore ripristino magazzino riga:', errMag);
+        }
+      } catch (err) {
+        console.error('⚠️ Errore ripristino magazzino:', err);
+      }
+    }
+  }
+
+  // 3. Segna lo scarico come annullato
+  const { error: errUpdate } = await supabase
+    .from('scarichi_seduta')
+    .update({
+      annullato: true,
+      annullato_at: new Date().toISOString(),
+      annullato_motivo: motivo.trim(),
+      annullato_da: annullatoDa,
+    })
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (errUpdate) {
+    console.error('❌ Errore annullamento DDT:', errUpdate);
+    throw errUpdate;
+  }
+
+  // 4. Aggiungi segnalazione al cliente
+  if (sc.cliente_id) {
+    try {
+      const dataIt = new Date().toLocaleDateString('it-IT');
+      const numDdt = `DDT-${String(sc.numero_ddt).padStart(3, '0')}`;
+      const nuovaSegnalazione = `[${dataIt}] Annullato ${numDdt} — Motivo: ${motivo.trim()}`;
+
+      const { data: cli } = await supabase
+        .from('clienti')
+        .select('segnalazioni_annulli')
+        .eq('id', sc.cliente_id)
+        .maybeSingle();
+
+      const esistenti = cli?.segnalazioni_annulli || '';
+      const aggiornate = esistenti
+        ? esistenti + '\n' + nuovaSegnalazione
+        : nuovaSegnalazione;
+
+      await supabase
+        .from('clienti')
+        .update({ segnalazioni_annulli: aggiornate })
+        .eq('id', sc.cliente_id);
+    } catch (errCli) {
+      console.warn('⚠️ Errore segnalazione cliente:', errCli);
+    }
+  }
+}
+
 export async function eliminaScarico(id: number): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Non autenticato');

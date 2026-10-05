@@ -176,12 +176,16 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         // 3) Clienti totali
         setClientiTotali(clienti.length);
 
-        // 4) Percorsi attivi (non terminati, non bloccati, e NON già chiusi da un documento)
-        // Un percorso è "attivo" solo se non ha ancora scontrino madre né fattura collegati.
+        // 4) Percorsi attivi (non terminati, non bloccati)
+        // Regola: un percorso è attivo finché non è terminato/bloccato.
+        // Il documento collegato (scontrino o fattura) è normale, non lo esclude.
+        // Escludiamo solo i percorsi con documento del REGIME OPPOSTO (anomali):
+        //   - regime scontrini → escludi percorsi con fattura_id (dovrebbero essere scontrinati)
+        //   - regime fatture   → escludi percorsi con scontrino_madre_id (dovrebbero essere fatturati)
         const percorsiAttiviCalc = percorsi.filter((p) => {
           if (p.terminato || p.bloccato) return false;
-          if (p.scontrino_madre_id) return false; // già scontrinato
-          if (p.fattura_id) return false;         // già fatturato
+          if (regime === 'scontrini' && p.fattura_id) return false;
+          if (regime === 'fatture' && p.scontrino_madre_id) return false;
           return true;
         }).length;
         setPercorsiAttivi(percorsiAttiviCalc);

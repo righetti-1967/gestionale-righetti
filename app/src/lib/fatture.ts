@@ -40,6 +40,10 @@ export interface Fattura {
   inviata_email_at: string | null;
   inviata_whatsapp_at: string | null;
   created_at: string;
+  annullato?: boolean | null;
+  annullato_at?: string | null;
+  annullato_motivo?: string | null;
+  annullato_da?: string | null;
 }
 
 export type NuovaFattura = Omit<Fattura, 'id' | 'created_at'>;
@@ -254,6 +258,124 @@ export async function aggiornaFattura(
   }
 
   return data;
+}
+
+export interface AnnullaFatturaParams {
+  id: number;
+  motivo: string;
+  annullatoDa: string;  // email o nome utente
+}
+
+/**
+ * Annulla una fattura (soft-delete tracciato).
+ *
+ * Regole:
+ * - Non puoi annullare una fattura con DDT ATTIVI collegati (annullali prima)
+ * - Il campo `annullato` = true, più metadati
+ * - Aggiunge segnalazione sulla scheda cliente
+ * - Scollega i percorsi associati (tornano fatturabili)
+ */
+export async function annullaFattura(params: AnnullaFatturaParams): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const { id, motivo, annullatoDa } = params;
+
+  if (!motivo || motivo.trim().length < 10) {
+    throw new Error('Il motivo deve avere almeno 10 caratteri');
+  }
+
+  // 1. Leggi la fattura
+  const { data: fatt, error: errLettura } = await supabase
+    .from('fatture')
+    .select('*, cliente:clienti(id, nome_cognome, segnalazioni_annulli)')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .single();
+
+  if (errLettura || !fatt) {
+    throw new Error('Fattura non trovata');
+  }
+
+  if (fatt.annullato) {
+    throw new Error('Fattura già annullata');
+  }
+
+  // 2. Verifica DDT attivi collegati
+  const { data: ddtAttivi, error: errDdt } = await supabase
+    .from('scarichi_seduta')
+    .select('id, numero_ddt')
+    .eq('user_id', user.id)
+    .eq('fattura_madre_id', id)
+    .or('annullato.is.null,annullato.eq.false');
+
+  if (errDdt) {
+    console.error('❌ Errore verifica DDT:', errDdt);
+    throw errDdt;
+  }
+
+  if (ddtAttivi && ddtAttivi.length > 0) {
+    const numeri = ddtAttivi
+      .map((d) => `DDT-${String(d.numero_ddt).padStart(3, '0')}`)
+      .join(', ');
+    throw new Error(
+      `Impossibile annullare: ci sono ${ddtAttivi.length} DDT attivi collegati. Annullali prima: ${numeri}`
+    );
+  }
+
+  // 3. Scollega i percorsi associati (tornano fatturabili)
+  const { error: errPercorsi } = await supabase
+    .from('percorsi')
+    .update({ fattura_id: null })
+    .eq('user_id', user.id)
+    .eq('fattura_id', id);
+
+  if (errPercorsi) {
+    console.warn('⚠️ Avviso scollegamento percorsi:', errPercorsi);
+  }
+
+  // 4. Segna la fattura come annullata
+  const { error: errUpdate } = await supabase
+    .from('fatture')
+    .update({
+      annullato: true,
+      annullato_at: new Date().toISOString(),
+      annullato_motivo: motivo.trim(),
+      annullato_da: annullatoDa,
+    })
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (errUpdate) {
+    console.error('❌ Errore annullamento fattura:', errUpdate);
+    throw errUpdate;
+  }
+
+  // 5. Aggiungi segnalazione al cliente
+  if (fatt.cliente_id) {
+    try {
+      const dataIt = new Date().toLocaleDateString('it-IT');
+      const nuovaSegnalazione = `[${dataIt}] Annullata fattura ${fatt.numero_fattura} — Motivo: ${motivo.trim()}`;
+
+      const { data: cli } = await supabase
+        .from('clienti')
+        .select('segnalazioni_annulli')
+        .eq('id', fatt.cliente_id)
+        .maybeSingle();
+
+      const esistenti = cli?.segnalazioni_annulli || '';
+      const aggiornate = esistenti
+        ? esistenti + '\n' + nuovaSegnalazione
+        : nuovaSegnalazione;
+
+      await supabase
+        .from('clienti')
+        .update({ segnalazioni_annulli: aggiornate })
+        .eq('id', fatt.cliente_id);
+    } catch (errCli) {
+      console.warn('⚠️ Errore segnalazione cliente:', errCli);
+    }
+  }
 }
 
 /**
