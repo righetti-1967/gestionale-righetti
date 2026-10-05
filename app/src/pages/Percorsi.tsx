@@ -400,7 +400,16 @@ export function Percorsi({ onNavigate }: { onNavigate?: (page: string) => void }
             setFatturaDaPercorso(p);
           }}
           onRiscatta={() => {
-            if (onNavigate) {
+            if (onNavigate && percorsoSelezionato) {
+              // Salva ID percorso per pre-selezione in Cassa Fiscale
+              try {
+                localStorage.setItem('cassa_percorso_id', String(percorsoSelezionato.percorso.id));
+                if (percorsoSelezionato.cliente?.id) {
+                  localStorage.setItem('cassa_percorso_cliente_id', String(percorsoSelezionato.cliente.id));
+                }
+              } catch (err) {
+                console.warn('Errore salvataggio percorso per riscatta:', err);
+              }
               setPercorsoSelezionato(null);
               onNavigate('cassa_fiscale');
             }

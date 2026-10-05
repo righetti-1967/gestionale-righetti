@@ -108,6 +108,8 @@ export function CassaFiscale() {
   const [ricercaPercorso, setRicercaPercorso] = useState('');
   const [percorsoSelezionato, setPercorsoSelezionato] = useState<PercorsoConResiduo | null>(null);
   const [showNuovoPercorso, setShowNuovoPercorso] = useState(false);
+  // ID percorso da riscattare automaticamente (da Percorsi.tsx via localStorage)
+  const [percorsoAutoRiscattaId, setPercorsoAutoRiscattaId] = useState<number | null>(null);
 
   // Voci da pre-selezionare (da Agenda/Clienti via localStorage)
   const [vociDaPreselezionare, setVociDaPreselezionare] = useState<
@@ -160,6 +162,34 @@ export function CassaFiscale() {
     }
     carica();
   }, []);
+
+  // Legge percorso da riscattare automaticamente (da Percorsi.tsx)
+  useEffect(() => {
+    const percorsoId = localStorage.getItem('cassa_percorso_id');
+    if (percorsoId) {
+      const id = Number(percorsoId);
+      if (!isNaN(id) && id > 0) {
+        setTab('riscatta');
+        setPercorsoAutoRiscattaId(id);
+      }
+      localStorage.removeItem('cassa_percorso_id');
+      localStorage.removeItem('cassa_percorso_cliente_id');
+    }
+  }, []);
+
+  // Quando i percorsi sono caricati e c'è un percorsoAutoRiscattaId → apri il form
+  useEffect(() => {
+    if (!percorsoAutoRiscattaId || caricandoPercorsi) return;
+    if (percorsiConResiduo.length === 0) return;
+
+    const trovato = percorsiConResiduo.find(
+      (p) => p.percorso.id === percorsoAutoRiscattaId
+    );
+    if (trovato) {
+      setPercorsoSelezionato(trovato);
+      setPercorsoAutoRiscattaId(null); // pulisci
+    }
+  }, [percorsoAutoRiscattaId, percorsiConResiduo, caricandoPercorsi]);
 
   // Legge cliente + voci pre-selezionate da localStorage (da Clienti o Agenda)
   useEffect(() => {
