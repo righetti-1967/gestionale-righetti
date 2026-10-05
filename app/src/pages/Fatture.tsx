@@ -92,24 +92,40 @@ export function Fatture() {
               >
                 {/* DESKTOP: grid a 12 colonne */}
                 <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 items-center">
-                  <div className="col-span-2 text-sm font-semibold text-apple-darkgray">{f.numero_fattura}</div>
+                  <div className={`col-span-2 text-sm font-semibold ${f.annullato ? 'text-red-700 line-through' : 'text-apple-darkgray'}`}>
+                    {f.numero_fattura}
+                  </div>
                   <div className="col-span-3 text-sm text-apple-darkgray truncate">{f.cliente?.nome_cognome || '—'}</div>
                   <div className="col-span-2 text-sm text-apple-gray">{formatData(f.data_incasso)}</div>
                   <div className="col-span-2 text-sm font-bold text-apple-darkgray text-right">{formatEuro(Number(f.lordo_ivato))}</div>
                   <div className="col-span-3 flex justify-center">
-                    <span className={"px-2.5 py-1 rounded-full text-xs font-semibold " + (isPagata(f) ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700")}>
-                      {isPagata(f) ? '✓ Pagata' : '📄 Proforma'}
-                    </span>
+                    {f.annullato ? (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
+                        ❌ Annullata
+                      </span>
+                    ) : (
+                      <span className={"px-2.5 py-1 rounded-full text-xs font-semibold " + (isPagata(f) ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700")}>
+                        {isPagata(f) ? '✓ Pagata' : '📄 Proforma'}
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 {/* MOBILE: card verticale */}
                 <div className="md:hidden px-4 py-3 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-bold text-apple-darkgray truncate">{f.numero_fattura}</span>
-                    <span className={"shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold " + (isPagata(f) ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700")}>
-                      {isPagata(f) ? '✓ Pagata' : '📄 Proforma'}
+                    <span className={`text-sm font-bold truncate ${f.annullato ? 'text-red-700 line-through' : 'text-apple-darkgray'}`}>
+                      {f.numero_fattura}
                     </span>
+                    {f.annullato ? (
+                      <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">
+                        ❌ Annullata
+                      </span>
+                    ) : (
+                      <span className={"shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold " + (isPagata(f) ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700")}>
+                        {isPagata(f) ? '✓ Pagata' : '📄 Proforma'}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-apple-darkgray truncate">{f.cliente?.nome_cognome || '—'}</span>
