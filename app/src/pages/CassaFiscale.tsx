@@ -29,6 +29,7 @@ import { FormRiscattaPercorso } from '../components/FormRiscattaPercorso';
 import { FormNuovoPercorso } from '../components/FormNuovoPercorso';
 import { ChiusuraCassaTab } from '../components/ChiusuraCassaTab';
 import { ReportCommercialistaTab } from '../components/ReportCommercialistaTab';
+import { useDraft } from '../lib/useDraft';
 
 interface RigaCarrello {
   id: string;
@@ -76,18 +77,102 @@ export function CassaFiscale() {
   const [tab, setTab] = useState<TabPagina>('cassa');
   const [ricerca, setRicerca] = useState('');
   const [tabCatalogo, setTabCatalogo] = useState<'servizi' | 'prodotti'>('servizi');
-  const [carrello, setCarrello] = useState<RigaCarrello[]>([]);
   const [clienteSelezionato, setClienteSelezionato] = useState<Cliente | null>(null);
-  const [metodoPagamento, setMetodoPagamento] = useState<MetodoPagamento>('Contanti');
-  const [note, setNote] = useState('');
   const [emettendo, setEmettendo] = useState(false);
   const [toast, setToast] = useState<{ message: string; tipo: ToastTipo } | null>(null);
   const [showSelettoreCliente, setShowSelettoreCliente] = useState(false);
   const [ricercaCliente, setRicercaCliente] = useState('');
 
-  // Sconto totale carrello
-  const [scontoTotaleTipo, setScontoTotaleTipo] = useState<ScontoTipo>('percentuale');
-  const [scontoTotaleValore, setScontoTotaleValore] = useState<number>(0);
+  // === STATO PERSISTENTE (draft cross-device) ===
+  // Il carrello è per-cliente. Il clienteSelezionato è globale (sincronizzato via localStorage)
+  // Per gestire la chiave dinamica, uso il clienteselezionato per derivare la chiave
+  const chiaveDraftCarrello = clienteSelezionato
+    ? `cassa_carrello_${clienteSelezionato.id}`
+    : 'cassa_carrello_anonimo';
+
+  interface CassaDraft {
+    carrello: RigaCarrello[];
+    note: string;
+    scontoTotaleTipo: ScontoTipo;
+    scontoTotaleValore: number;
+    metodoPagamento: MetodoPagamento;
+  }
+
+  const DRAFT_DEFAULT: CassaDraft = {
+    carrello: [],
+    note: '',
+    scontoTotaleTipo: 'percentuale',
+    scontoTotaleValore: 0,
+    metodoPagamento: 'Contanti',
+  };
+
+  const {
+    state: draft,
+    setState: setDraft,
+    resetDraft: resetDraftCarrello,
+    eliminaDraft: eliminaDraftCarrello,
+    loading: draftLoading,
+  } = useDraft<CassaDraft>(chiaveDraftCarrello, DRAFT_DEFAULT);
+
+  // === Sync cross-device del cliente selezionato ===
+  const {
+    state: clienteAttivoDraft,
+    setState: setClienteAttivoDraft,
+  } = useDraft<{ clienteId: number | null }>('cassa_cliente_attivo', { clienteId: null });
+
+  // Applica il cliente attivo ricevuto da altri device (solo se diverso da quello locale)
+  useEffect(() => {
+    if (clienteAttivoDraft.clienteId === null) return;
+    if (clienteSelezionato?.id === clienteAttivoDraft.clienteId) return;
+    // Il clienti[] deve essere già caricato
+    if (clienti.length === 0) return;
+    const trovato = clienti.find((c) => c.id === clienteAttivoDraft.clienteId);
+    if (trovato) {
+      setClienteSelezionato(trovato);
+    }
+  }, [clienteAttivoDraft.clienteId, clienti]);
+
+  // Quando SELEZIONO un cliente localmente → sincronizzo il draft
+  useEffect(() => {
+    if (!clienteSelezionato) {
+      setClienteAttivoDraft({ clienteId: null });
+    } else {
+      setClienteAttivoDraft({ clienteId: clienteSelezionato.id });
+    }
+  }, [clienteSelezionato?.id]);
+
+  // Alias per compatibilità col codice esistente
+  const carrello = draft.carrello;
+  const note = draft.note;
+  const scontoTotaleTipo = draft.scontoTotaleTipo;
+  const scontoTotaleValore = draft.scontoTotaleValore;
+  const metodoPagamento = draft.metodoPagamento;
+
+  // Wrapper setCarrello/setNote/ecc per compatibilità
+  function setCarrello(
+    updater: RigaCarrello[] | ((prev: RigaCarrello[]) => RigaCarrello[])
+  ) {
+    setDraft((prev) => ({
+      ...prev,
+      carrello: typeof updater === 'function' ? updater(prev.carrello) : updater,
+    }));
+  }
+
+  function setNote(valore: string) {
+    setDraft((prev) => ({ ...prev, note: valore }));
+  }
+
+  function setScontoTotaleTipo(valore: ScontoTipo) {
+    setDraft((prev) => ({ ...prev, scontoTotaleTipo: valore }));
+  }
+
+  function setScontoTotaleValore(valore: number) {
+    setDraft((prev) => ({ ...prev, scontoTotaleValore: valore }));
+  }
+
+  function setMetodoPagamento(valore: MetodoPagamento) {
+    setDraft((prev) => ({ ...prev, metodoPagamento: valore }));
+  }
 
   // Archivio
   const [scontrini, setScontrini] = useState<Scontrino[]>([]);
@@ -867,10 +952,11 @@ export function CassaFiscale() {
         message: `✅ Scontrino emesso (${formatEuro(totali.totaleFinale)})`,
         tipo: 'success',
       });
-      setCarrello([]);
+      // Elimina il draft del carrello (scontrino emesso → carrello "fatto")
+      await eliminaDraftCarrello();
+      // Pulisci anche il carrello locale
+      resetDraftCarrello();
       setClienteFiltroArchivio(null);
-      setNote('');
-      setScontoTotaleValore(0);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setToast({ message: msg || 'Errore emissione', tipo: 'error' });
