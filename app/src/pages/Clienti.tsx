@@ -1,7 +1,7 @@
 import { getBrandInfo } from '../lib/brand';
 import jsPDF from 'jspdf';
 import { inviaEmailConConfig, inviaEmailTest } from '../lib/api';
-import { useEffect, useMemo, useMemo, useState  } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   getClienti,
   cercaClienti,
