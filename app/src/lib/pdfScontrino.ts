@@ -6,6 +6,7 @@ import { jsPDF } from 'jspdf';
 import type { Scontrino, RigaScontrino } from './scontrini';
 import { caricaDatiAziendali } from './datiAziendali';
 import type { DatiAziendali } from './studio';
+import { uploadJsPdfToStorage } from './uploadPdf';
 
 // --- Utils ---
 
@@ -330,6 +331,18 @@ export async function generaPdfScontrino({
   // --- Salva file ---
   if (scarica) {
     const nomeFile = generaNomeFilePdf(scontrino);
+    // Upload su Storage (best effort)
+    try {
+      const clienteId = (scontrino as any).cliente_id;
+      const anno = (scontrino as any).anno || new Date().getFullYear();
+      if (clienteId) {
+        uploadJsPdfToStorage('scontrini-pdf', clienteId, nomeFile, doc, anno)
+          .then((url) => { if (url) console.log('✅ PDF scontrino salvato:', url); })
+          .catch((e) => console.warn('⚠️ Upload PDF scontrino fallito:', e));
+      }
+    } catch (e) {
+      console.warn('⚠️ Upload PDF scontrino errore:', e);
+    }
     doc.save(nomeFile);
   }
 

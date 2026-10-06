@@ -4,6 +4,7 @@ import { formatData } from './fatture';
 import { caricaDatiAziendali } from './datiAziendali';
 import { formatSede, type DatiAziendali } from './studio';
 import { caricaLogoBase64 } from './logo';
+import { uploadJsPdfToStorage } from './uploadPdf';
 
 function normalizza(testo: string): string {
   const mappa: Record<string, string> = {
@@ -341,6 +342,18 @@ export async function generaPdfFattura(
 
   const nomeFile = `Fattura_${fattura.numero_fattura.replace('/', '-')}_${(fattura.cliente?.nome_cognome || 'cliente').replace(/\s+/g, '_')}.pdf`;
   if (scarica) {
+    // Upload su Storage (best effort, non blocca il download)
+    try {
+      const clienteId = (fattura as any).cliente_id;
+      const anno = (fattura as any).anno || new Date().getFullYear();
+      if (clienteId) {
+        uploadJsPdfToStorage('fatture-pdf', clienteId, nomeFile, doc, anno)
+          .then((url) => { if (url) console.log('✅ PDF fattura salvato:', url); })
+          .catch((e) => console.warn('⚠️ Upload PDF fattura fallito:', e));
+      }
+    } catch (e) {
+      console.warn('⚠️ Upload PDF fattura errore:', e);
+    }
     doc.save(nomeFile);
   }
   return doc;
