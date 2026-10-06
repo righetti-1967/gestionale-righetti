@@ -217,11 +217,15 @@ function raggruppaVociPerDocumento(voci: VoceStorico[], tab: string): DocumentoG
 function GruppoDocumento({
   gruppo,
   formatData,
-  clienteId,
+  onApriFattura,
+  onApriScontrino,
+  onApriDdt,
 }: {
   gruppo: DocumentoGruppo;
   formatData: (d: string | null) => string;
-  clienteId: number;
+  onApriFattura: (f: Fattura) => void;
+  onApriScontrino: (s: Scontrino) => void;
+  onApriDdt: (d: ScaricoSeduta) => void;
 }) {
   const [aperto, setAperto] = useState(false);
   const doc: any = gruppo.documento;
@@ -243,27 +247,14 @@ function GruppoDocumento({
   const totaleRighe = gruppo.voci.length;
   const totaleSub = gruppo.subDocumenti.length;
 
-  // Apri PDF del documento: se su Storage → apri, altrimenti genera al volo
-  async function apriPdfDocumento() {
-    // 1. Storage diretto
-    if (doc.pdf_url) {
-      window.open(doc.pdf_url, '_blank', 'noopener,noreferrer');
-      return;
-    }
-
-    // 2. Genera al volo
-    try {
-      if (isFattura) {
-        await generaPdfFattura(doc);
-      } else if (isScontrino) {
-        await generaPdfScontrino({ scontrino: doc, scarica: true });
-      } else if (isDdt) {
-        // Carica cliente per generare PDF DDT
-        const clienteCompleto = await getCliente(clienteId);
-        await generaPdfDdtCliente(doc, null, clienteCompleto);
-      }
-    } catch (e: any) {
-      window.alert('Errore generazione PDF: ' + (e?.message || 'sconosciuto'));
+  // Apri il documento nella modale di anteprima (coerente con tab Fatture)
+  function apriDocumentoModal() {
+    if (isFattura) {
+      onApriFattura(doc as Fattura);
+    } else if (isScontrino) {
+      onApriScontrino(doc as Scontrino);
+    } else if (isDdt) {
+      onApriDdt(doc as ScaricoSeduta);
     }
   }
 
@@ -293,7 +284,7 @@ function GruppoDocumento({
           {/* Titolo cliccabile → PDF */}
           <button
             type="button"
-            onClick={apriPdfDocumento}
+            onClick={apriDocumentoModal}
             className="min-w-0 flex-1 flex items-center gap-1.5 flex-wrap text-left hover:underline cursor-pointer"
             title="Apri PDF"
           >
@@ -894,7 +885,9 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
                 key={g.id}
                 gruppo={g}
                 formatData={formatData}
-                clienteId={clienteId}
+                onApriFattura={setFatturaAperta}
+                onApriScontrino={setScontrinoAperto}
+                onApriDdt={setDdtAperto}
               />
             ))
           )}
