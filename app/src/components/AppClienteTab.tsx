@@ -320,21 +320,40 @@ function ClientePortalModal({
     setErrore(null);
     setMessaggio(null);
     setEmailInviata(false);
-    const { data, error } = await supabase.rpc('admin_generate_invite', {
-      client_id_input: cliente.client_id,
-    });
-    setSaving(false);
-    if (error) {
-      setErrore(error.message);
-      return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setErrore('Sessione scaduta. Ricarica la pagina.');
+        setSaving(false);
+        return;
+      }
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-invite-link`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ client_id: cliente.client_id }),
+        }
+      );
+
+      const json = await res.json();
+      setSaving(false);
+
+      if (!res.ok || !json.success) {
+        setErrore(json.error || 'Errore generazione link');
+        return;
+      }
+
+      setInvitoGenerato(json.action_link);
+    } catch (e: any) {
+      setSaving(false);
+      setErrore(e.message || 'Errore di rete');
     }
-    const row = Array.isArray(data) ? data[0] : data;
-    if (!row?.token) {
-      setErrore('Token non generato');
-      return;
-    }
-    const url = `${APP_CLIENTE_URL}/invite?token=${row.token}`;
-    setInvitoGenerato(url);
   }
 
   async function inviaEmailInvito() {
