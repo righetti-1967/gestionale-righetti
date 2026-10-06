@@ -240,44 +240,61 @@ function GruppoDocumento({
   const totaleRighe = gruppo.voci.length;
   const totaleSub = gruppo.subDocumenti.length;
 
+  // Apri PDF del documento principale (se non proforma)
+  function apriPdfDocumento() {
+    if (isProforma) return;
+    // Chiama setter esterni — vengono passati come prop? No, li prendiamo dallo scope
+    // Fallback: apri direttamente il pdf_url se presente
+    const pdfUrl = doc.pdf_url;
+    if (pdfUrl) {
+      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+    }
+  }
+
   return (
     <div className="border-b border-gray-200/80 last:border-b-0">
-      {/* Header gruppo */}
-      <button
-        type="button"
-        onClick={() => hasContenuto && setAperto((v) => !v)}
-        className={`w-full px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs transition-colors text-left ${
-          hasContenuto ? 'hover:bg-blue-50/40 cursor-pointer' : 'cursor-default'
-        }`}
-      >
+      {/* Header gruppo: freccia + titolo cliccabile */}
+      <div className="w-full px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs hover:bg-blue-50/40 transition-colors">
         <div className="min-w-0 flex-1 flex items-center gap-2">
-          {hasContenuto && (
-            <svg
-              className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform ${aperto ? 'rotate-90' : ''}`}
-              fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+          {/* Freccia espansione */}
+          {hasContenuto ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setAperto((v) => !v); }}
+              className="p-0.5 -ml-1 rounded hover:bg-gray-200/60 transition-colors"
+              title={aperto ? 'Chiudi' : 'Apri dettagli'}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
+              <svg
+                className={`w-3.5 h-3.5 text-gray-400 transition-transform ${aperto ? 'rotate-90' : ''}`}
+                fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          ) : (
+            <span className="w-3.5 shrink-0" />
           )}
-          {!hasContenuto && <span className="w-3.5 shrink-0" />}
-          <span className="text-sm shrink-0">{icona}</span>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="font-semibold text-apple-darkgray truncate">{titolo}</p>
-              {isProforma && (
-                <span className="text-[10px] font-bold text-orange-600">IN ATTESA</span>
-              )}
-              {totaleSub > 0 && (
-                <span className="text-[10px] text-gray-500">
-                  +{totaleSub} allegat{totaleSub === 1 ? 'o' : 'i'}
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-apple-gray mt-0.5">
-              📅 {formatData(data)}
-              {totaleRighe > 0 && ` • ${totaleRighe} voc${totaleRighe === 1 ? 'e' : 'i'}`}
-            </p>
-          </div>
+          {/* Titolo cliccabile → PDF */}
+          <button
+            type="button"
+            onClick={apriPdfDocumento}
+            disabled={isProforma || !doc.pdf_url}
+            className={`min-w-0 flex-1 flex items-center gap-1.5 flex-wrap text-left ${
+              !isProforma && doc.pdf_url ? 'hover:underline cursor-pointer' : 'cursor-default'
+            }`}
+            title={isProforma ? 'Proforma non scaricabile' : doc.pdf_url ? 'Apri PDF' : 'PDF non disponibile'}
+          >
+            <span className="text-sm shrink-0">{icona}</span>
+            <p className="font-semibold text-apple-darkgray truncate">{titolo}</p>
+            {isProforma && (
+              <span className="text-[10px] font-bold text-orange-600">IN ATTESA</span>
+            )}
+            {totaleSub > 0 && (
+              <span className="text-[10px] text-gray-500">
+                +{totaleSub} allegat{totaleSub === 1 ? 'o' : 'i'}
+              </span>
+            )}
+          </button>
         </div>
         <div className="shrink-0 text-right flex items-center gap-2">
           {gruppo.importo != null && (
@@ -290,13 +307,16 @@ function GruppoDocumento({
               Pagata
             </span>
           )}
+          {!isProforma && doc.pdf_url && (
+            <span className="text-xs text-apple-blue">📄</span>
+          )}
         </div>
-      </button>
+      </div>
 
       {/* Contenuto espanso */}
       {aperto && hasContenuto && (
         <div className="bg-gray-50/60 border-t border-gray-200/40">
-          {/* Voci dirette */}
+          {/* Voci dirette (non cliccabili) */}
           {gruppo.voci.map((v, idx) => (
             <div
               key={`v-${idx}`}
@@ -317,25 +337,44 @@ function GruppoDocumento({
             </div>
           ))}
 
-          {/* Sub-documenti (DDT / scontrini figli) */}
+          {/* Sub-documenti (DDT / scontrini figli): cliccabili per aprire PDF */}
           {gruppo.subDocumenti.map((sub) => {
             const subDoc: any = sub.documento;
             const isDdtSub = sub.tipo === 'ddt';
             const subTitolo = isDdtSub
               ? `DDT-${String(subDoc.numero_ddt || '').padStart(3, '0')}`
-              : `Scontrino ${subDoc.numero_scontrino || ''}${isDdtSub ? '' : ' (Figlio)'}`;
+              : `Scontrino ${subDoc.numero_scontrino || ''} (Figlio)`;
+
+            const apriPdfSub = () => {
+              if (subDoc.pdf_url) {
+                window.open(subDoc.pdf_url, '_blank', 'noopener,noreferrer');
+              }
+            };
 
             return (
               <div key={sub.id} className="border-t border-gray-200/30 mt-1 pt-1">
-                {/* Header sub-documento */}
-                <div className="px-3.5 py-1.5 flex items-center gap-2 pl-6">
+                {/* Header sub-documento: cliccabile → PDF */}
+                <button
+                  type="button"
+                  onClick={apriPdfSub}
+                  disabled={!subDoc.pdf_url}
+                  className={`px-3.5 py-1.5 flex items-center gap-2 pl-6 w-full text-left ${
+                    subDoc.pdf_url ? 'hover:bg-blue-50/40 cursor-pointer' : 'cursor-default'
+                  }`}
+                  title={subDoc.pdf_url ? 'Apri PDF' : 'PDF non disponibile'}
+                >
                   <span className="text-xs shrink-0">{isDdtSub ? '📦' : '🧾'}</span>
-                  <p className="text-[11px] font-semibold text-gray-700">{subTitolo}</p>
+                  <p className={`text-[11px] font-semibold ${subDoc.pdf_url ? 'text-apple-blue hover:underline' : 'text-gray-700'}`}>
+                    {subTitolo}
+                  </p>
                   {sub.numeroFattura && isDdtSub && (
                     <span className="text-[10px] text-gray-400">→ {sub.numeroFattura}</span>
                   )}
-                </div>
-                {/* Voci del sub-documento */}
+                  {subDoc.pdf_url && (
+                    <span className="text-[10px] text-apple-blue ml-auto">📄</span>
+                  )}
+                </button>
+                {/* Voci del sub-documento (non cliccabili) */}
                 {sub.voci.map((v, idx) => (
                   <div
                     key={`sv-${idx}`}
