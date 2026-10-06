@@ -809,92 +809,17 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
       ) : (
         <div className="bg-gray-50 rounded-apple overflow-hidden divide-y divide-gray-200/80 max-h-64 overflow-y-auto border border-gray-200/60">
           {/* Tab Fatture & Scontrini: lista documenti senza righe */}
-          {tab === 'fatture' ? (
-            gruppi.map((g) => {
-              const doc: any = g.documento;
-              const isFattura = g.tipoDoc === 'fattura';
-              const isScontrino = g.tipoDoc === 'scontrino';
-              const isDdt = g.tipoDoc === 'ddt';
-              const isProforma = isFattura && !g.pagata;
-              
-              const titolo = isFattura
-                ? `${isProforma ? 'Proforma' : 'Fattura'} ${doc.numero_fattura || ''}`
-                : isScontrino
-                ? `Scontrino ${doc.numero_scontrino || ''}`
-                : `DDT-${String(doc.numero_ddt || '').padStart(3, '0')}`;
-              
-              const icona = isFattura ? (isProforma ? '📝' : '🧾') : isScontrino ? '🧾' : '📦';
-              const data = doc.data_incasso || doc.data_emissione || doc.data_seduta || doc.data_inizio;
-              const importo = g.importo;
-              const subCount = g.subDocumenti.length;
-              
-              const handleClick = () => {
-                if (isProforma) return; // no click su proforma
-                if (isFattura) {
-                  const f = fatture.find((x) => x.id === doc.id);
-                  if (f) setFatturaAperta(f);
-                } else if (isScontrino) {
-                  const sc = scontrini.find((x) => x.id === doc.id);
-                  if (sc) setScontrinoAperto(sc);
-                } else if (isDdt) {
-                  const d = scarichi.find((x) => x.id === doc.id);
-                  if (d) setDdtAperto(d);
-                }
-              };
-              
-              return (
-                <button
-                  key={g.id}
-                  type="button"
-                  onClick={handleClick}
-                  disabled={isProforma}
-                  className={`w-full px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs transition-colors text-left ${
-                    isProforma ? 'opacity-60' : 'hover:bg-blue-50/40 cursor-pointer'
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm shrink-0">{icona}</span>
-                      <p className="font-semibold text-apple-darkgray truncate">{titolo}</p>
-                      {isProforma && (
-                        <span className="text-[10px] font-bold text-orange-600">IN ATTESA</span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-apple-gray mt-0.5">
-                      📅 {formatData(data)} {subCount > 0 && `• ${subCount} allegati`}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right flex items-center gap-2">
-                    {importo != null && (
-                      <span className="text-xs font-bold text-apple-darkgray">
-                        € {importo.toFixed(2)}
-                      </span>
-                    )}
-                    {isFattura && g.pagata && (
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
-                        Pagata
-                      </span>
-                    )}
-                    {!isProforma && (
-                      <span className="text-xs text-apple-blue">📄</span>
-                    )}
-                  </div>
-                </button>
-              );
-            })
-          ) : (
-            /* Altri tab: gruppi con freccia ▼ */
-            gruppi.map((g) => (
-              <GruppoDocumento
-                key={g.id}
-                gruppo={g}
-                formatData={formatData}
-                onApriFattura={setFatturaAperta}
-                onApriScontrino={setScontrinoAperto}
-                onApriDdt={setDdtAperto}
-              />
-            ))
-          )}
+          {gruppi.map((g) => (
+            <GruppoDocumento
+              key={g.id}
+              gruppo={g}
+              formatData={formatData}
+              onApriFattura={setFatturaAperta}
+              onApriScontrino={setScontrinoAperto}
+              onApriDdt={setDdtAperto}
+              modoCompatto={tab === 'fatture'}
+            />
+          ))}
         </div>
       )}
       {/* Modale Anteprima DDT */}
