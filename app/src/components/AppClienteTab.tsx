@@ -12,6 +12,7 @@ interface ClientePortal {
   show_percorsi: boolean;
   show_scheda_tricologica: boolean;
   show_cura_domiciliare: boolean;
+  show_privacy_pdf: boolean;
   is_blocked: boolean;
   blocked_reason: string | null;
   account_created: boolean;
@@ -267,6 +268,7 @@ function ClientePortalModal({
   const [showPercorsi, setShowPercorsi] = useState(cliente.show_percorsi);
   const [showScheda, setShowScheda] = useState(cliente.show_scheda_tricologica);
   const [showCura, setShowCura] = useState(cliente.show_cura_domiciliare);
+  const [showPrivacyPdf, setShowPrivacyPdf] = useState(cliente.show_privacy_pdf);
   const [isBlocked, setIsBlocked] = useState(cliente.is_blocked);
   const [blockedReason, setBlockedReason] = useState(cliente.blocked_reason || '');
   const [saving, setSaving] = useState(false);
@@ -285,6 +287,7 @@ function ClientePortalModal({
       show_percorsi_input: showPercorsi,
       show_scheda_tricologica_input: showScheda,
       show_cura_domiciliare_input: showCura,
+      show_privacy_pdf_input: showPrivacyPdf,
     });
     setSaving(false);
     if (error) setErrore(error.message);
@@ -363,6 +366,7 @@ function ClientePortalModal({
               <Toggle label="💼 Percorsi attivi (senza residui)" checked={showPercorsi} onChange={setShowPercorsi} />
               <Toggle label="📋 Scheda tricologica" checked={showScheda} onChange={setShowScheda} />
               <Toggle label="🏠 Cura domiciliare" checked={showCura} onChange={setShowCura} />
+              <Toggle label="📋 Privacy firmata (PDF 2 pagine)" checked={showPrivacyPdf} onChange={setShowPrivacyPdf} />
             </div>
             <button
               onClick={salvaVisibilita}
