@@ -110,13 +110,17 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
       }
     }
 
-    // === Regime scontrini: voci dai figli ===
+    // === Regime scontrini: voci dagli scontrini ===
     for (const sc of scontrini) {
       const anno = new Date(sc.data_emissione).getFullYear();
       for (const r of sc.righe || []) {
         // Salta righe di storno e negative
         if (r.quantita <= 0) continue;
         if (r.nome.startsWith('Storno percorso')) continue;
+
+        // Rileva EXTRA Percorso (come per i DDT)
+        const isExtra = r.nome.includes('(EXTRA Percorso)');
+        const nomePulito = isExtra ? r.nome.replace(' (EXTRA Percorso)', '').trim() : r.nome;
 
         list.push({
           id: `sc-${sc.id}-${r.tipo}-${r.prodotto_id || r.servizio_id}-${Math.random()}`,
@@ -126,9 +130,9 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
           numeroFattura: null,
           numeroScontrino: sc.numero_scontrino,
           anno,
-          nome: r.nome,
+          nome: nomePulito,
           quantita: r.quantita,
-          isExtra: false,
+          isExtra,
           importo: null,
           pagata: false,
           scarico: null,
@@ -250,17 +254,33 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
     .reduce((sum, v) => sum + v.quantita, 0);
 
   const totaleExtra = tutteVoci.filter((v) => v.isExtra).length;
-  const totaleFatture = tutteVoci.filter((v) => v.tipo === 'fattura').length;
+  // Conta documenti: fatture + scontrini MADRE (univoci)
+  const totaleFatture = useMemo(() => {
+    const fattureIds = new Set<string>();
+    const scontriniIds = new Set<number>();
+    for (const v of tutteVoci) {
+      if (v.tipo === 'fattura' && v.fattura) {
+        fattureIds.add(`f-${v.fattura.id}`);
+      }
+      if (v.scontrino && v.scontrino.tipo === 'madre') {
+        scontriniIds.add(v.scontrino.id);
+      }
+    }
+    return fattureIds.size + scontriniIds.size;
+  }, [tutteVoci]);
 
   // Filtra per tab e per ricerca
   const vociFiltrate = useMemo(() => {
     return tutteVoci.filter((v) => {
+      // Tab 'fatture' = documenti (fatture + scontrini)
+      const isDocumento = v.tipo === 'fattura' || v.scontrino !== null;
+
       if (tab === 'prodotti' && v.tipo !== 'prodotto') return false;
       if (tab === 'servizi' && v.tipo !== 'servizio') return false;
       if (tab === 'extra' && !v.isExtra) return false;
       if (tab !== 'extra' && v.isExtra && tab !== 'tutti' && tab !== 'fatture') return false;
-      if (tab === 'fatture' && v.tipo !== 'fattura') return false;
-      if (tab !== 'fatture' && v.tipo === 'fattura' && tab !== 'tutti') return false;
+      if (tab === 'fatture' && !isDocumento) return false;
+      if (tab !== 'fatture' && isDocumento && tab !== 'tutti') return false;
 
       if (ricerca.trim()) {
         const q = ricerca.toLowerCase();

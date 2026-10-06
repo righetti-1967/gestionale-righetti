@@ -159,7 +159,10 @@ export async function generaPdfScontrino({
   for (const r of righe) {
     const importo = r.quantita * r.prezzo_unitario_lordo;
     const isStorno = r.quantita < 0 || r.nome.toUpperCase().startsWith('STORNO');
-    const nome = r.nome.length > 40 ? r.nome.slice(0, 38) + '...' : r.nome;
+    const isExtra = r.nome.includes('(EXTRA Percorso)');
+    const nomePulito = r.nome.replace(' (EXTRA Percorso)', '').trim();
+    const nomeBase = isExtra ? `${nomePulito} [EXTRA]` : nomePulito;
+    const nome = nomeBase.length > 40 ? nomeBase.slice(0, 38) + '...' : nomeBase;
 
     doc.setFont('helvetica', isStorno ? 'bold' : 'normal');
 

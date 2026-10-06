@@ -1211,13 +1211,22 @@ export function CassaFiscale() {
                     return (
                       <div
                         key={r.id}
-                        className="p-2 bg-gray-50 rounded-apple space-y-1.5"
+                        className={`p-2 rounded-apple space-y-1.5 ${
+                          r.is_extra ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'
+                        }`}
                       >
                         <div className="flex items-center gap-2">
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-apple-darkgray truncate">
-                              {r.nome}
-                            </p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-xs font-semibold text-apple-darkgray truncate">
+                                {r.nome.replace(' (EXTRA Percorso)', '')}
+                              </p>
+                              {r.is_extra && (
+                                <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-amber-500 text-white">
+                                  ⭐ EXTRA
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[11px] text-apple-gray">
                               {haSconto && (
                                 <span className="line-through mr-1">{formatEuro(r.prezzo_unitario_lordo)}</span>
