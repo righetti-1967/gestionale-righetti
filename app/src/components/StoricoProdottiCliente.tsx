@@ -210,6 +210,155 @@ function raggruppaVociPerDocumento(voci: VoceStorico[], tab: string): DocumentoG
   return gruppi;
 }
 
+// ============================================
+// COMPONENTE GRUPPO DOCUMENTO (con freccia)
+// ============================================
+function GruppoDocumento({
+  gruppo,
+  formatData,
+}: {
+  gruppo: DocumentoGruppo;
+  formatData: (d: string | null) => string;
+}) {
+  const [aperto, setAperto] = useState(false);
+  const doc: any = gruppo.documento;
+  const isFattura = gruppo.tipoDoc === 'fattura';
+  const isScontrino = gruppo.tipoDoc === 'scontrino';
+  const isDdt = gruppo.tipoDoc === 'ddt';
+  const isProforma = isFattura && !gruppo.pagata;
+
+  const titolo = isFattura
+    ? `${isProforma ? 'Proforma' : 'Fattura'} ${doc.numero_fattura || ''}`
+    : isScontrino
+    ? `Scontrino ${doc.numero_scontrino || ''}`
+    : `DDT-${String(doc.numero_ddt || '').padStart(3, '0')}`;
+
+  const icona = isFattura ? (isProforma ? '📝' : '🧾') : isScontrino ? '🧾' : '📦';
+  const data = doc.data_incasso || doc.data_emissione || doc.data_seduta || doc.data_inizio;
+
+  const hasContenuto = gruppo.voci.length > 0 || gruppo.subDocumenti.length > 0;
+  const totaleRighe = gruppo.voci.length;
+  const totaleSub = gruppo.subDocumenti.length;
+
+  return (
+    <div className="border-b border-gray-200/80 last:border-b-0">
+      {/* Header gruppo */}
+      <button
+        type="button"
+        onClick={() => hasContenuto && setAperto((v) => !v)}
+        className={`w-full px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs transition-colors text-left ${
+          hasContenuto ? 'hover:bg-blue-50/40 cursor-pointer' : 'cursor-default'
+        }`}
+      >
+        <div className="min-w-0 flex-1 flex items-center gap-2">
+          {hasContenuto && (
+            <svg
+              className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform ${aperto ? 'rotate-90' : ''}`}
+              fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          )}
+          {!hasContenuto && <span className="w-3.5 shrink-0" />}
+          <span className="text-sm shrink-0">{icona}</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className="font-semibold text-apple-darkgray truncate">{titolo}</p>
+              {isProforma && (
+                <span className="text-[10px] font-bold text-orange-600">IN ATTESA</span>
+              )}
+              {totaleSub > 0 && (
+                <span className="text-[10px] text-gray-500">
+                  +{totaleSub} allegat{totaleSub === 1 ? 'o' : 'i'}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-apple-gray mt-0.5">
+              📅 {formatData(data)}
+              {totaleRighe > 0 && ` • ${totaleRighe} voc${totaleRighe === 1 ? 'e' : 'i'}`}
+            </p>
+          </div>
+        </div>
+        <div className="shrink-0 text-right flex items-center gap-2">
+          {gruppo.importo != null && (
+            <span className="text-xs font-bold text-apple-darkgray">
+              € {gruppo.importo.toFixed(2)}
+            </span>
+          )}
+          {isFattura && gruppo.pagata && (
+            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
+              Pagata
+            </span>
+          )}
+        </div>
+      </button>
+
+      {/* Contenuto espanso */}
+      {aperto && hasContenuto && (
+        <div className="bg-gray-50/60 border-t border-gray-200/40">
+          {/* Voci dirette */}
+          {gruppo.voci.map((v, idx) => (
+            <div
+              key={`v-${idx}`}
+              className="px-3.5 py-2 flex items-center justify-between gap-3 text-xs"
+            >
+              <div className="min-w-0 flex-1 flex items-center gap-1.5 pl-6">
+                <span className="text-xs shrink-0">
+                  {v.tipo === 'servizio' ? '🛠️' : '📦'}
+                </span>
+                <p className="text-apple-darkgray truncate">{v.nome}</p>
+                {v.isExtra && (
+                  <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1 rounded shrink-0">
+                    EXTRA
+                  </span>
+                )}
+              </div>
+              <span className="text-xs text-apple-gray shrink-0">× {v.quantita}</span>
+            </div>
+          ))}
+
+          {/* Sub-documenti (DDT / scontrini figli) */}
+          {gruppo.subDocumenti.map((sub) => {
+            const subDoc: any = sub.documento;
+            const isDdtSub = sub.tipo === 'ddt';
+            const subTitolo = isDdtSub
+              ? `DDT-${String(subDoc.numero_ddt || '').padStart(3, '0')}`
+              : `Scontrino ${subDoc.numero_scontrino || ''}${isDdtSub ? '' : ' (Figlio)'}`;
+
+            return (
+              <div key={sub.id} className="border-t border-gray-200/30 mt-1 pt-1">
+                {/* Header sub-documento */}
+                <div className="px-3.5 py-1.5 flex items-center gap-2 pl-6">
+                  <span className="text-xs shrink-0">{isDdtSub ? '📦' : '🧾'}</span>
+                  <p className="text-[11px] font-semibold text-gray-700">{subTitolo}</p>
+                  {sub.numeroFattura && isDdtSub && (
+                    <span className="text-[10px] text-gray-400">→ {sub.numeroFattura}</span>
+                  )}
+                </div>
+                {/* Voci del sub-documento */}
+                {sub.voci.map((v, idx) => (
+                  <div
+                    key={`sv-${idx}`}
+                    className="px-3.5 py-1.5 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="min-w-0 flex-1 flex items-center gap-1.5 pl-12">
+                      <span className="text-xs shrink-0">
+                        {v.tipo === 'servizio' ? '🛠️' : '📦'}
+                      </span>
+                      <p className="text-gray-600 truncate text-[11px]">{v.nome}</p>
+                    </div>
+                    <span className="text-[11px] text-apple-gray shrink-0">× {v.quantita}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
   const { dati: azienda } = useDatiAziendali();
   const regime = azienda.regimeDocumenti || 'fatture';
@@ -444,25 +593,33 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
     return fattureIds.size + scontriniIds.size;
   }, [tutteVoci]);
 
-  // TEST TEMPORANEO raggruppamento
-  useEffect(() => {
-    if (typeof window !== 'undefined' && tutteVoci.length > 0) {
-      const gruppi = raggruppaVociPerDocumento(tutteVoci, tab);
-      console.log('[TEST RAGGRUPPAMENTO]', {
-        tab,
-        totaleVoci: tutteVoci.length,
-        totaleGruppi: gruppi.length,
-        gruppi: gruppi.map((g) => ({
-          tipo: g.tipoDoc,
-          voci: g.voci.length,
-          sub: g.subDocumenti.length,
-          id: g.id,
-        })),
+  // Filtra per tab e per ricerca
+  // Raggruppa voci per documento
+  const gruppi = useMemo(() => {
+    if (tab === 'fatture') {
+      // Tab "Fatture & Scontrini": 1 voce per documento (senza righe)
+      return raggruppaVociPerDocumento(tutteVoci, 'tutti').filter((g) => {
+        // Applica la ricerca se presente
+        if (!ricerca.trim()) return true;
+        const q = ricerca.toLowerCase();
+        const doc: any = g.documento;
+        return (
+          (doc.numero_fattura || '').toLowerCase().includes(q) ||
+          (doc.numero_scontrino || '').toLowerCase().includes(q) ||
+          String(doc.numero_ddt || '').includes(q)
+        );
       });
     }
-  }, [tutteVoci, tab]);
+    // Altri tab: raggruppa con filtri e applica ricerca
+    const raggruppati = raggruppaVociPerDocumento(tutteVoci, tab);
+    if (!ricerca.trim()) return raggruppati;
+    const q = ricerca.toLowerCase();
+    return raggruppati.filter((g) =>
+      g.voci.some((v) => v.nome.toLowerCase().includes(q)) ||
+      g.subDocumenti.some((sub) => sub.voci.some((v) => v.nome.toLowerCase().includes(q)))
+    );
+  }, [tutteVoci, tab, ricerca]);
 
-  // Filtra per tab e per ricerca
   const vociFiltrate = useMemo(() => {
     return tutteVoci.filter((v) => {
       // Tab 'fatture' = documenti (fatture + scontrini)
@@ -606,89 +763,90 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
         </p>
       ) : (
         <div className="bg-gray-50 rounded-apple overflow-hidden divide-y divide-gray-200/80 max-h-64 overflow-y-auto border border-gray-200/60">
-          {vociFiltrate.map((item, idx) => {
-            const numDdtFormattato = `DDT-${String(item.numeroDdt).padStart(3, '0')}-${item.anno}`;
-            return (
-              <div
-                key={idx}
-                className="px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs hover:bg-blue-50/40 transition-colors"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-sm shrink-0">
-                      {item.tipo === 'servizio' ? '🛠️' : '📦'}
-                    </span>
-                    <p className="font-semibold text-apple-darkgray truncate">
-                      {item.nome}
+          {/* Tab Fatture & Scontrini: lista documenti senza righe */}
+          {tab === 'fatture' ? (
+            gruppi.map((g) => {
+              const doc: any = g.documento;
+              const isFattura = g.tipoDoc === 'fattura';
+              const isScontrino = g.tipoDoc === 'scontrino';
+              const isDdt = g.tipoDoc === 'ddt';
+              const isProforma = isFattura && !g.pagata;
+              
+              const titolo = isFattura
+                ? `${isProforma ? 'Proforma' : 'Fattura'} ${doc.numero_fattura || ''}`
+                : isScontrino
+                ? `Scontrino ${doc.numero_scontrino || ''}`
+                : `DDT-${String(doc.numero_ddt || '').padStart(3, '0')}`;
+              
+              const icona = isFattura ? (isProforma ? '📝' : '🧾') : isScontrino ? '🧾' : '📦';
+              const data = doc.data_incasso || doc.data_emissione || doc.data_seduta || doc.data_inizio;
+              const importo = g.importo;
+              const subCount = g.subDocumenti.length;
+              
+              const handleClick = () => {
+                if (isProforma) return; // no click su proforma
+                if (isFattura) {
+                  const f = fatture.find((x) => x.id === doc.id);
+                  if (f) setFatturaAperta(f);
+                } else if (isScontrino) {
+                  const sc = scontrini.find((x) => x.id === doc.id);
+                  if (sc) setScontrinoAperto(sc);
+                } else if (isDdt) {
+                  const d = scarichi.find((x) => x.id === doc.id);
+                  if (d) setDdtAperto(d);
+                }
+              };
+              
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={handleClick}
+                  disabled={isProforma}
+                  className={`w-full px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs transition-colors text-left ${
+                    isProforma ? 'opacity-60' : 'hover:bg-blue-50/40 cursor-pointer'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm shrink-0">{icona}</span>
+                      <p className="font-semibold text-apple-darkgray truncate">{titolo}</p>
+                      {isProforma && (
+                        <span className="text-[10px] font-bold text-orange-600">IN ATTESA</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-apple-gray mt-0.5">
+                      📅 {formatData(data)} {subCount > 0 && `• ${subCount} allegati`}
                     </p>
-                    {item.isExtra && (
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
-                        EXTRA
+                  </div>
+                  <div className="shrink-0 text-right flex items-center gap-2">
+                    {importo != null && (
+                      <span className="text-xs font-bold text-apple-darkgray">
+                        € {importo.toFixed(2)}
                       </span>
+                    )}
+                    {isFattura && g.pagata && (
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
+                        Pagata
+                      </span>
+                    )}
+                    {!isProforma && (
+                      <span className="text-xs text-apple-blue">📄</span>
                     )}
                   </div>
-                  <p className="text-[11px] text-apple-gray mt-0.5">
-                    📅 {formatData(item.data)} •{' '}
-                    {item.tipo === 'fattura' && item.fattura ? (
-                      <button
-                        type="button"
-                        onClick={() => setFatturaAperta(item.fattura)}
-                        className="font-medium text-apple-blue hover:underline"
-                        title="Apri fattura"
-                      >
-                        📄 {item.numeroFattura}
-                      </button>
-                    ) : item.scontrino ? (
-                      <button
-                        type="button"
-                        onClick={() => setScontrinoAperto(item.scontrino)}
-                        className="font-medium text-apple-blue hover:underline"
-                        title="Apri scontrino"
-                      >
-                        🧾 {item.numeroScontrino}
-                        {item.scontrino.tipo === 'figlio' && (
-                          <span className="ml-1 text-[10px] font-bold text-orange-600">(Figlio)</span>
-                        )}
-                      </button>
-                    ) : item.scarico ? (
-                      <button
-                        type="button"
-                        onClick={() => setDdtAperto(item.scarico)}
-                        className="font-medium text-apple-blue hover:underline"
-                        title="Apri DDT"
-                      >
-                        {numDdtFormattato}
-                      </button>
-                    ) : (
-                      <span className="font-medium text-apple-blue">{numDdtFormattato}</span>
-                    )}
-                  </p>
-                </div>
-
-                <div className="shrink-0 text-right flex items-center gap-2">
-                  {item.tipo === 'fattura' && item.importo != null && (
-                    <>
-                      <span className="text-xs font-bold text-apple-darkgray">
-                        € {item.importo.toFixed(2)}
-                      </span>
-                      {item.pagata && (
-                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
-                          Pagata
-                        </span>
-                      )}
-                    </>
-                  )}
-                  {item.tipo !== 'fattura' && (
-                    <span className="font-bold text-xs bg-white px-2.5 py-1 rounded-apple border border-gray-200 text-apple-darkgray shadow-sm">
-                      {item.tipo === 'servizio'
-                        ? `${item.quantita} seduta`
-                        : `× ${item.quantita}`}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                </button>
+              );
+            })
+          ) : (
+            /* Altri tab: gruppi con freccia ▼ */
+            gruppi.map((g) => (
+              <GruppoDocumento
+                key={g.id}
+                gruppo={g}
+                formatData={formatData}
+              />
+            ))
+          )}
         </div>
       )}
       {/* Modale Anteprima DDT */}
