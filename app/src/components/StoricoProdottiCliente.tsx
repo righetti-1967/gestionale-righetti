@@ -220,12 +220,14 @@ function GruppoDocumento({
   onApriFattura,
   onApriScontrino,
   onApriDdt,
+  modoCompatto = false,
 }: {
   gruppo: DocumentoGruppo;
   formatData: (d: string | null) => string;
   onApriFattura: (f: Fattura) => void;
   onApriScontrino: (s: Scontrino) => void;
   onApriDdt: (d: ScaricoSeduta) => void;
+  modoCompatto?: boolean;
 }) {
   const [aperto, setAperto] = useState(false);
   const doc: any = gruppo.documento;
@@ -263,8 +265,10 @@ function GruppoDocumento({
       {/* Header gruppo: freccia + titolo cliccabile */}
       <div className="w-full px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs hover:bg-blue-50/40 transition-colors">
         <div className="min-w-0 flex-1 flex items-center gap-2">
-          {/* Freccia espansione */}
-          {hasContenuto ? (
+          {/* Freccia espansione: nascosta in modoCompatto */}
+          {modoCompatto ? (
+            <span className="w-3.5 shrink-0" />
+          ) : hasContenuto ? (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setAperto((v) => !v); }}
@@ -281,12 +285,12 @@ function GruppoDocumento({
           ) : (
             <span className="w-3.5 shrink-0" />
           )}
-          {/* Titolo cliccabile → PDF */}
+          {/* Titolo cliccabile → modale anteprima */}
           <button
             type="button"
             onClick={apriDocumentoModal}
             className="min-w-0 flex-1 flex items-center gap-1.5 flex-wrap text-left hover:underline cursor-pointer"
-            title="Apri PDF"
+            title="Apri anteprima"
           >
             <span className="text-sm shrink-0">{icona}</span>
             <p className="font-semibold text-apple-darkgray truncate">{titolo}</p>
@@ -315,8 +319,8 @@ function GruppoDocumento({
         </div>
       </div>
 
-      {/* Contenuto espanso */}
-      {aperto && hasContenuto && (
+      {/* Contenuto espanso: solo se NON modoCompatto */}
+      {!modoCompatto && aperto && hasContenuto && (
         <div className="bg-gray-50/60 border-t border-gray-200/40">
           {/* Voci dirette (non cliccabili) */}
           {gruppo.voci.map((v, idx) => (
