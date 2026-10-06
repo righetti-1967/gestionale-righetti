@@ -13,6 +13,7 @@ import { useDatiAziendali } from '../lib/useDatiAziendali';
 import { formatSede, type DatiAziendali } from '../lib/studio';
 import { usePrivacy } from '../lib/usePrivacy';
 import { caricaLogoBase64 } from '../lib/logo';
+import { uploadJsPdfToStorage } from '../lib/uploadPdf';
 
 interface PaginaFirmaiPadProps {
   token: string;
@@ -338,6 +339,22 @@ export function PaginaFirmaiPad({ token }: PaginaFirmaiPadProps) {
 
       const pdf = await generaPDF(firmaBase64, cliente, azienda, privacy.testoInformativa);
       const nomeFile = `Consenso_Privacy_${cliente.nome_cognome.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+      // Upload su Storage (best effort) + salva URL in clienti.privacy_pdf_url
+      try {
+        const url = await uploadJsPdfToStorage('privacy-pdf', cliente.id, nomeFile, pdf);
+        if (url) {
+          const { supabase } = await import('../lib/supabase');
+          await supabase
+            .from('clienti')
+            .update({ privacy_pdf_url: url })
+            .eq('id', cliente.id);
+          console.log('PDF privacy salvato:', url);
+        }
+      } catch (e: any) {
+        console.warn('Upload PDF privacy fallito:', e?.message);
+      }
+
       pdf.save(nomeFile);
 
       setCompletato(true);
