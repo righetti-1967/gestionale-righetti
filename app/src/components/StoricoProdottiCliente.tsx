@@ -4,9 +4,10 @@ import type { ScaricoConCliente } from '../lib/scarichi';
 import { AnteprimaPdf, IntestazionePdf, BandaBluPdf, FooterPdf } from './AnteprimaPdf';
 import { generaPdfDdtCliente } from '../lib/pdfDdt';
 import { generaPdfFattura } from '../lib/pdfFattura';
+import { generaPdfScontrino } from '../lib/pdfScontrino';
 import type { Percorso } from '../lib/percorsi';
 import { StampaScontrino } from './StampaScontrino';
-import type { Cliente } from '../lib/clienti';
+import { getCliente, type Cliente } from '../lib/clienti';
 import { useDatiAziendali } from '../lib/useDatiAziendali';
 import { getScontrini, type Scontrino } from '../lib/scontrini';
 import { getFattureCliente, type Fattura } from '../lib/fatture';
@@ -216,9 +217,11 @@ function raggruppaVociPerDocumento(voci: VoceStorico[], tab: string): DocumentoG
 function GruppoDocumento({
   gruppo,
   formatData,
+  clienteId,
 }: {
   gruppo: DocumentoGruppo;
   formatData: (d: string | null) => string;
+  clienteId: number;
 }) {
   const [aperto, setAperto] = useState(false);
   const doc: any = gruppo.documento;
@@ -240,14 +243,27 @@ function GruppoDocumento({
   const totaleRighe = gruppo.voci.length;
   const totaleSub = gruppo.subDocumenti.length;
 
-  // Apri PDF del documento principale (se non proforma)
-  function apriPdfDocumento() {
-    if (isProforma) return;
-    // Chiama setter esterni — vengono passati come prop? No, li prendiamo dallo scope
-    // Fallback: apri direttamente il pdf_url se presente
-    const pdfUrl = doc.pdf_url;
-    if (pdfUrl) {
-      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+  // Apri PDF del documento: se su Storage → apri, altrimenti genera al volo
+  async function apriPdfDocumento() {
+    // 1. Storage diretto
+    if (doc.pdf_url) {
+      window.open(doc.pdf_url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    // 2. Genera al volo
+    try {
+      if (isFattura) {
+        await generaPdfFattura(doc);
+      } else if (isScontrino) {
+        await generaPdfScontrino({ scontrino: doc, scarica: true });
+      } else if (isDdt) {
+        // Carica cliente per generare PDF DDT
+        const clienteCompleto = await getCliente(clienteId);
+        await generaPdfDdtCliente(doc, null, clienteCompleto);
+      }
+    } catch (e: any) {
+      window.alert('Errore generazione PDF: ' + (e?.message || 'sconosciuto'));
     }
   }
 
@@ -278,11 +294,8 @@ function GruppoDocumento({
           <button
             type="button"
             onClick={apriPdfDocumento}
-            disabled={isProforma || !doc.pdf_url}
-            className={`min-w-0 flex-1 flex items-center gap-1.5 flex-wrap text-left ${
-              !isProforma && doc.pdf_url ? 'hover:underline cursor-pointer' : 'cursor-default'
-            }`}
-            title={isProforma ? 'Proforma non scaricabile' : doc.pdf_url ? 'Apri PDF' : 'PDF non disponibile'}
+            className="min-w-0 flex-1 flex items-center gap-1.5 flex-wrap text-left hover:underline cursor-pointer"
+            title="Apri PDF"
           >
             <span className="text-sm shrink-0">{icona}</span>
             <p className="font-semibold text-apple-darkgray truncate">{titolo}</p>
@@ -307,9 +320,7 @@ function GruppoDocumento({
               Pagata
             </span>
           )}
-          {!isProforma && doc.pdf_url && (
-            <span className="text-xs text-apple-blue">📄</span>
-          )}
+          <span className="text-xs text-apple-blue">📄</span>
         </div>
       </div>
 
@@ -883,6 +894,7 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
                 key={g.id}
                 gruppo={g}
                 formatData={formatData}
+                clienteId={clienteId}
               />
             ))
           )}
