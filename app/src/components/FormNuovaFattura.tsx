@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getClienti, type Cliente } from '../lib/clienti';
 import { getPercorsiCliente, aggiornaPercorso, type Percorso } from '../lib/percorsi';
 import { getProdotti, type Prodotto } from '../lib/prodotti';
 import { getServizi, type Servizio } from '../lib/servizi';
 import { getDatiAziendaliSync } from '../lib/datiAziendali';
+import { useDraft } from '../lib/useDraft';
 import {
   getProssimoNumeroFattura,
   creaFattura,
@@ -108,6 +109,96 @@ export function FormNuovaFattura({
 
   const [righeLibere, setRigheLibere] = useState<RigaItem[]>([]);
   const [importoManuale, setImportoManuale] = useState<string>('');
+
+  // === DRAFT PERSISTENTE (cross-device) ===
+  interface NuovaFatturaDraft {
+    tipoFattura: 'percorso' | 'libera';
+    clienteId: number | null;
+    percorsoId: number | null;
+    dataInizio: string;
+    dicitura: string;
+    noteInterne: string;
+    righeLibere: RigaItem[];
+    importoManuale: string;
+  }
+
+  const DRAFT_DEFAULT: NuovaFatturaDraft = {
+    tipoFattura: 'libera',
+    clienteId: null,
+    percorsoId: null,
+    dataInizio: new Date().toISOString().split('T')[0],
+    dicitura: '',
+    noteInterne: '',
+    righeLibere: [],
+    importoManuale: '',
+  };
+
+  const {
+    state: draftFattura,
+    setState: setDraftFattura,
+    eliminaDraft: eliminaDraftFattura,
+    loading: draftFatturaLoading,
+  } = useDraft<NuovaFatturaDraft>('nuova_fattura_draft', DRAFT_DEFAULT);
+
+  // === SYNC useState ↔ draft ===
+
+  // a) Da useState → draft (ad ogni modifica)
+  useEffect(() => {
+    if (draftFatturaLoading) return;
+    setDraftFattura({
+      tipoFattura,
+      clienteId,
+      percorsoId,
+      dataInizio,
+      dicitura,
+      noteInterne,
+      righeLibere,
+      importoManuale,
+    });
+  }, [
+    tipoFattura,
+    clienteId,
+    percorsoId,
+    dataInizio,
+    dicitura,
+    noteInterne,
+    righeLibere,
+    importoManuale,
+    draftFatturaLoading,
+  ]);
+
+  // b) Da draft → useState (solo al primo load, se ha senso)
+  const draftCaricatoRef = useRef(false);
+  useEffect(() => {
+    if (draftCaricatoRef.current) return;
+    if (draftFatturaLoading) return;
+
+    // Ignora draft se il form è stato aperto con parametri specifici
+    if (percorsoIniziale || (vociIniziali && vociIniziali.length > 0) || checkupIniziale) {
+      draftCaricatoRef.current = true;
+      return;
+    }
+
+    // Applica draft solo se ha contenuto utile
+    const hasContent =
+      draftFattura.clienteId !== null ||
+      draftFattura.righeLibere.length > 0 ||
+      draftFattura.importoManuale.trim() !== '' ||
+      draftFattura.noteInterne.trim() !== '';
+
+    if (hasContent) {
+      setTipoFattura(draftFattura.tipoFattura);
+      setClienteId(draftFattura.clienteId);
+      setPercorsoId(draftFattura.percorsoId);
+      setDataInizio(draftFattura.dataInizio);
+      if (draftFattura.dicitura) setDicitura(draftFattura.dicitura);
+      setNoteInterne(draftFattura.noteInterne);
+      setRigheLibere(draftFattura.righeLibere);
+      setImportoManuale(draftFattura.importoManuale);
+    }
+
+    draftCaricatoRef.current = true;
+  }, [draftFatturaLoading, draftFattura, percorsoIniziale, vociIniziali, checkupIniziale]);
 
   useEffect(() => {
     async function carica() {
@@ -499,6 +590,8 @@ export function FormNuovaFattura({
         });
       }
 
+      // Elimina il draft dopo salvataggio riuscito
+      await eliminaDraftFattura();
       onSuccess(nuovaFattura.id);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
