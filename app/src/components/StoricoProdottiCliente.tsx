@@ -35,6 +35,181 @@ interface VoceStorico {
   scontrino: Scontrino | null;
 }
 
+interface DocumentoGruppo {
+  id: string;
+  tipoDoc: 'fattura' | 'scontrino' | 'ddt';
+  documento: Fattura | Scontrino | ScaricoSeduta;
+  voci: VoceStorico[];
+  subDocumenti: SubDocumento[];
+  importo: number | null;
+  pagata: boolean;
+  numeroFattura: string | null;
+}
+
+interface SubDocumento {
+  id: string;
+  tipo: 'ddt' | 'scontrino-figlio';
+  documento: ScaricoSeduta | Scontrino;
+  voci: VoceStorico[];
+  numeroFattura?: string | null;
+}
+
+// ============================================
+// RAGGRUPPAMENTO VOCI PER DOCUMENTO
+// ============================================
+function raggruppaVociPerDocumento(voci: VoceStorico[], tab: string): DocumentoGruppo[] {
+  const gruppi: DocumentoGruppo[] = [];
+  const gruppiMap = new Map<string, DocumentoGruppo>();
+
+  // 1. Raggruppa le voci per documento
+  for (const v of voci) {
+    let key = '';
+    let tipoDoc: 'fattura' | 'scontrino' | 'ddt' = 'fattura';
+    let documento: Fattura | Scontrino | ScaricoSeduta | null = null;
+    let importo: number | null = null;
+    let pagata = false;
+    let numeroFattura: string | null = null;
+
+    if (v.fattura) {
+      key = `fattura-${v.fattura.id}`;
+      tipoDoc = 'fattura';
+      documento = v.fattura;
+      importo = v.fattura.lordo_ivato ?? null;
+      pagata = !!v.fattura.data_incasso;
+      numeroFattura = v.fattura.numero_fattura;
+    } else if (v.scontrino) {
+      // Scontrino: se figlio, lo attacco al madre
+      const sc = v.scontrino;
+      if (sc.tipo === 'figlio' && sc.scontrino_madre_id) {
+        key = `scontrino-${sc.scontrino_madre_id}`;
+      } else {
+        key = `scontrino-${sc.id}`;
+      }
+      tipoDoc = 'scontrino';
+      documento = sc;
+      importo = sc.totale_lordo ?? null;
+    } else if (v.scarico) {
+      // DDT: se ha fattura madre, lo attacco alla fattura
+      const sc = v.scarico;
+      if (sc.fattura_madre_id) {
+        key = `fattura-${sc.fattura_madre_id}`;
+      } else {
+        key = `ddt-${sc.id}`;
+      }
+      tipoDoc = 'ddt';
+      documento = sc;
+      importo = sc.totale_lordo_scontato ?? null;
+    } else {
+      continue;
+    }
+
+    // Filtri tab: quali voci includere nel gruppo
+    const isExtra = v.isExtra;
+    const isProdotto = v.tipo === 'prodotto';
+    const isServizio = v.tipo === 'servizio';
+
+    if (tab === 'prodotti' && !isProdotto) continue;
+    if (tab === 'servizi' && !isServizio) continue;
+    if (tab === 'extra' && !isExtra) continue;
+    if (tab === 'fatture') {
+      // Solo documenti, nessuna riga
+      if (!v.fattura && !v.scontrino && !v.scarico) continue;
+    }
+
+    // Crea o recupera il gruppo
+    let gruppo = gruppiMap.get(key);
+    if (!gruppo) {
+      gruppo = {
+        id: key,
+        tipoDoc,
+        documento: documento!,
+        voci: [],
+        subDocumenti: [],
+        importo,
+        pagata,
+        numeroFattura,
+      };
+      gruppiMap.set(key, gruppo);
+      gruppi.push(gruppo);
+    }
+
+    gruppo.voci.push(v);
+  }
+
+  // 2. Costruisci i subDocumenti (DDT sotto fattura, scontrini figli sotto madre)
+  const tuttiSub = new Map<string, SubDocumento>();
+  for (const v of voci) {
+    if (v.scarico && v.scarico.fattura_madre_id) {
+      const sc = v.scarico;
+      const subKey = `ddt-${sc.id}`;
+      if (!tuttiSub.has(subKey)) {
+        tuttiSub.set(subKey, {
+          id: subKey,
+          tipo: 'ddt',
+          documento: sc,
+          voci: [],
+          numeroFattura: sc.fattura_madre_id ? gruppiMap.get(`fattura-${sc.fattura_madre_id}`)?.numeroFattura : null,
+        });
+      }
+      tuttiSub.get(subKey)!.voci.push(v);
+    }
+    if (v.scontrino && v.scontrino.tipo === 'figlio' && v.scontrino.scontrino_madre_id) {
+      const sc = v.scontrino;
+      const subKey = `scontrino-${sc.id}`;
+      if (!tuttiSub.has(subKey)) {
+        tuttiSub.set(subKey, {
+          id: subKey,
+          tipo: 'scontrino-figlio',
+          documento: sc,
+          voci: [],
+        });
+      }
+      tuttiSub.get(subKey)!.voci.push(v);
+    }
+  }
+
+  // 3. Collega i subDocumenti ai loro gruppi
+  for (const sub of tuttiSub.values()) {
+    const doc = sub.documento;
+    let parentKey = '';
+    if (sub.tipo === 'ddt' && (doc as ScaricoSeduta).fattura_madre_id) {
+      parentKey = `fattura-${(doc as ScaricoSeduta).fattura_madre_id}`;
+    } else if (sub.tipo === 'scontrino-figlio' && (doc as Scontrino).scontrino_madre_id) {
+      parentKey = `scontrino-${(doc as Scontrino).scontrino_madre_id}`;
+    }
+    const parent = gruppiMap.get(parentKey);
+    if (parent) {
+      parent.subDocumenti.push(sub);
+    }
+  }
+
+  // 4. Applica filtri tab ai subDocumenti (stessa logica delle voci)
+  for (const gruppo of gruppi) {
+    gruppo.subDocumenti = gruppo.subDocumenti
+      .map((sub) => ({
+        ...sub,
+        voci: sub.voci.filter((v) => {
+          if (tab === 'prodotti' && v.tipo !== 'prodotto') return false;
+          if (tab === 'servizi' && v.tipo !== 'servizio') return false;
+          if (tab === 'extra' && !v.isExtra) return false;
+          return true;
+        }),
+      }))
+      .filter((sub) => tab === 'fatture' || tab === 'tutti' || sub.voci.length > 0);
+  }
+
+  // 5. Ordina per data (più recente prima)
+  gruppi.sort((a, b) => {
+    const getData = (g: DocumentoGruppo): string => {
+      const doc: any = g.documento;
+      return doc.data_incasso || doc.data_seduta || doc.data_emissione || doc.data_inizio || '';
+    };
+    return getData(b).localeCompare(getData(a));
+  });
+
+  return gruppi;
+}
+
 export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
   const { dati: azienda } = useDatiAziendali();
   const regime = azienda.regimeDocumenti || 'fatture';
@@ -268,6 +443,24 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
     }
     return fattureIds.size + scontriniIds.size;
   }, [tutteVoci]);
+
+  // TEST TEMPORANEO raggruppamento
+  useEffect(() => {
+    if (typeof window !== 'undefined' && tutteVoci.length > 0) {
+      const gruppi = raggruppaVociPerDocumento(tutteVoci, tab);
+      console.log('[TEST RAGGRUPPAMENTO]', {
+        tab,
+        totaleVoci: tutteVoci.length,
+        totaleGruppi: gruppi.length,
+        gruppi: gruppi.map((g) => ({
+          tipo: g.tipoDoc,
+          voci: g.voci.length,
+          sub: g.subDocumenti.length,
+          id: g.id,
+        })),
+      });
+    }
+  }, [tutteVoci, tab]);
 
   // Filtra per tab e per ricerca
   const vociFiltrate = useMemo(() => {
