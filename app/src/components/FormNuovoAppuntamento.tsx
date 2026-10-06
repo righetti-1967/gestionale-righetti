@@ -614,16 +614,6 @@ export function FormNuovoAppuntamento({
       setSalvando(false);
     }
   }
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-        <div className="bg-white rounded-apple shadow-apple-lg p-8">
-          <div className="text-apple-gray text-sm">Caricamento...</div>
-        </div>
-      </div>
-    );
-  }
-
   // === DRAFT APPUNTAMENTO (useDraft) ===
   interface AppuntamentoDraft {
     clienteId: number | null;
@@ -693,6 +683,16 @@ export function FormNuovoAppuntamento({
     }
     draftCaricatoRef.current = true;
   }, [appDraftLoading, appDraft]);
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="bg-white rounded-apple shadow-apple-lg p-8">
+          <div className="text-apple-gray text-sm">Caricamento...</div>
+        </div>
+      </div>
+    );
+  }
 
 
   return (
