@@ -89,10 +89,33 @@ export function AppClienteTab() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Totale" value={stats.totale} />
-        <StatCard label="Attivi" value={stats.attivi} color="green" />
-        <StatCard label="Non attivi" value={stats.nonAttivi} color="gray" />
-        <StatCard label="Bloccati" value={stats.bloccati} color="red" />
+        <StatCard
+          label="Totale"
+          value={stats.totale}
+          active={filtroStato === 'tutti'}
+          onClick={() => setFiltroStato('tutti')}
+        />
+        <StatCard
+          label="Attivi"
+          value={stats.attivi}
+          color="green"
+          active={filtroStato === 'attivi'}
+          onClick={() => setFiltroStato('attivi')}
+        />
+        <StatCard
+          label="Non attivi"
+          value={stats.nonAttivi}
+          color="gray"
+          active={filtroStato === 'non_attivi'}
+          onClick={() => setFiltroStato('non_attivi')}
+        />
+        <StatCard
+          label="Bloccati"
+          value={stats.bloccati}
+          color="red"
+          active={filtroStato === 'bloccati'}
+          onClick={() => setFiltroStato('bloccati')}
+        />
       </div>
 
       {/* Filtri */}
@@ -179,7 +202,19 @@ export function AppClienteTab() {
   );
 }
 
-function StatCard({ label, value, color = 'blue' }: { label: string; value: number; color?: string }) {
+function StatCard({
+  label,
+  value,
+  color = 'blue',
+  active = false,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  color?: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   const colorMap: Record<string, string> = {
     blue: 'text-blue-600',
     green: 'text-green-600',
@@ -187,10 +222,18 @@ function StatCard({ label, value, color = 'blue' }: { label: string; value: numb
     red: 'text-red-600',
   };
   return (
-    <div className="bg-white rounded-lg border border-gray-100 px-3 py-2">
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-left bg-white rounded-lg border px-3 py-2 transition-all ${
+        active
+          ? 'border-blue-500 ring-2 ring-blue-100 shadow-sm'
+          : 'border-gray-100 hover:border-gray-300 hover:shadow-sm'
+      }`}
+    >
       <div className="text-xs text-gray-500 uppercase">{label}</div>
       <div className={`text-xl font-semibold ${colorMap[color]}`}>{value}</div>
-    </div>
+    </button>
   );
 }
 
