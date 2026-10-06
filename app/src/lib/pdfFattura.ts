@@ -342,13 +342,20 @@ export async function generaPdfFattura(
 
   const nomeFile = `Fattura_${fattura.numero_fattura.replace('/', '-')}_${(fattura.cliente?.nome_cognome || 'cliente').replace(/\s+/g, '_')}.pdf`;
   if (scarica) {
-    // Upload su Storage (best effort, non blocca il download)
+    // Upload su Storage + salva URL nel DB (best effort)
     try {
       const clienteId = (fattura as any).cliente_id;
       const anno = (fattura as any).anno || new Date().getFullYear();
-      if (clienteId) {
+      const fatturaId = (fattura as any).id;
+      if (clienteId && fatturaId) {
         uploadJsPdfToStorage('fatture-pdf', clienteId, nomeFile, doc, anno)
-          .then((url) => { if (url) console.log('✅ PDF fattura salvato:', url); })
+          .then(async (url) => {
+            if (url) {
+              const { supabase } = await import('./supabase');
+              await supabase.from('fatture').update({ pdf_url: url }).eq('id', fatturaId);
+              console.log('✅ PDF fattura salvato:', url);
+            }
+          })
           .catch((e) => console.warn('⚠️ Upload PDF fattura fallito:', e));
       }
     } catch (e) {
