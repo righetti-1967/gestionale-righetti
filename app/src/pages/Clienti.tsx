@@ -1,7 +1,7 @@
 import { getBrandInfo } from '../lib/brand';
 import jsPDF from 'jspdf';
 import { inviaEmailConConfig, inviaEmailTest } from '../lib/api';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useMemo, useState  } from 'react';
 import {
   getClienti,
   cercaClienti,
@@ -45,6 +45,7 @@ import { useDatiAziendali } from '../lib/useDatiAziendali';
 import { formatSede } from '../lib/studio';
 import { DettaglioPercorso } from '../components/DettaglioPercorso';
 import { Toast, type ToastTipo } from '../components/Toast';
+import { useDraft } from '../lib/useDraft';
 
 interface PercorsoAttivo {
   percorso: Percorso;
@@ -70,8 +71,50 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState<string | null>(null);
-  const [ricerca, setRicerca] = useState('');
-  const [clienteSelezionato, setClienteSelezionato] = useState<Cliente | null>(null);
+
+  // === STATO PERSISTENTE (draft cross-device) ===
+  interface ClientiDraft {
+    clienteId: number | null;
+    ricerca: string;
+  }
+
+  const CLIENTI_DRAFT_DEFAULT: ClientiDraft = {
+    clienteId: null,
+    ricerca: '',
+  };
+
+  const {
+    state: clientiDraft,
+    setState: setClientiDraft,
+    loading: clientiDraftLoading,
+  } = useDraft<ClientiDraft>('clienti_stato', CLIENTI_DRAFT_DEFAULT);
+
+  // Alias per compatibilità
+  const ricerca = clientiDraft.ricerca;
+  const clienteSelezionato = useMemo(() => {
+    if (!clientiDraft.clienteId) return null;
+    return clienti.find((c) => c.id === clientiDraft.clienteId) || null;
+  }, [clientiDraft.clienteId, clienti]);
+
+  function setRicerca(valore: string) {
+    setClientiDraft((prev) => ({ ...prev, ricerca: valore }));
+  }
+
+  function setClienteSelezionato(
+    updater: Cliente | null | ((prev: Cliente | null) => Cliente | null)
+  ) {
+    if (typeof updater === 'function') {
+      setClientiDraft((prev) => {
+        const clienteAttuale = prev.clienteId
+          ? clienti.find((c) => c.id === prev.clienteId) || null
+          : null;
+        const nuovo = updater(clienteAttuale);
+        return { ...prev, clienteId: nuovo?.id ?? null };
+      });
+    } else {
+      setClientiDraft((prev) => ({ ...prev, clienteId: updater?.id ?? null }));
+    }
+  }
   const [modaleTemplate, setModaleTemplate] = useState<{
     chiave: 'email_post_seduta' | 'email_compleanno' | 'email_riattivazione';
     cliente: Cliente;
