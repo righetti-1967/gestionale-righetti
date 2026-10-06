@@ -181,7 +181,7 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
         numeroFattura: fatt.numero_fattura,
         numeroScontrino: null,
         anno,
-        nome: `Fattura ${fatt.numero_fattura}`,
+        nome: `${fatt.data_incasso ? 'Fattura' : 'Proforma'} ${fatt.numero_fattura}`,
         quantita: 1,
         isExtra: false,
         importo: fatt.lordo_ivato,
