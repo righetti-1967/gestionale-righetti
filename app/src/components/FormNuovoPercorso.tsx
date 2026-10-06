@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDraft } from '../lib/useDraft';
 import { getClienti, type Cliente } from '../lib/clienti';
 import { getServizi, type Servizio } from '../lib/servizi';
 import { getProdotti, type Prodotto } from '../lib/prodotti';
@@ -277,6 +278,7 @@ export function FormNuovoPercorso({
           .eq('id', percorso.id);
       }
 
+      await eliminaPercorsoDraft();
       onSuccess(percorso.id);
     } catch (err: any) {
       setErrore(err.message || 'Errore nel salvataggio');
@@ -294,6 +296,66 @@ export function FormNuovoPercorso({
       </div>
     );
   }
+
+  // === DRAFT PERCORSO (useDraft) ===
+  interface PercorsoDraft {
+    clienteId: number | null;
+    nome: string;
+    dataInizio: string;
+    dataFine: string;
+    durataMesi: number | null;
+    righeBase: RigaBase[];
+    totaleFinale: string;
+    note: string;
+  }
+  const PERCORSO_DRAFT_DEFAULT: PercorsoDraft = {
+    clienteId: null,
+    nome: '',
+    dataInizio: new Date().toISOString().split('T')[0],
+    dataFine: '',
+    durataMesi: null,
+    righeBase: [],
+    totaleFinale: '',
+    note: '',
+  };
+  const {
+    state: percorsoDraft,
+    setState: setPercorsoDraft,
+    eliminaDraft: eliminaPercorsoDraft,
+    loading: percorsoDraftLoading,
+  } = useDraft<PercorsoDraft>('nuovo_percorso_draft', PERCORSO_DRAFT_DEFAULT);
+
+  useEffect(() => {
+    if (percorsoDraftLoading) return;
+    setPercorsoDraft({
+      clienteId,
+      nome,
+      dataInizio,
+      dataFine,
+      durataMesi: durataMesiSelezionata,
+      righeBase,
+      totaleFinale,
+      note,
+    });
+  }, [clienteId, nome, dataInizio, dataFine, durataMesiSelezionata, righeBase, totaleFinale, note, percorsoDraftLoading]);
+
+  const draftCaricatoRef = useRef(false);
+  useEffect(() => {
+    if (draftCaricatoRef.current || percorsoDraftLoading) return;
+    if (percorsoDraft.nome || percorsoDraft.clienteId || percorsoDraft.righeBase.length > 0) {
+      if (!clienteIniziale) {
+        setClienteId(percorsoDraft.clienteId);
+        setNome(percorsoDraft.nome);
+        setDataInizio(percorsoDraft.dataInizio);
+        setDataFine(percorsoDraft.dataFine);
+        setDurataMesiSelezionata(percorsoDraft.durataMesi);
+        setRigheBase(percorsoDraft.righeBase);
+        setTotaleFinale(percorsoDraft.totaleFinale);
+        setNote(percorsoDraft.note);
+      }
+    }
+    draftCaricatoRef.current = true;
+  }, [percorsoDraftLoading, percorsoDraft]);
 
   return (
     <div

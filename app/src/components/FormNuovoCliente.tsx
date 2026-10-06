@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDraft } from '../lib/useDraft';
 import { creaCliente, aggiornaCliente, type NuovoCliente, type Cliente } from '../lib/clienti';
 import { InputComune } from './InputComune';
 import { InputVia } from './InputVia';
@@ -119,6 +120,7 @@ export function FormCliente({
       setErrore(null);
       if (isModifica && clienteDaModificare) {
         await aggiornaCliente(clienteDaModificare.id, clienteDaSalvare);
+        await eliminaClienteDraft();
         onSuccess();
       } else {
         // Nuovo cliente
@@ -136,6 +138,41 @@ export function FormCliente({
       setSalvando(false);
     }
   }
+
+  // === DRAFT CLIENTE (useDraft) ===
+  interface ClienteDraft {
+    cliente: NuovoCliente;
+    paeseTelefono: string;
+    numeroLocale: string;
+  }
+  const CLIENTE_DRAFT_DEFAULT: ClienteDraft = {
+    cliente: {} as NuovoCliente,
+    paeseTelefono: '',
+    numeroLocale: '',
+  };
+  const {
+    state: clienteDraft,
+    setState: setClienteDraft,
+    eliminaDraft: eliminaClienteDraft,
+    loading: clienteDraftLoading,
+  } = useDraft<ClienteDraft>('nuovo_cliente_draft', CLIENTE_DRAFT_DEFAULT);
+
+  useEffect(() => {
+    if (clienteDraftLoading) return;
+    setClienteDraft({ cliente, paeseTelefono, numeroLocale });
+  }, [cliente, paeseTelefono, numeroLocale, clienteDraftLoading]);
+
+  const draftCaricatoRef = useRef(false);
+  useEffect(() => {
+    if (draftCaricatoRef.current || clienteDraftLoading) return;
+    const haContenuto = clienteDraft.cliente && Object.values(clienteDraft.cliente || {}).some((v) => v && String(v).trim() !== '');
+    if (haContenuto) {
+      setCliente(clienteDraft.cliente);
+      setPaeseTelefono(clienteDraft.paeseTelefono);
+      setNumeroLocale(clienteDraft.numeroLocale);
+    }
+    draftCaricatoRef.current = true;
+  }, [clienteDraftLoading, clienteDraft]);
 
   return (
     <div

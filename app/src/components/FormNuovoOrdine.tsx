@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDraft } from '../lib/useDraft';
 import { getFornitori, type Fornitore } from '../lib/fornitori';
 import { getProdotti, type Prodotto } from '../lib/prodotti';
 import {
@@ -217,6 +218,7 @@ export function FormNuovoOrdine({
         righe: righeCalcolate,
       });
 
+      await eliminaOrdineDraft();
       onSuccess();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -235,6 +237,48 @@ export function FormNuovoOrdine({
       </div>
     );
   }
+
+  // === DRAFT ORDINE (useDraft) ===
+  interface OrdineDraft {
+    fornitoreId: number | null;
+    dataOrdine: string;
+    dataConsegna: string;
+    note: string;
+    righe: RigaEditable[];
+  }
+  const ORDINE_DRAFT_DEFAULT: OrdineDraft = {
+    fornitoreId: null,
+    dataOrdine: new Date().toISOString().split('T')[0],
+    dataConsegna: '',
+    note: '',
+    righe: [],
+  };
+  const {
+    state: ordineDraft,
+    setState: setOrdineDraft,
+    eliminaDraft: eliminaOrdineDraft,
+    loading: ordineDraftLoading,
+  } = useDraft<OrdineDraft>('nuovo_ordine_draft', ORDINE_DRAFT_DEFAULT);
+
+  useEffect(() => {
+    if (ordineDraftLoading) return;
+    setOrdineDraft({ fornitoreId, dataOrdine, dataConsegna, note, righe });
+  }, [fornitoreId, dataOrdine, dataConsegna, note, righe, ordineDraftLoading]);
+
+  const draftCaricatoRef = useRef(false);
+  useEffect(() => {
+    if (draftCaricatoRef.current || ordineDraftLoading) return;
+    if (ordineDraft.fornitoreId || ordineDraft.righe.length > 0 || ordineDraft.note) {
+      if (!fornitoreIniziale) {
+        setFornitoreId(ordineDraft.fornitoreId);
+        setDataOrdine(ordineDraft.dataOrdine);
+        setDataConsegna(ordineDraft.dataConsegna);
+        setNote(ordineDraft.note);
+        setRighe(ordineDraft.righe);
+      }
+    }
+    draftCaricatoRef.current = true;
+  }, [ordineDraftLoading, ordineDraft]);
 
   return (
     <div

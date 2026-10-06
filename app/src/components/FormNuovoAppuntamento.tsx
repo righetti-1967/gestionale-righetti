@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDraft } from '../lib/useDraft';
 import { getClienti, type Cliente } from '../lib/clienti';
 import { getServizi, creaServizio, type Servizio } from '../lib/servizi';
 import { getPercorsiCliente, type Percorso } from '../lib/percorsi';
@@ -572,6 +573,7 @@ export function FormNuovoAppuntamento({
         }
       }
 
+      await eliminaAppDraft();
       onSuccess();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -621,6 +623,77 @@ export function FormNuovoAppuntamento({
       </div>
     );
   }
+
+  // === DRAFT APPUNTAMENTO (useDraft) ===
+  interface AppuntamentoDraft {
+    clienteId: number | null;
+    operatore: Operatore;
+    data: string;
+    oraInizio: string;
+    durata: string;
+    tipo: TipoAppuntamento;
+    titolo: string;
+    colore: string;
+    note: string;
+    percorsoId: number | null;
+    servizioId: number | null;
+  }
+  const APPUNTAMENTO_DRAFT_DEFAULT: AppuntamentoDraft = {
+    clienteId: null,
+    operatore: 'luca',
+    data: new Date().toISOString().split('T')[0],
+    oraInizio: '09:00',
+    durata: '60',
+    tipo: 'generico',
+    titolo: '',
+    colore: '',
+    note: '',
+    percorsoId: null,
+    servizioId: null,
+  };
+  const {
+    state: appDraft,
+    setState: setAppDraft,
+    eliminaDraft: eliminaAppDraft,
+    loading: appDraftLoading,
+  } = useDraft<AppuntamentoDraft>('nuovo_appuntamento_draft', APPUNTAMENTO_DRAFT_DEFAULT);
+
+  useEffect(() => {
+    if (appDraftLoading) return;
+    setAppDraft({
+      clienteId,
+      operatore,
+      data,
+      oraInizio,
+      durata,
+      tipo,
+      titolo,
+      colore,
+      note,
+      percorsoId,
+      servizioId,
+    });
+  }, [clienteId, operatore, data, oraInizio, durata, tipo, titolo, colore, note, percorsoId, servizioId, appDraftLoading]);
+
+  const draftCaricatoRef = useRef(false);
+  useEffect(() => {
+    if (draftCaricatoRef.current || appDraftLoading) return;
+    if (!appuntamentoIniziale && (appDraft.clienteId || appDraft.titolo || appDraft.note)) {
+      setClienteId(appDraft.clienteId);
+      setOperatore(appDraft.operatore);
+      setData(appDraft.data);
+      setOraInizio(appDraft.oraInizio);
+      setDurata(appDraft.durata);
+      setTipo(appDraft.tipo);
+      setTitolo(appDraft.titolo);
+      setColore(appDraft.colore);
+      setNote(appDraft.note);
+      setPercorsoId(appDraft.percorsoId);
+      setServizioId(appDraft.servizioId);
+    }
+    draftCaricatoRef.current = true;
+  }, [appDraftLoading, appDraft]);
+
 
   return (
     <div

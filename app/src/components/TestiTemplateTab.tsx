@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDraft } from '../lib/useDraft';
 import {
   type ChiaveTesto,
   type TestoTemplate,
@@ -85,6 +86,7 @@ export function TestiTemplateTab() {
           : prev
       );
 
+      await eliminaTestoDraft();
       setToast({ message: '✅ Testo salvato', tipo: 'success' });
     } catch (err: any) {
       setToast({
@@ -146,6 +148,39 @@ export function TestiTemplateTab() {
       </div>
     );
   }
+
+  // === DRAFT TESTO (useDraft per chiave) ===
+  const chiaveDraftTesto = `testo_${chiaveAttiva}_draft`;
+  interface TestoDraft {
+    oggetto: string;
+    corpo: string;
+  }
+  const TESTO_DRAFT_DEFAULT: TestoDraft = { oggetto: '', corpo: '' };
+  const {
+    state: testoDraft,
+    setState: setTestoDraft,
+    eliminaDraft: eliminaTestoDraft,
+    loading: testoDraftLoading,
+  } = useDraft<TestoDraft>(chiaveDraftTesto, TESTO_DRAFT_DEFAULT);
+
+  useEffect(() => {
+    if (testoDraftLoading) return;
+    setTestoDraft({ oggetto, corpo });
+  }, [oggetto, corpo, testoDraftLoading]);
+
+  const draftCaricatoRef = useRef(false);
+  useEffect(() => {
+    if (draftCaricatoRef.current || testoDraftLoading) return;
+    if (testoDraft.oggetto || testoDraft.corpo) {
+      setOggetto(testoDraft.oggetto);
+      setCorpo(testoDraft.corpo);
+    }
+    draftCaricatoRef.current = true;
+  }, [testoDraftLoading, testoDraft]);
+
+  useEffect(() => {
+    draftCaricatoRef.current = false;
+  }, [chiaveAttiva]);
 
   return (
     <div className="space-y-4">

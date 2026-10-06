@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useDraft } from '../lib/useDraft';
 import type { Percorso } from '../lib/percorsi';
 import type { Cliente } from '../lib/clienti';
 import type { ResiduoPercorso } from '../lib/percorsi-helper';
@@ -360,6 +361,7 @@ export function FormScaricoSeduta({
         }
       }
 
+      await eliminaDdtDraft();
       onSuccess(nuovoScarico);
     } catch (err: any) {
       const msg = err?.message || err?.error_description || err?.details || (typeof err === 'object' ? JSON.stringify(err) : String(err));
@@ -368,6 +370,43 @@ export function FormScaricoSeduta({
       setSalvando(false);
     }
   }
+
+  // === DRAFT DDT (useDraft) ===
+  interface DDTDraft {
+    dataSeduta: string;
+    note: string;
+    quantitaDaScaricare: Record<string, number>;
+    flaconiSelezionati: Record<string, number[]>;
+  }
+  const DDT_DRAFT_DEFAULT: DDTDraft = {
+    dataSeduta: new Date().toISOString().split('T')[0],
+    note: '',
+    quantitaDaScaricare: {},
+    flaconiSelezionati: {},
+  };
+  const {
+    state: ddtDraft,
+    setState: setDdtDraft,
+    eliminaDraft: eliminaDdtDraft,
+    loading: ddtDraftLoading,
+  } = useDraft<DDTDraft>('nuovo_ddt_draft', DDT_DRAFT_DEFAULT);
+
+  useEffect(() => {
+    if (ddtDraftLoading) return;
+    setDdtDraft({ dataSeduta, note, quantitaDaScaricare, flaconiSelezionati });
+  }, [dataSeduta, note, quantitaDaScaricare, flaconiSelezionati, ddtDraftLoading]);
+
+  const draftCaricatoRef = useRef(false);
+  useEffect(() => {
+    if (draftCaricatoRef.current || ddtDraftLoading) return;
+    if (ddtDraft.note || Object.keys(ddtDraft.quantitaDaScaricare).length > 0) {
+      setDataSeduta(ddtDraft.dataSeduta);
+      setNote(ddtDraft.note);
+      setQuantitaDaScaricare(ddtDraft.quantitaDaScaricare);
+      setFlaconiSelezionati(ddtDraft.flaconiSelezionati);
+    }
+    draftCaricatoRef.current = true;
+  }, [ddtDraftLoading, ddtDraft]);
 
   return (
     <div
