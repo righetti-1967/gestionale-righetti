@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getTuttiPercorsi, type Percorso, type StatoPercorso } from '../lib/percorsi';
 import { useDatiAziendali } from '../lib/useDatiAziendali';
 import { getClienti, type Cliente } from '../lib/clienti';
@@ -12,6 +12,7 @@ import {
 import { DettaglioPercorso } from '../components/DettaglioPercorso';
 import { FormNuovaFattura } from '../components/FormNuovaFattura';
 import { Toast, type ToastTipo } from '../components/Toast';
+import { useDraft } from '../lib/useDraft';
 
 interface PercorsoConDati {
   percorso: Percorso;
@@ -61,9 +62,60 @@ export function Percorsi({ onNavigate }: { onNavigate?: (page: string) => void }
   const [percorsi, setPercorsi] = useState<PercorsoConDati[]>([]);
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState<string | null>(null);
-  const [ricerca, setRicerca] = useState('');
-  const [filtroStato, setFiltroStato] = useState<FiltroStato>('attivi');
-  const [percorsoSelezionato, setPercorsoSelezionato] = useState<PercorsoConDati | null>(null);
+
+  // === STATO PERSISTENTE (draft cross-device) ===
+  interface PercorsiDraft {
+    percorsoId: number | null;
+    ricerca: string;
+    filtroStato: FiltroStato;
+  }
+
+  const PERCORSI_DRAFT_DEFAULT: PercorsiDraft = {
+    percorsoId: null,
+    ricerca: '',
+    filtroStato: 'attivi',
+  };
+
+  const {
+    state: percorsiDraft,
+    setState: setPercorsiDraft,
+    loading: percorsiDraftLoading,
+  } = useDraft<PercorsiDraft>('percorsi_stato', PERCORSI_DRAFT_DEFAULT);
+
+  // Alias per compatibilità
+  const ricerca = percorsiDraft.ricerca;
+  const filtroStato = percorsiDraft.filtroStato;
+  const percorsoSelezionato = useMemo(() => {
+    if (!percorsiDraft.percorsoId) return null;
+    return percorsi.find((p) => p.percorso.id === percorsiDraft.percorsoId) || null;
+  }, [percorsiDraft.percorsoId, percorsi]);
+
+  function setRicerca(valore: string) {
+    setPercorsiDraft((prev) => ({ ...prev, ricerca: valore }));
+  }
+
+  function setFiltroStato(valore: FiltroStato) {
+    setPercorsiDraft((prev) => ({ ...prev, filtroStato: valore }));
+  }
+
+  function setPercorsoSelezionato(
+    updater: PercorsoConDati | null | ((prev: PercorsoConDati | null) => PercorsoConDati | null)
+  ) {
+    if (typeof updater === 'function') {
+      setPercorsiDraft((prev) => {
+        const attuale = prev.percorsoId
+          ? percorsi.find((p) => p.percorso.id === prev.percorsoId) || null
+          : null;
+        const nuovo = updater(attuale);
+        return { ...prev, percorsoId: nuovo?.percorso.id ?? null };
+      });
+    } else {
+      setPercorsiDraft((prev) => ({
+        ...prev,
+        percorsoId: updater?.percorso.id ?? null,
+      }));
+    }
+  }
   const [fatturaDaPercorso, setFatturaDaPercorso] = useState<PercorsoConDati | null>(null);
   const [toast, setToast] = useState<{ message: string; tipo: ToastTipo } | null>(null);
 
