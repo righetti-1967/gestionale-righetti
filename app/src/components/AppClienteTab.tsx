@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { inviaEmailConConfig } from '../lib/api';
 
 interface ClientePortal {
   client_id: number;
@@ -275,6 +276,8 @@ function ClientePortalModal({
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
   const [invitoGenerato, setInvitoGenerato] = useState<string | null>(null);
+  const [inviandoEmail, setInviandoEmail] = useState(false);
+  const [emailInviata, setEmailInviata] = useState(false);
 
   async function salvaVisibilita() {
     setSaving(true);
@@ -316,6 +319,7 @@ function ClientePortalModal({
     setSaving(true);
     setErrore(null);
     setMessaggio(null);
+    setEmailInviata(false);
     const { data, error } = await supabase.rpc('admin_generate_invite', {
       client_id_input: cliente.client_id,
     });
@@ -331,6 +335,63 @@ function ClientePortalModal({
     }
     const url = `${APP_CLIENTE_URL}/invite?token=${row.token}`;
     setInvitoGenerato(url);
+  }
+
+  async function inviaEmailInvito() {
+    if (!invitoGenerato || !cliente.email) {
+      setErrore('Nessun link o email cliente');
+      return;
+    }
+    setInviandoEmail(true);
+    setErrore(null);
+    setEmailInviata(false);
+
+    const nomeCliente = cliente.nome_cognome.split(' ')[0] || cliente.nome_cognome;
+    const corpoHtml = `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
+        <h2 style="font-size:22px;font-weight:600;color:#111827;margin:0 0 12px;text-align:center;letter-spacing:-0.02em;">
+          Ciao ${nomeCliente},
+        </h2>
+        <p style="font-size:15px;line-height:1.6;color:#4b5563;margin:0 0 28px;text-align:center;">
+          sei stato invitato ad accedere alla tua <strong>Area Riservata</strong>.<br>
+          Clicca il pulsante qui sotto per iniziare.
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+          <tr>
+            <td align="center" style="background:#FF9500;border-radius:12px;">
+              <a href="${invitoGenerato}" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-radius:12px;">
+                Accedi all'Area Riservata
+              </a>
+            </td>
+          </tr>
+        </table>
+        <p style="font-size:13px;color:#9ca3af;margin:32px 0 0;text-align:center;line-height:1.6;">
+          Se il pulsante non funziona, copia questo link:<br>
+          <a href="${invitoGenerato}" style="color:#FF9500;word-break:break-all;font-size:12px;">${invitoGenerato}</a>
+        </p>
+        <p style="font-size:12px;color:#9ca3af;margin:16px 0 0;text-align:center;">
+          Il link è valido per 7 giorni.
+        </p>
+      </div>
+    `;
+
+    try {
+      const res = await inviaEmailConConfig({
+        destinatario: cliente.email,
+        oggetto: 'Accedi alla tua Area Riservata',
+        corpo_html: corpoHtml,
+      });
+      if (res.success) {
+        setEmailInviata(true);
+        setMessaggio('Email inviata ✅');
+      } else {
+        setErrore(res.messaggio || 'Errore invio email');
+      }
+    } catch (e: any) {
+      setErrore(e.message || 'Errore invio email');
+    } finally {
+      setInviandoEmail(false);
+    }
   }
 
   return (
@@ -436,22 +497,27 @@ function ClientePortalModal({
                     Copia
                   </button>
                 </div>
-                <div className="mt-2 flex gap-2">
-                  <a
-                    href={`mailto:${cliente.email}?subject=Accedi%20alla%20tua%20area%20riservata&body=${encodeURIComponent('Ciao,\n\nclicca il link per accedere:\n' + invitoGenerato)}`}
-                    className="px-2 py-1 text-xs bg-white border border-green-200 rounded hover:bg-green-50"
+                <div className="mt-2 flex gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={inviaEmailInvito}
+                    disabled={inviandoEmail || !cliente.email}
+                    className="px-3 py-1.5 text-xs bg-white border border-green-200 rounded hover:bg-green-50 disabled:opacity-50"
                   >
-                    ✉️ Invia via email
-                  </a>
+                    {inviandoEmail ? '📤 Invio…' : '✉️ Invia via email'}
+                  </button>
                   <a
-                    href={`https://wa.me/?text=${encodeURIComponent('Ciao! Ecco il link per la tua area riservata: ' + invitoGenerato)}`}
+                    href={`https://wa.me/${cliente.cellulare ? cliente.cellulare.replace(/[^0-9]/g, '') : ''}?text=${encodeURIComponent('Ciao! Ecco il link per accedere alla tua Area Riservata: ' + invitoGenerato)}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-2 py-1 text-xs bg-white border border-green-200 rounded hover:bg-green-50"
+                    className="px-3 py-1.5 text-xs bg-white border border-green-200 rounded hover:bg-green-50"
                   >
                     💬 WhatsApp
                   </a>
                 </div>
+                {emailInviata && (
+                  <div className="mt-2 text-xs text-green-700">✅ Email inviata con successo</div>
+                )}
               </div>
             )}
           </section>
