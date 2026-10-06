@@ -141,14 +141,6 @@ export function TestiTemplateTab() {
     }
   }
 
-  if (!testi) {
-    return (
-      <div className="bg-white rounded-apple shadow-apple p-8 sm:p-12 text-center text-apple-gray text-sm">
-        Caricamento testi...
-      </div>
-    );
-  }
-
   // === DRAFT TESTO (useDraft per chiave) ===
   const chiaveDraftTesto = `testo_${chiaveAttiva}_draft`;
   interface TestoDraft {
@@ -181,6 +173,14 @@ export function TestiTemplateTab() {
   useEffect(() => {
     draftCaricatoRef.current = false;
   }, [chiaveAttiva]);
+
+  if (!testi) {
+    return (
+      <div className="bg-white rounded-apple shadow-apple p-8 sm:p-12 text-center text-apple-gray text-sm">
+        Caricamento testi...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
