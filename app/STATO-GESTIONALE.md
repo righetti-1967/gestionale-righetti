@@ -1,5 +1,5 @@
 # STATO GESTIONALE RIGHETTI 1967
-Ultimo aggiornamento: 06/10/2026
+Ultimo aggiornamento: 06/10/2026 (sera)
 
 ---
 
@@ -48,6 +48,53 @@ Gestionale per Studio Tricologico Righetti (Talamona, SO). PWA installabile su i
 
 **Ambiente unico:** PROD (sviluppo diretto in prod, no TEST)
 **Supabase PROD:** `yporpszebtasalwazirz.supabase.co`
+
+---
+
+## 🚀 SESSIONE 06/10/2026 — PERSISTENZA MULTI-DEVICE ESTESA
+
+### 📌 Riepilogo
+Esteso il sistema di persistenza multi-device (`useDraft` + tabella `bozze`) a **tutti i form principali** e **Clienti/Percorsi**. Ora ogni bozza form e stato di navigazione rimane tra pagine e tra dispositivi.
+
+### ✅ COMPLETATO
+
+#### 1. Badge "⭐ EXTRA" nel carrello Cassa Fiscale
+- Sfondo ambra + bordo + badge "⭐ EXTRA" sulle righe EXTRA
+- Nome pulito (senza `(EXTRA Percorso)` visibile)
+- Marcatura `[EXTRA]` nel PDF scontrino
+
+#### 2. Storico Cliente → tab "Fatture & Scontrini"
+- Ora include **scontrini** oltre alle fatture
+- Conteggio corretto (fatture + scontrini madre)
+- Badge ⭐ EXTRA anche per voci scontrino
+- Numero scontrino cliccabile → apre `StampaScontrino`
+
+#### 3. Persistenza `useDraft` — Form estesi
+
+| Form | Chiave Draft | Comportamento |
+|---|---|---|
+| **FormNuovaFattura** | `nuova_fattura_draft` | Draft completo (cliente, righe, note) |
+| **FormScaricoSeduta** | `nuovo_ddt_draft` | Draft DDT (data, note, quantità, flaconi) |
+| **FormNuovoOrdine** | `nuovo_ordine_draft` | Draft ordine (fornitore, righe) |
+| **FormNuovoPercorso** | `nuovo_percorso_draft` | Draft percorso (cliente, righe, totale) |
+| **FormNuovoCliente** | `nuovo_cliente_draft` | Draft cliente (anagrafica + telefono) |
+| **FormNuovoAppuntamento** | `nuovo_appuntamento_draft` | Draft appuntamento (cliente, data, voci) |
+| **TestiTemplateTab** | `testo_<chiave>_draft` | Draft testo per chiave (oggetto + corpo) |
+
+**Logica comune:**
+- Salvataggio automatico su modifica (debounced 1.5s)
+- Caricamento draft all'apertura (ignora se arriva da parametri espliciti)
+- `eliminaDraft()` dopo salvataggio riuscito
+- Sync cross-device via Realtime Supabase
+
+#### 4. Persistenza Clienti + Percorsi
+- **Clienti**: `clienti_stato` → `{ clienteId, ricerca }`
+- **Percorsi**: `percorsi_stato` → `{ percorsoId, ricerca, filtroStato }`
+- Cliente/percorso aperto si sincronizza cross-device
+
+#### 5. Aggiornamento STATO-GESTIONALE.md
+- File snello: solo TODO attuale + note tecniche
+- Storico completo disponibile in Git log
 
 ---
 

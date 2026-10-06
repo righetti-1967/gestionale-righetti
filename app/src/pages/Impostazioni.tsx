@@ -36,6 +36,7 @@ import { SicurezzaTab } from '../components/SicurezzaTab';
 import { ModaleConfigFiscale } from '../components/ModaleConfigFiscale';
 import { TestiTemplateTab } from '../components/TestiTemplateTab';
 import { AutomazioniTab } from '../components/AutomazioniTab';
+import { AppClienteTab } from '../components/AppClienteTab';
 import type { RegimeFiscale } from '../lib/configFiscale';
 
 // ============ TIPI ============
@@ -108,7 +109,7 @@ function normalizzaDati(raw: unknown): DatiAziendali {
   };
 }
 
-type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'comunicazioni' | 'promemoria' | 'testi_template' | 'automazioni' | 'sicurezza' | 'licenze';
+type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'comunicazioni' | 'promemoria' | 'testi_template' | 'automazioni' | 'sicurezza' | 'licenze' | 'app_cliente';
 
 const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'profilo', label: 'Profilo', icon: '👤' },
@@ -123,6 +124,7 @@ const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'testi_template', label: 'Testi Messaggi', icon: '📝' },
   { id: 'automazioni', label: 'Automazioni', icon: '🔔' },
   { id: 'sicurezza', label: 'Sicurezza', icon: '🔐' },
+  { id: 'app_cliente', label: 'App Cliente', icon: '📱' },
 ];
 
 const ADMIN_EMAIL = 'righetti@righetti.club';
@@ -1033,6 +1035,7 @@ export function Impostazioni() {
         {tabAttiva === 'testi_template' && <TestiTemplateTab />}
         {tabAttiva === 'automazioni' && <AutomazioniTab />}
         {tabAttiva === 'sicurezza' && <SicurezzaTab />}
+        {tabAttiva === 'app_cliente' && <AppClienteTab />}
         {tabAttiva === 'licenze' && isAdmin && <TabLicenze adminEmail={user?.email || ''} />}
       </div>
     </div>
