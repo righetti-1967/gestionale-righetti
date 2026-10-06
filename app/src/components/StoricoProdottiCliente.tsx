@@ -453,6 +453,9 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
                         title="Apri scontrino"
                       >
                         🧾 {item.numeroScontrino}
+                        {item.scontrino.tipo === 'figlio' && (
+                          <span className="ml-1 text-[10px] font-bold text-orange-600">(Figlio)</span>
+                        )}
                       </button>
                     ) : item.scarico ? (
                       <button
