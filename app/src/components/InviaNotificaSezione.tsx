@@ -1,6 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 type Priorita = 'alta' | 'media' | 'bassa';
+
+interface NotificaItem {
+  id: string;
+  tipo: string;
+  titolo: string;
+  messaggio: string;
+  priorita: string;
+  letta: boolean;
+  letta_at: string | null;
+  push_inviata: boolean;
+  push_inviata_at: string | null;
+  push_errore: string | null;
+  created_at: string;
+}
 
 export function InviaNotificaSezione({ clientId }: { clientId: number }) {
   const [titolo, setTitolo] = useState('');
@@ -10,6 +25,27 @@ export function InviaNotificaSezione({ clientId }: { clientId: number }) {
   const [inviando, setInviando] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
   const [successo, setSuccesso] = useState<string | null>(null);
+
+  const [notifiche, setNotifiche] = useState<NotificaItem[]>([]);
+  const [loadingLista, setLoadingLista] = useState(true);
+
+  async function caricaLista() {
+    setLoadingLista(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_list_notifiche_cliente', {
+        client_id_input: clientId,
+        limit_input: 20,
+      });
+      if (!error && data) setNotifiche(data as NotificaItem[]);
+    } finally {
+      setLoadingLista(false);
+    }
+  }
+
+  useEffect(() => {
+    caricaLista();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
 
   async function handleInvia() {
     if (!titolo.trim() || !messaggio.trim()) {
@@ -21,7 +57,6 @@ export function InviaNotificaSezione({ clientId }: { clientId: number }) {
     setSuccesso(null);
 
     try {
-      const { supabase } = await import('../lib/supabase');
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         setErrore('Sessione scaduta');
@@ -55,7 +90,7 @@ export function InviaNotificaSezione({ clientId }: { clientId: number }) {
       }
 
       if (json.sent === 0) {
-        setSuccesso('⚠️ Notifica salvata ma nessun dispositivo attivo (cliente non ha attivato le notifiche)');
+        setSuccesso('⚠️ Notifica salvata ma nessun dispositivo attivo');
       } else {
         setSuccesso(`✅ Notifica inviata a ${json.sent} dispositivo${json.sent > 1 ? 'i' : ''}`);
       }
@@ -64,6 +99,8 @@ export function InviaNotificaSezione({ clientId }: { clientId: number }) {
       setMessaggio('');
       setUrl('');
       setPriorita('media');
+      // Ricarica lista
+      caricaLista();
     } catch (e: any) {
       setErrore(e.message || 'Errore di rete');
     } finally {
@@ -150,14 +187,10 @@ export function InviaNotificaSezione({ clientId }: { clientId: number }) {
         </div>
 
         {errore && (
-          <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-            {errore}
-          </div>
+          <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">{errore}</div>
         )}
         {successo && (
-          <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
-            {successo}
-          </div>
+          <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">{successo}</div>
         )}
 
         <button
@@ -169,6 +202,95 @@ export function InviaNotificaSezione({ clientId }: { clientId: number }) {
           {inviando ? '📤 Invio…' : '📤 Invia notifica'}
         </button>
       </div>
+
+      {/* Storico notifiche */}
+      <div className="mt-5">
+        <div className="flex items-center justify-between mb-2">
+          <h5 className="text-xs font-semibold text-gray-700">
+            Ultime notifiche
+            {notifiche.length > 0 && (
+              <span className="ml-1 text-gray-400 font-normal">({notifiche.length})</span>
+            )}
+          </h5>
+          <button
+            type="button"
+            onClick={caricaLista}
+            disabled={loadingLista}
+            className="text-[10px] text-gray-500 hover:text-blue-600 disabled:opacity-50"
+          >
+            🔄 Aggiorna
+          </button>
+        </div>
+
+        {loadingLista ? (
+          <div className="text-xs text-gray-400 py-3 text-center">Caricamento…</div>
+        ) : notifiche.length === 0 ? (
+          <div className="text-xs text-gray-400 py-3 text-center border border-dashed border-gray-200 rounded-lg">
+            Nessuna notifica inviata
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {notifiche.map((n) => (
+              <div
+                key={n.id}
+                className={`border rounded-lg p-2.5 text-xs ${
+                  n.letta ? 'bg-green-50/40 border-green-100' : 'bg-white border-gray-200'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-gray-900 truncate">{n.titolo}</div>
+                    <div className="text-gray-600 mt-0.5 line-clamp-2">{n.messaggio}</div>
+                  </div>
+                  <span
+                    className={`flex-shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded whitespace-nowrap ${
+                      n.letta
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {n.letta ? '✓ Letta' : 'Non letta'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mt-1.5 text-[10px] text-gray-400">
+                  <span>📅 {formatDataOra(n.created_at)}</span>
+                  <div className="flex items-center gap-2">
+                    {n.push_inviata && <span title="Push inviata">🔔</span>}
+                    {n.push_errore && (
+                      <span className="text-red-500" title={n.push_errore}>
+                        ⚠️
+                      </span>
+                    )}
+                    {n.letta && n.letta_at && (
+                      <span className="text-green-600">
+                        Letta {formatDataOra(n.letta_at)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
+}
+
+function formatDataOra(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const oggi = new Date();
+    if (d.toDateString() === oggi.toDateString()) {
+      return `Oggi · ${d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    return d.toLocaleString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return iso;
+  }
 }
