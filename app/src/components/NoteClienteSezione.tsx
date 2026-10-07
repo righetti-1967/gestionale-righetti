@@ -40,6 +40,9 @@ export function NoteClienteSezione({ clientId }: { clientId: number }) {
 
   useEffect(() => {
     carica();
+    // Auto-refresh ogni 20 sec (per vedere se il cliente legge)
+    const interval = setInterval(carica, 20000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
