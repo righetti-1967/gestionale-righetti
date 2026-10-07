@@ -1,5 +1,5 @@
 # STATO GESTIONALE RIGHETTI 1967
-Ultimo aggiornamento: 07/10/2026 (mattina)
+Ultimo aggiornamento: 07/10/2026 (sera)
 
 ---
 
@@ -58,7 +58,8 @@ Gestionale per Studio Tricologico Righetti (Talamona, SO). PWA installabile su i
 
 Creata da zero l'**App Cliente PWA** (`cliente.righetti.club`), collegata al
 Gestionale, con autenticazione magic link, visione documenti e installazione
-PWA su iPhone. Fixato bug critico React #310 in Agenda.
+PWA su iPhone. Fixati bug critici React #310 in Agenda e Testi Messaggi.
+Raggruppamento documenti in Storico con modale anteprima.
 
 ### ✅ COMPLETATO — App Cliente PWA
 
@@ -121,13 +122,15 @@ PWA su iPhone. Fixato bug critico React #310 in Agenda.
 **Storico Sedute & Consegne (modale cliente):**
 - Tab: Tutti / Prodotti / Servizi / EXTRA / Fatture & Scontrini
 - **Raggruppamento per documento** con freccia ▼
-- **Documenti cliccabili** per aprire PDF (fatture pagate, scontrini, DDT, scontrini figli)
-- **Proforma**: visibili ma non cliccabili (etichetta "IN ATTESA")
-- **Scontrini figli**: suffisso "(Figlio)"
-- **Fatture proforma**: etichetta "Proforma" invece di "Fattura"
+- **Documenti cliccabili** in TUTTE le tab → aprono **modale anteprima** (AnteprimaPdf / StampaScontrino / AnteprimaDdtMinimale)
+- **Proforma**: cliccabili (aprono anteprima Proforma)
+- **Scontrini figli**: suffisso "(Figlio)" + raggruppati sotto madre
+- **Fatture proforma**: etichetta "Proforma" + "IN ATTESA" invece di "Fattura"
+- Se `pdf_url` esiste → apre da Storage; altrimenti genera al volo
 
 **Fix critici:**
 - **React error #310 in Agenda**: `useDraft` + 2 `useEffect` + `useRef` erano dopo `return if (loading)`. Spostati prima.
+- **React error #310 in Testi Messaggi** (`TestiTemplateTab.tsx`): stesso pattern, fixato.
 - **RPC "column reference ambiguous"**: qualificare sempre `tabella.colonna` in `RETURNS TABLE`
 
 **Bug fix TricoAI:**
@@ -145,6 +148,28 @@ PWA su iPhone. Fixato bug critico React #310 in Agenda.
 - ⏸️ `/cura-domiciliare` — Rituale di Cura Domiciliare (da TricoAI)
 - ✅ `/privacy` — FATTO
 - ✅ `/documenti` — FATTO
+- 🆕 `/note` — Note studio → Cliente (scritte da staff, visibili al cliente)
+- 🆕 `/notifiche` — Centro notifiche push (con badge non lette)
+
+### 1.bis App Cliente — Note studio + Notifiche push (NUOVO 07/10/2026)
+
+**Note studio → Cliente:**
+- Staff scrive note da Impostazioni → App Cliente → Gestisci cliente
+- Toggle "visibile al cliente"
+- App Cliente mostra sezione `/note` con le note visibili
+- Tabella `cliente_note`: id, client_id, contenuto, autore_user_id, visibile_cliente, created_at, updated_at
+- RPC: `admin_create_nota_cliente`, `admin_list_note_cliente`, `admin_update_nota_cliente`, `admin_delete_nota_cliente`, `get_my_note`
+
+**Notifiche push prioritarie:**
+- 3 livelli: 🔴 alta / 🟡 media / 🟢 bassa
+- Staff manda da Gestionale: titolo + messaggio + priorità + destinatari (singolo/tutti)
+- App Cliente: ricezione push + centro notifiche `/notifiche` con badge non lette
+- Tecnologia: Web Push API + Service Worker + VAPID keys
+- Edge Function `send-push` (Deno + web-push lib)
+- Tabella `push_subscriptions`: id, client_id, endpoint, p256dh, auth, user_agent, created_at
+- Tabella `notifiche`: id, client_id, titolo, messaggio, priorita, letta, letta_at, created_at
+- ⚠️ iOS 16.4+ richiede PWA installata
+- ⚠️ Prompt autorizzazione notifiche solo dopo azione utente
 
 ### 2. TricoAI → App Cliente (schede tricologiche)
 - ⏸️ TricoAI ha Supabase **separato**
@@ -231,6 +256,20 @@ PWA su iPhone. Fixato bug critico React #310 in Agenda.
 - `client_portal_settings`: configurazione visibilità per cliente
 - `client_invites`: token invito + `action_link` (magic link Supabase)
 - `clienti.tricoai_id uuid`: collegamento a TricoAI
+
+### App Cliente — Note studio (futuro)
+- Tabella `cliente_note`: id, client_id, contenuto, autore_user_id, visibile_cliente, created_at, updated_at
+- RPC staff: create/list/update/delete
+- RPC cliente: `get_my_note()` (solo visibili)
+
+### App Cliente — Notifiche push (futuro)
+- Web Push API + Service Worker + VAPID keys
+- Tabella `push_subscriptions`: id, client_id, endpoint, p256dh, auth, user_agent, created_at
+- Tabella `notifiche`: id, client_id, titolo, messaggio, priorita, letta, letta_at, created_at
+- Edge Function `send-push` (Deno + web-push)
+- VAPID: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` in Supabase secrets
+- ⚠️ iOS 16.4+ richiede PWA installata
+- ⚠️ Prompt autorizzazione dopo azione utente
 
 ### Edge Function Supabase
 - `generate-invite-link`: genera magic link diretto (service role)
