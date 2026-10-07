@@ -5,6 +5,8 @@ interface NotaCliente {
   id: string;
   contenuto: string;
   visibile_cliente: boolean;
+  letta: boolean;
+  letta_at: string | null;
   created_at: string;
   updated_at: string;
   autore_nome: string | null;
@@ -172,7 +174,11 @@ export function NoteClienteSezione({ clientId }: { clientId: number }) {
             <div
               key={n.id}
               className={`border rounded-lg p-3 text-sm ${
-                n.visibile_cliente ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200 opacity-70'
+                !n.visibile_cliente
+                  ? 'bg-gray-50 border-gray-200 opacity-70'
+                  : n.letta
+                  ? 'bg-green-50/40 border-green-100'
+                  : 'bg-white border-gray-200'
               }`}
             >
               {editandoId === n.id ? (
@@ -218,14 +224,25 @@ export function NoteClienteSezione({ clientId }: { clientId: number }) {
                 // Modalità visualizzazione
                 <div>
                   <div className="text-gray-800 whitespace-pre-wrap break-words">{n.contenuto}</div>
-                  <div className="flex items-center justify-between mt-2 gap-2">
-                    <div className="text-[10px] text-gray-400">
-                      📅 {formatDataOra(n.created_at)}
-                      {n.autore_nome && <> · {n.autore_nome}</>}
+                  <div className="flex items-center justify-between mt-2 gap-2 flex-wrap">
+                    <div className="text-[10px] text-gray-400 flex items-center gap-1.5 flex-wrap">
+                      <span>📅 {formatDataOra(n.created_at)}</span>
+                      {n.autore_nome && <span>· {n.autore_nome}</span>}
                       {!n.visibile_cliente && (
-                        <span className="ml-2 text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                        <span className="text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
                           👁‍🗨 Interna
                         </span>
+                      )}
+                      {n.visibile_cliente && (
+                        n.letta ? (
+                          <span className="text-green-700 bg-green-100 px-1.5 py-0.5 rounded font-medium">
+                            ✓ Letta {n.letta_at ? formatDataOra(n.letta_at) : ''}
+                          </span>
+                        ) : (
+                          <span className="text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded font-medium">
+                            Non letta
+                          </span>
+                        )
                       )}
                     </div>
                     <div className="flex gap-1">
