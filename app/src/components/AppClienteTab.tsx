@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { inviaEmailConConfig } from '../lib/api';
 import { NoteClienteSezione } from './NoteClienteSezione';
+import { InviaNotificaSezione } from './InviaNotificaSezione';
 
 interface ClientePortal {
   client_id: number;
@@ -579,6 +580,9 @@ function ClientePortalModal({
 
           {/* Note per il cliente */}
           <NoteClienteSezione clientId={cliente.client_id} />
+
+          {/* Invia notifica push */}
+          <InviaNotificaSezione clientId={cliente.client_id} />
         </div>
 
         {/* Footer */}
