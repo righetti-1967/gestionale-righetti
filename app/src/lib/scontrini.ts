@@ -246,6 +246,24 @@ export async function creaScontrino(scontrino: NuovoScontrino): Promise<Scontrin
     }
   }
 
+  // 3. Genera e carica PDF automaticamente (solo per scontrini madre)
+  if (nuovo.tipo === 'madre') {
+    try {
+      const { caricaPdfScontrinoStorage } = await import('./scontrini-figli');
+      const { url } = await caricaPdfScontrinoStorage(nuovo as any);
+      if (url) {
+        await supabase
+          .from('scontrini')
+          .update({ pdf_url: url })
+          .eq('id', nuovo.id);
+        nuovo.pdf_url = url;
+        console.log('✅ PDF scontrino caricato automaticamente:', url);
+      }
+    } catch (e) {
+      console.warn('⚠️ Upload PDF scontrino fallito (non bloccante):', e);
+    }
+  }
+
   return nuovo;
 }
 

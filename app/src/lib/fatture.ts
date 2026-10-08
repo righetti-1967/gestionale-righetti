@@ -234,6 +234,24 @@ export async function creaFattura(fattura: NuovaFattura): Promise<Fattura> {
     throw error;
   }
 
+  // ⚡️ Upload automatico PDF proforma (non bloccante)
+  try {
+    const { generaPdfFattura } = await import('./pdfFattura');
+    // Ricarica con cliente
+    const { data: conCliente } = await supabase
+      .from('fatture')
+      .select('*, cliente:clienti(*)')
+      .eq('id', data.id)
+      .single();
+
+    if (conCliente) {
+      await generaPdfFattura(conCliente as any, true); // scarica=false? → caricamento automatico in pdfFattura
+      console.log('✅ PDF fattura generato e caricato');
+    }
+  } catch (e) {
+    console.warn('⚠️ Upload PDF fattura fallito (non bloccante):', e);
+  }
+
   return data;
 }
 
@@ -464,10 +482,29 @@ export async function registraIncasso(
   dataISO: string,
   metodoPagamento: string
 ): Promise<Fattura> {
-  return aggiornaFattura(id, {
+  const aggiornata = await aggiornaFattura(id, {
     data_incasso: dataISO,
     metodo_pagamento: metodoPagamento,
   });
+
+  // ⚡️ Rigenera PDF come fattura (non proforma) e sovrascrive
+  try {
+    const { generaPdfFattura } = await import('./pdfFattura');
+    const { data: conCliente } = await supabase
+      .from('fatture')
+      .select('*, cliente:clienti(*)')
+      .eq('id', id)
+      .single();
+
+    if (conCliente) {
+      await generaPdfFattura(conCliente as any, true);
+      console.log('✅ PDF fattura incassata aggiornato');
+    }
+  } catch (e) {
+    console.warn('⚠️ Upload PDF fattura incassata fallito:', e);
+  }
+
+  return aggiornata;
 }
 
 export async function annullaIncasso(id: number): Promise<Fattura> {

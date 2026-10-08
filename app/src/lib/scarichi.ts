@@ -127,6 +127,40 @@ export async function creaScarico(
     throw error;
   }
 
+  // ⚡️ Upload automatico PDF DDT (non bloccante)
+  try {
+    const { generaPdfDdtCliente } = await import('./pdfDdt');
+    // Ricarica con cliente
+    const { data: conCliente } = await supabase
+      .from('scarichi_seduta')
+      .select('*, cliente:clienti(*)')
+      .eq('id', data.id)
+      .single();
+
+    if (conCliente && (conCliente as any).cliente) {
+      // Carica percorso se presente
+      let percorso: any = null;
+      if ((conCliente as any).percorso_id) {
+        const { data: p } = await supabase
+          .from('percorsi')
+          .select('*')
+          .eq('id', (conCliente as any).percorso_id)
+          .maybeSingle();
+        percorso = p;
+      }
+
+      await generaPdfDdtCliente(
+        conCliente as any,
+        percorso,
+        (conCliente as any).cliente,
+        false, // scarica=false → non scaricare, solo genera (per upload)
+      );
+      console.log('✅ PDF DDT generato e caricato');
+    }
+  } catch (e) {
+    console.warn('⚠️ Upload PDF DDT fallito (non bloccante):', e);
+  }
+
   return data;
 }
 

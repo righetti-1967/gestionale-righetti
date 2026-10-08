@@ -675,7 +675,7 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
       if (tab === 'extra' && !v.isExtra) return false;
       if (tab !== 'extra' && v.isExtra && tab !== 'tutti' && tab !== 'fatture') return false;
       if (tab === 'fatture' && !isDocumento) return false;
-      if (tab !== 'fatture' && isDocumento && tab !== 'tutti') return false;
+      if (tab !== 'fatture' && isDocumento && tab !== 'tutti' && tab !== 'extra') return false;
 
       if (ricerca.trim()) {
         const q = ricerca.toLowerCase();
