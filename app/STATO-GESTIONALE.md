@@ -1,5 +1,5 @@
 # STATO GESTIONALE RIGHETTI 1967
-Ultimo aggiornamento: 08/10/2026 (notte)
+Ultimo aggiornamento: 08/10/2026 (pomeriggio)
 
 ---
 
@@ -53,15 +53,16 @@ Gestionale per Studio Tricologico Righetti (Talamona, SO). PWA installabile su i
 
 ---
 
-## 🚀 SESSIONE 06-08/10/2026 — APP CLIENTE + NOTIFICHE PUSH
+## 🚀 SESSIONE 06-08/10/2026 — APP CLIENTE + NOTIFICHE PUSH + FIX PDF
 
 ### 📌 Riepilogo
 
 Creata da zero l'**App Cliente PWA** (`cliente.righetti.club`), collegata al
 Gestionale, con autenticazione magic link, visione documenti, note studio,
 appuntamenti, percorsi e **sistema completo notifiche push**.
-Fixati bug critici React #310 (Agenda, Testi Messaggi).
+Fixati bug critici React #310 (Agenda, Testi Messaggi, FormPercorso, FormOrdine).
 Implementato **UpdateBanner** PWA per aggiornamenti automatici.
+Risolto **upload automatico PDF** con righe e path corretto su Storage.
 
 ### ✅ COMPLETATO — App Cliente PWA
 
@@ -82,7 +83,7 @@ Implementato **UpdateBanner** PWA per aggiornamenti automatici.
 - `/login` — magic link email
 - `/invite?token=...` — accettazione invito (con auto-invio)
 - `/auth/callback` — gestione sessione + binding
-- `/welcome` — istruzioni installazione PWA (iOS/Android)
+- `/welcome` — istruzioni installazione PWA (**iOS + Android visibili**, badge "Il tuo caso")
 - `/` — Home (profilo + prossimo appuntamento + contatti studio + quick links + badge)
 - `/privacy` — Privacy firmata (PDF da Storage o generazione al volo)
 - `/documenti` — Fatture / Scontrini / DDT (raggruppati per documento)
@@ -134,7 +135,7 @@ Implementato **UpdateBanner** PWA per aggiornamenti automatici.
 
 **Upload PDF su Storage:**
 - `fatture-pdf`, `scontrini-pdf`, `scarichi-pdf`, `privacy-pdf`
-- Upload automatico ad ogni generazione PDF
+- Upload automatico ad ogni generazione PDF con **path corretto**: `<client_id>/<anno>/<nome_file>.pdf`
 - URL salvato in DB (`fatture.pdf_url`, `scontrini.pdf_url`, `scarichi_seduta.pdf_url`, `clienti.privacy_pdf_url`)
 
 **Storico Sedute & Consegne (modale cliente):**
@@ -202,14 +203,38 @@ Implementato **UpdateBanner** PWA per aggiornamenti automatici.
 - Badge ✓ Letta / Non letta + orario
 - Auto-refresh ogni 20 sec
 
+### ✅ COMPLETATO — Fix Upload PDF automatico (08/10/2026)
+
+**Problema risolto:**
+- PDF di scontrini/fatture/DDT non venivano caricati automaticamente su Storage
+- Alcuni PDF venivano caricati **senza righe** (path sbagliato + generazione parziale)
+- Cliente doveva attendere che lo studio aprisse manualmente il PDF
+
+**Fix:**
+- **`pdfScontrino.ts`** / **`pdfDdt.ts`** / **`pdfFattura.ts`**: separato **upload** (sempre) da **download** (`scarica=true`)
+- **`creaScontrino`** / **`creaFattura`** / **`creaScarico`**: ricaricano il documento con **righe + cliente** e chiamano la funzione di generazione PDF corretta
+- **`registraIncasso`**: rigenera PDF come **fattura** (senza "PROFORMA")
+- **Path Storage corretto** uniforme: `<client_id>/<anno>/<nome_file>.pdf`
+- **RLS Storage `fatture-pdf`**: aggiunte policy INSERT/UPDATE per authenticated
+
+**Comportamento finale:**
+- Emesso scontrino → PDF con righe su Storage **immediatamente** ✅
+- Creata fattura (proforma) → PDF proforma su Storage ✅
+- Incassata fattura → PDF rigenerato come fattura ✅
+- Creato DDT → PDF con righe su Storage ✅
+
 ### 🐛 FIX CRITICI
 
 - **React error #310 in Agenda**: `useDraft` + 2 `useEffect` + `useRef` erano dopo `return if (loading)`. Spostati prima.
 - **React error #310 in Testi Messaggi** (`TestiTemplateTab.tsx`): stesso pattern, fixato.
+- **React error #310 in FormNuovoPercorso.tsx**: stesso pattern, fixato.
+- **React error #310 in FormNuovoOrdine.tsx**: stesso pattern, fixato.
 - **RPC "column reference ambiguous"**: qualificare sempre `tabella.colonna` in `RETURNS TABLE`
 - **vercel.json mancante**: routing SPA rotto su Vercel (`/attiva-notifiche` → 404). Aggiunto rewrites.
 - **RLS UPDATE su `cliente_note`**: policy mancante per marcatura letta → risolto
 - **RPC `get_my_note` senza `letta`**: aggiunto campo
+- **RLS INSERT/UPDATE `fatture-pdf`**: upload bloccato → aggiunte policy
+- **Tab Prodotti/Servizi/EXTRA** in Storico: `isDocumento` scartava le righe → fix
 
 **Bug fix TricoAI:**
 - Fix `main.tsx`: aggiunti `<BrowserRouter>` + `<AuthProvider>` mancanti (commit `abfea82`)
@@ -219,17 +244,20 @@ Implementato **UpdateBanner** PWA per aggiornamenti automatici.
 ## 🔴 TODO — PRIORITÀ ALTA
 
 ### 1. Notifiche Push — Automazioni automatiche (IN CORSO)
-- ⏸️ **Trigger DB** su `cliente_note` (INSERT → notifica)
-- ⏸️ **Trigger DB** su `appuntamenti` (INSERT/UPDATE → notifica)
-- ⏸️ **Trigger DB** su `fatture` (UPDATE pdf_url → notifica)
-- ⏸️ **Trigger DB** su `scontrini` (INSERT → notifica)
-- ⏸️ **Trigger DB** su `scarichi_seduta` (INSERT → notifica)
-- ⏸️ **Trigger DB** su `clienti` (UPDATE privacy_pdf_url → notifica)
-- ⏸️ **Cron edge function** ogni 1 min → processa `notifiche` con `push_inviata = false`
+- ⏸️ **Trigger DB** su `cliente_note` (INSERT → notifica + push)
+- ⏸️ **Trigger DB** su `appuntamenti` (INSERT/UPDATE → notifica + push)
+- ⏸️ **Trigger DB** su `fatture` (UPDATE pdf_url → notifica + push)
+- ⏸️ **Trigger DB** su `scontrini` (INSERT → notifica + push)
+- ⏸️ **Trigger DB** su `scarichi_seduta` (INSERT → notifica + push)
+- ⏸️ **Trigger DB** su `clienti` (UPDATE privacy_pdf_url → notifica + push)
+- ⏸️ **Trigger DB** su `percorsi` (INSERT/UPDATE stato → notifica + push)
+- ⏸️ **Trigger DB** su schede TricoAI (INSERT → notifica + push)
+- ⏸️ **Cron edge function** ogni 1 min → processa `notifiche` con `push_inviata = false` → invia push
 - ⏸️ **Cron compleanni** (giornaliero)
-- ⏸️ **Cron promemoria pre-appuntamento** (configurabile)
+- ⏸️ **Cron promemoria pre-appuntamento** (configurabile ore/giorni prima)
 - ⏸️ **Cron riattivazione** (90gg senza attività)
-- ⏸️ **Config automazioni** in Impostazioni → Automazioni (on/off + timing per tipo)
+- ⏸️ **Config automazioni** in Impostazioni → Automazioni (on/off + timing + testo per tipo)
+- ⏸️ **Badge automatico** in Home/BottomNav quando arriva una nuova notifica
 
 ### 2. TricoAI → App Cliente (schede tricologiche)
 - ⏸️ TricoAI ha Supabase **separato**
@@ -375,6 +403,22 @@ prenotato (default) / confermato / pending / completato / cancellato
 
 App Cliente normalizza: pending → "In attesa di conferma" (ambra), altri → "Prenotato" (blu), completato → "Completato" (grigio), cancellato → "Annullato" (rosso)
 
+Fatture — Visibilità cliente
+Proforma (data_incasso = NULL): visibili ma non cliccabili
+
+Fatture pagate (data_incasso != NULL): visibili e cliccabili
+
+Comportamento coerente con il Gestionale
+
+Upload PDF — Regola
+Sempre al momento della creazione/emissione (fatture, scontrini, DDT, privacy)
+
+Path Storage: <client_id>/<anno>/<nome_file>.pdf
+
+uploadJsPdfToStorage fuori da if (scarica) (upload indipendente dal download)
+
+Righe incluse nel PDF (ricaricare con select *, righe:tabella_righe(*))
+
 🔧 COMANDI UTILI
 Build Gestionale: cd /Users/luca/Desktop/Tricolab/GESTIONALE/app && npm run build
 
@@ -418,6 +462,8 @@ Verifica sempre l'utente loggato (admin vs demo)
 Test su PROD dopo ogni push
 
 PWA: forza hard reload dopo deploy (Cmd+Shift+R) o usa UpdateBanner
+
+Upload PDF: sempre fuori da if (scarica) — mai condizionato al download
 
 📂 FILE CORRELATI
 TricoAI v2: /Users/luca/Desktop/Tricolab_v2/STATO.md
