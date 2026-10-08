@@ -180,7 +180,9 @@ export async function inviaEmailPromemoria(
   const ora = formatOra(app.ora_inizio);
   const nomeServizio = getNomeServizio(app);
   const nomeAziendaFinale = nomeAzienda || '';
-  const logoUrl = getLogoUrl();
+  // Leggi email utente loggato per far scegliere il logo corretto
+  const { data: { user: _u } } = await supabase.auth.getUser();
+  const logoUrl = getLogoUrl(false, _u?.email || null);
 
   // Se c'è override, sostituisci le variabili anche dentro
   const overrideElaborato = testoAggiuntivo && testoAggiuntivo.trim()
