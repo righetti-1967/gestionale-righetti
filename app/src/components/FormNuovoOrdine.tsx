@@ -228,16 +228,6 @@ export function FormNuovoOrdine({
     }
   }
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-        <div className="bg-white rounded-apple shadow-apple-lg p-8">
-          <div className="text-apple-gray text-sm">Caricamento...</div>
-        </div>
-      </div>
-    );
-  }
-
   // === DRAFT ORDINE (useDraft) ===
   interface OrdineDraft {
     fornitoreId: number | null;
@@ -279,6 +269,16 @@ export function FormNuovoOrdine({
     }
     draftCaricatoRef.current = true;
   }, [ordineDraftLoading, ordineDraft]);
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="bg-white rounded-apple shadow-apple-lg p-8">
+          <div className="text-apple-gray text-sm">Caricamento...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

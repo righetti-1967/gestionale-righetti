@@ -287,16 +287,6 @@ export function FormNuovoPercorso({
     }
   }
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-        <div className="bg-white rounded-apple shadow-apple-lg p-8">
-          <div className="text-apple-gray text-sm">Caricamento dati...</div>
-        </div>
-      </div>
-    );
-  }
-
   // === DRAFT PERCORSO (useDraft) ===
   interface PercorsoDraft {
     clienteId: number | null;
@@ -356,6 +346,16 @@ export function FormNuovoPercorso({
     }
     draftCaricatoRef.current = true;
   }, [percorsoDraftLoading, percorsoDraft]);
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="bg-white rounded-apple shadow-apple-lg p-8">
+          <div className="text-apple-gray text-sm">Caricamento dati...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
