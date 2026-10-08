@@ -21,21 +21,25 @@ export type CanaleAutomazione = 'whatsapp' | 'email' | 'entrambi';
 export interface ParametriPostSeduta {
   quantita: number;                     // es. 1, 10, 30, 2...
   unita: 'minuti' | 'ore' | 'giorni';   // es. 'ore' = "2 ore dopo"
+  ora_invio: string; // usato solo se unita = 'giorni'
   canale: CanaleAutomazione;
 }
 
 export interface ParametriCompleanno {
+  giorni_prima: number;  // 0 = giorno del compleanno, 3 = 3 giorni prima
   ora_invio: string;     // es. '09:00'
   canale: CanaleAutomazione;
 }
 
 export interface ParametriRiattivazione {
   giorni_inattivita: number; // es. 90 giorni senza appuntamenti
+  ora_invio: string; // es. '09:00'
   canale: CanaleAutomazione;
 }
 
 export interface ParametriPromemoria {
   ore_anticipo: number; // 12, 24, 48, 72, 96, 120, 168
+  ora_invio: string; // es. '09:00'
   canale: CanaleAutomazione;
 }
 
@@ -72,6 +76,7 @@ export const DEFAULT_AUTOMAZIONI: Record<TipoAutomazione, Automazione> = {
     parametri: {
       quantita: 2,
       unita: 'ore',
+      ora_invio: '09:00',
       canale: 'whatsapp',
     } as ParametriPostSeduta,
   },
@@ -80,6 +85,7 @@ export const DEFAULT_AUTOMAZIONI: Record<TipoAutomazione, Automazione> = {
     attivo: false,
     modalita: 'manuale',
     parametri: {
+      giorni_prima: 0,
       ora_invio: '09:00',
       canale: 'whatsapp',
     } as ParametriCompleanno,
@@ -90,6 +96,7 @@ export const DEFAULT_AUTOMAZIONI: Record<TipoAutomazione, Automazione> = {
     modalita: 'manuale',
     parametri: {
       giorni_inattivita: 90,
+      ora_invio: '09:00',
       canale: 'whatsapp',
     } as ParametriRiattivazione,
   },
@@ -99,6 +106,7 @@ export const DEFAULT_AUTOMAZIONI: Record<TipoAutomazione, Automazione> = {
     modalita: 'manuale',
     parametri: {
       ore_anticipo: 24,
+      ora_invio: '09:00',
       canale: 'entrambi',
     } as ParametriPromemoria,
   },
@@ -108,6 +116,7 @@ export const DEFAULT_AUTOMAZIONI: Record<TipoAutomazione, Automazione> = {
     modalita: 'manuale',
     parametri: {
       ore_anticipo: 72,
+      ora_invio: '09:00',
       canale: 'entrambi',
     } as ParametriPromemoria,
   },

@@ -285,6 +285,20 @@ function CardAutomazione({
                     ⚠️ Il motore automatico gira ogni 15 min: tempi sotto i 15 min richiedono backend dedicato.
                   </p>
                 )}
+
+                {u === 'giorni' && (
+                  <div className="mt-4">
+                    <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                      Ora invio
+                    </label>
+                    <input
+                      type="time"
+                      value={ps.ora_invio || '09:00'}
+                      onChange={(e) => cambiaParametro('ora_invio', e.target.value)}
+                      className="w-40 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm focus:outline-none focus:ring-2 focus:ring-purple-300/40"
+                    />
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -350,6 +364,18 @@ function CardAutomazione({
                   </p>
                 </div>
 
+                <div>
+                  <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                    Ora invio
+                  </label>
+                  <input
+                    type="time"
+                    value={pp.ora_invio || '09:00'}
+                    onChange={(e) => cambiaParametro('ora_invio', e.target.value)}
+                    className="w-40 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm focus:outline-none focus:ring-2 focus:ring-purple-300/40"
+                  />
+                </div>
+
                 {/* Link modifica testi */}
                 <div className="flex flex-wrap gap-2">
                   <a
@@ -373,19 +399,48 @@ function CardAutomazione({
             );
           })()}
 
-          {tipo === 'compleanno' && (
-            <div>
-              <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
-                Ora invio
-              </label>
-              <input
-                type="time"
-                value={(parametri as ParametriCompleanno).ora_invio || '09:00'}
-                onChange={(e) => cambiaParametro('ora_invio', e.target.value)}
-                className="w-40 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm focus:outline-none focus:ring-2 focus:ring-purple-300/40"
-              />
-            </div>
-          )}
+          {tipo === 'compleanno' && (() => {
+            const pc = parametri as ParametriCompleanno;
+            const giorniPrima = pc.giorni_prima ?? 0;
+            return (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                    Giorni prima del compleanno
+                  </label>
+                  <select
+                    value={giorniPrima}
+                    onChange={(e) => cambiaParametro('giorni_prima', parseInt(e.target.value))}
+                    className="w-56 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm font-semibold text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-purple-300/40"
+                  >
+                    <option value="0">Il giorno del compleanno</option>
+                    <option value="1">1 giorno prima</option>
+                    <option value="2">2 giorni prima</option>
+                    <option value="3">3 giorni prima</option>
+                    <option value="5">5 giorni prima</option>
+                    <option value="7">7 giorni prima</option>
+                  </select>
+                  <p className="text-[11px] text-apple-gray mt-2 italic">
+                    💡 {giorniPrima === 0
+                      ? 'Inviato il giorno stesso del compleanno'
+                      : `Inviato ${giorniPrima} giorn${giorniPrima === 1 ? 'o' : 'i'} prima del compleanno`}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                    Ora invio
+                  </label>
+                  <input
+                    type="time"
+                    value={pc.ora_invio || '09:00'}
+                    onChange={(e) => cambiaParametro('ora_invio', e.target.value)}
+                    className="w-40 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm focus:outline-none focus:ring-2 focus:ring-purple-300/40"
+                  />
+                </div>
+              </div>
+            );
+          })()}
 
           {tipo === 'riattivazione' && (
             <div>
@@ -404,6 +459,18 @@ function CardAutomazione({
                 <span className="text-sm text-apple-gray">
                   giorni di inattività del cliente
                 </span>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                  Ora invio
+                </label>
+                <input
+                  type="time"
+                  value={(parametri as ParametriRiattivazione).ora_invio || '09:00'}
+                  onChange={(e) => cambiaParametro('ora_invio', e.target.value)}
+                  className="w-40 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm focus:outline-none focus:ring-2 focus:ring-purple-300/40"
+                />
               </div>
             </div>
           )}
