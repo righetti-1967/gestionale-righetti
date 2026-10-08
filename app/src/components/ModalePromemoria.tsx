@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { ModaleTestoPromemoria } from './ModaleTestoPromemoria';
 import { caricaConfigPromemoria, inviaEmailPromemoria, marcaPromemoriaInviato, type ConfigPromemoria } from '../lib/promemoria';
 import { caricaDatiAziendali } from '../lib/datiAziendali';
 
@@ -36,7 +37,19 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<ConfigPromemoria | null>(null);
   const [nomeAzienda, setNomeAzienda] = useState<string>('');
-  const [testoWhatsapp, setTestoWhatsapp] = useState<string>('');
+  const [testoWhatsapp, setTestoWhatsapp] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('promemoria_testo_whatsapp') || '';
+    }
+    return '';
+  });
+  const [testoEmailCustom, setTestoEmailCustom] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('promemoria_testo_email') || '';
+    }
+    return '';
+  });
+  const [modaleTestoAperto, setModaleTestoAperto] = useState<'email' | 'whatsapp' | null>(null);
   const [selezionati, setSelezionati] = useState<Set<number>>(new Set());
   const [filtro, setFiltro] = useState<FiltroStato>('tutti');
   const [inviando, setInviando] = useState(false);
@@ -79,7 +92,9 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
       const template = primo.tipo === 'checkup_nuovo' && config.attivoCheckup
         ? config.messaggioCheckup
         : config.messaggioStandard;
-      setTestoWhatsapp(template || '');
+      // Solo se non c'è già un override in sessionStorage
+      const salvato = sessionStorage.getItem('promemoria_testo_whatsapp');
+      if (!salvato) setTestoWhatsapp(template || '');
       templateWhatsappInizializzatoRef.current = true;
     }
   }, [appuntamenti, config, templateWhatsappInizializzatoRef]);
@@ -151,7 +166,7 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
         continue;
       }
       try {
-        await inviaEmailPromemoria(getAppuntamentoDaRpc(a), config, nomeAzienda);
+        await inviaEmailPromemoria(getAppuntamentoDaRpc(a), config, nomeAzienda, testoEmailCustom || undefined);
         await supabase
           .from('appuntamenti')
           .update({
@@ -233,6 +248,14 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
       }
 
       setSelezionati(new Set());
+      // Reset degli override dopo invio riuscito
+      if (risultati.ok > 0) {
+        sessionStorage.removeItem('promemoria_testo_email');
+        sessionStorage.removeItem('promemoria_testo_whatsapp');
+        setTestoEmailCustom('');
+        // Ripristina WhatsApp al template
+        if (config) setTestoWhatsapp(config.messaggioStandard || '');
+      }
       carica();
     } finally {
       setInviando(false);
@@ -284,49 +307,54 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
           ))}
         </div>
 
-        {/* Testo WhatsApp */}
-        <div className="px-5 py-3 bg-green-50/40 border-b border-green-100">
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            💬 Testo WhatsApp (modificabile)
-          </label>
-          <textarea
-            value={testoWhatsapp}
-            onChange={(e) => setTestoWhatsapp(e.target.value)}
-            placeholder="Ciao {nome}, ti ricordiamo il tuo appuntamento di {data} alle ore {ora}..."
-            rows={4}
-            maxLength={800}
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand resize-none bg-white font-mono"
-          />
-          <div className="text-[10px] text-gray-500 mt-1 flex items-center justify-between gap-2 flex-wrap">
-            <span>
-              ℹ️ Variabili: <code className="bg-white px-1 rounded">{'{nome}'}</code> <code className="bg-white px-1 rounded">{'{data}'}</code> <code className="bg-white px-1 rounded">{'{ora}'}</code> <code className="bg-white px-1 rounded">{'{servizio}'}</code> <code className="bg-white px-1 rounded">{'{azienda}'}</code>
-            </span>
-            <a
-              href="/impostazioni?tab=testi_template&sottotab=email&template=email_promemoria"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[10px] text-blue-600 hover:underline whitespace-nowrap"
+        {/* Pulsanti modifica testi (Apple style) */}
+        <div className="px-5 py-3 bg-gray-50/60 border-b border-gray-100 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setModaleTestoAperto('email')}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium bg-white border border-gray-200 rounded-xl hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
+          >
+            <span>📧</span>
+            <span>Testo Email</span>
+            {testoEmailCustom && testoEmailCustom !== (config?.messaggioStandard || '') && (
+              <span className="ml-1 w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setModaleTestoAperto('whatsapp')}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium bg-white border border-gray-200 rounded-xl hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
+          >
+            <span>💬</span>
+            <span>Testo WhatsApp</span>
+            {testoWhatsapp && testoWhatsapp !== (config?.messaggioStandard || '') && testoWhatsapp !== (config?.messaggioCheckup || '') && (
+              <span className="ml-1 w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            )}
+          </button>
+          {testoEmailCustom && (
+            <button
+              type="button"
+              onClick={() => {
+                setTestoEmailCustom('');
+                sessionStorage.removeItem('promemoria_testo_email');
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-2 text-[10px] text-blue-600 hover:underline"
             >
-              ✏️ Modifica testo Email
-            </a>
-            <a
-              href="/impostazioni?tab=testi_template&sottotab=whatsapp&template=whatsapp_promemoria"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[10px] text-blue-600 hover:underline whitespace-nowrap"
-            >
-              ✏️ Modifica testo WhatsApp (default)
-            </a>
-          </div>
+              ↺ Email default
+            </button>
+          )}
           {testoWhatsapp && testoWhatsapp !== (config?.messaggioStandard || '') && testoWhatsapp !== (config?.messaggioCheckup || '') && (
             <button
               type="button"
               onClick={() => {
-                if (config) setTestoWhatsapp(config.messaggioStandard || '');
+                if (config) {
+                  setTestoWhatsapp(config.messaggioStandard || '');
+                  sessionStorage.removeItem('promemoria_testo_whatsapp');
+                }
               }}
-              className="mt-1 text-[10px] text-blue-600 hover:underline"
+              className="inline-flex items-center gap-1 px-2.5 py-2 text-[10px] text-blue-600 hover:underline"
             >
-              ↺ Ripristina testo di default
+              ↺ WhatsApp default
             </button>
           )}
         </div>
@@ -415,6 +443,29 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
           </div>
         )}
       </div>
+
+      {modaleTestoAperto === 'email' && (
+        <ModaleTestoPromemoria
+          tipo="email"
+          valoreIniziale={testoEmailCustom || config?.messaggioStandard || ''}
+          onSave={(nuovo) => {
+            setTestoEmailCustom(nuovo);
+            sessionStorage.setItem('promemoria_testo_email', nuovo);
+          }}
+          onClose={() => setModaleTestoAperto(null)}
+        />
+      )}
+      {modaleTestoAperto === 'whatsapp' && (
+        <ModaleTestoPromemoria
+          tipo="whatsapp"
+          valoreIniziale={testoWhatsapp || config?.messaggioStandard || ''}
+          onSave={(nuovo) => {
+            setTestoWhatsapp(nuovo);
+            sessionStorage.setItem('promemoria_testo_whatsapp', nuovo);
+          }}
+          onClose={() => setModaleTestoAperto(null)}
+        />
+      )}
     </div>
   );
 }
