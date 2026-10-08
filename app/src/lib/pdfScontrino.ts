@@ -328,28 +328,29 @@ export async function generaPdfScontrino({
   doc.setFontSize(6);
   doc.text('GRAZIE E ARRIVEDERCI', centro, y, { align: 'center' });
 
-  // --- Salva file ---
-  if (scarica) {
-    const nomeFile = generaNomeFilePdf(scontrino);
-    // Upload su Storage + salva URL nel DB (best effort)
-    try {
-      const clienteId = (scontrino as any).cliente_id;
-      const anno = (scontrino as any).anno || new Date().getFullYear();
-      const scontrinoId = (scontrino as any).id;
-      if (clienteId && scontrinoId) {
-        uploadJsPdfToStorage('scontrini-pdf', clienteId, nomeFile, doc, anno)
-          .then(async (url) => {
-            if (url) {
-              const { supabase } = await import('./supabase');
-              await supabase.from('scontrini').update({ pdf_url: url }).eq('id', scontrinoId);
-              console.log('✅ PDF scontrino salvato:', url);
-            }
-          })
-          .catch((e) => console.warn('⚠️ Upload PDF scontrino fallito:', e));
-      }
-    } catch (e) {
-      console.warn('⚠️ Upload PDF scontrino errore:', e);
+  // --- Upload su Storage SEMPRE (se cliente_id presente) ---
+  const nomeFile = generaNomeFilePdf(scontrino);
+  try {
+    const clienteId = (scontrino as any).cliente_id;
+    const anno = (scontrino as any).anno || new Date().getFullYear();
+    const scontrinoId = (scontrino as any).id;
+    if (clienteId && scontrinoId) {
+      uploadJsPdfToStorage('scontrini-pdf', clienteId, nomeFile, doc, anno)
+        .then(async (url) => {
+          if (url) {
+            const { supabase } = await import('./supabase');
+            await supabase.from('scontrini').update({ pdf_url: url }).eq('id', scontrinoId);
+            console.log('✅ PDF scontrino salvato:', url);
+          }
+        })
+        .catch((e) => console.warn('⚠️ Upload PDF scontrino fallito:', e));
     }
+  } catch (e) {
+    console.warn('⚠️ Upload PDF scontrino errore:', e);
+  }
+
+  // --- Scarica file nel browser SOLO se richiesto ---
+  if (scarica) {
     doc.save(nomeFile);
   }
 

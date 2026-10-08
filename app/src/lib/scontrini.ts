@@ -247,26 +247,23 @@ export async function creaScontrino(scontrino: NuovoScontrino): Promise<Scontrin
   }
 
   // 3. Genera e carica PDF automaticamente (solo per scontrini madre)
+  //    Usa generaPdfScontrino di pdfScontrino.ts che:
+  //    - legge già le righe dallo scontrino
+  //    - carica su Storage con il path corretto
+  //    - aggiorna pdf_url nel DB (già gestito internamente)
   if (nuovo.tipo === 'madre') {
     try {
-      // Ricarica scontrino CON righe + cliente (necessario per PDF completo)
-      const { data: conRighe } = await supabase
+      // Ricarica scontrino CON righe + cliente
+      const { data: completo } = await supabase
         .from('scontrini')
         .select('*, righe:scontrini_righe(*), cliente:clienti(*)')
         .eq('id', nuovo.id)
         .single();
 
-      if (conRighe && conRighe.righe) {
-        const { caricaPdfScontrinoStorage } = await import('./scontrini-figli');
-        const { url } = await caricaPdfScontrinoStorage(conRighe as any);
-        if (url) {
-          await supabase
-            .from('scontrini')
-            .update({ pdf_url: url })
-            .eq('id', nuovo.id);
-          nuovo.pdf_url = url;
-          console.log('✅ PDF scontrino caricato automaticamente (con righe):', url);
-        }
+      if (completo) {
+        const { generaPdfScontrino } = await import('./pdfScontrino');
+        await generaPdfScontrino({ scontrino: completo as any, scarica: false });
+        console.log('✅ PDF scontrino generato e caricato automaticamente');
       }
     } catch (e) {
       console.warn('⚠️ Upload PDF scontrino fallito (non bloccante):', e);
