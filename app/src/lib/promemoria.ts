@@ -162,6 +162,31 @@ export function apriWhatsAppPromemoria(
 // INVIO EMAIL
 // ============================================================
 
+
+function estraiCognome(nomeCompleto?: string | null): string {
+  if (!nomeCompleto) return '';
+  const parti = nomeCompleto.trim().split(/\s+/);
+  return parti.length > 1 ? parti.slice(1).join(' ') : '';
+}
+
+function formatDataEstesa(dataISO: string): string {
+  try {
+    const d = new Date(dataISO + 'T00:00:00');
+    return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  } catch {
+    return dataISO;
+  }
+}
+
+function formatDataBreve(dataISO: string): string {
+  try {
+    const d = new Date(dataISO + 'T00:00:00');
+    return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  } catch {
+    return dataISO;
+  }
+}
+
 export async function inviaEmailPromemoria(
   app: AppuntamentoConCliente | Appuntamento,
   config: ConfigPromemoria,
@@ -176,74 +201,128 @@ export async function inviaEmailPromemoria(
   const nome = 'cliente' in app
     ? estraiNome(app.cliente?.nome_cognome)
     : 'Cliente';
+  const cognome = 'cliente' in app
+    ? estraiCognome(app.cliente?.nome_cognome)
+    : '';
   const dataIt = formatDataIt(app.data);
+  const dataEstesa = formatDataEstesa(app.data);
   const ora = formatOra(app.ora_inizio);
-  const nomeServizio = getNomeServizio(app);
   const nomeAziendaFinale = nomeAzienda || '';
-  // Leggi email utente loggato per far scegliere il logo corretto
+  const dataBR = formatDataBreve(app.data);
+
+  // Determina se checkup
+  const isCheckup =
+    app.tipo === 'checkup_nuovo' ||
+    (app.titolo || '').toLowerCase().includes('check-up') ||
+    (app.titolo || '').toLowerCase().includes('checkup');
+
+  // Leggi utente per logo
   const { data: { user: _u } } = await supabase.auth.getUser();
   const logoUrl = getLogoUrl(false, _u?.email || null);
 
-  // Se c'è override, sostituisci le variabili anche dentro
-  const overrideElaborato = testoAggiuntivo && testoAggiuntivo.trim()
-    ? testoAggiuntivo
-        .replace(/\{cliente\}/g, nome)
-        .replace(/\{nome\}/g, nome)
-        .replace(/\{data\}/g, dataIt)
-        .replace(/\{ora\}/g, ora)
-        .replace(/\{servizio\}/g, nomeServizio)
-        .replace(/\{azienda\}/g, nomeAziendaFinale)
-        .replace(/\\n/g, '\n')
-        .trim()
-    : '';
+  // Leggi WhatsApp dallo studio
+  const { data: azData } = await supabase
+    .from('impostazioni')
+    .select('valore')
+    .eq('user_id', _u?.id || '')
+    .eq('chiave', 'dati_aziendali')
+    .maybeSingle();
+  const whatsappRaw = (azData?.valore as any)?.whatsapp || '';
+  const whatsappNum = whatsappRaw.replace(/[^0-9]/g, '');
 
-  const corpoHtml = `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px; background: #ffffff; color: #1c1c1e;">
+  // Leggi il template dal DB
+  const chiaveTemplate = isCheckup ? 'email_promemoria_checkup' : 'email_promemoria';
+  const { data: ttData } = await supabase
+    .from('testi_template')
+    .select('oggetto, corpo')
+    .eq('user_id', _u?.id || '')
+    .eq('chiave', chiaveTemplate)
+    .maybeSingle();
 
-      <!-- Logo -->
-      ${logoUrl ? `
-        <div style="text-align: center; margin-bottom: 32px;">
-          <img
-            src="${logoUrl}"
-            alt="${nomeAziendaFinale}"
-            style="max-height: 56px; max-width: 200px; object-fit: contain; display: block; margin: 0 auto;"
-          />
-        </div>
-      ` : ''}
+  // Fallback: se non c'è il template, usa un default hardcoded
+  const templateOggetto = ttData?.oggetto || 'Promemoria appuntamento — {data} ore {ora}';
+  const templateCorpo = ttData?.corpo || `Ciao {nome},
 
-      <!-- Titolo -->
-      <p style="margin: 0 0 28px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e;">
-        <strong>Ciao ${nome}</strong>,
-      </p>
+Ti ricordiamo il tuo appuntamento di:
 
-      <p style="margin: 0 0 20px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e;">
-        Ti ricordiamo il tuo appuntamento:
-      </p>
+[[BOX]]
 
-      <!-- Box data/ora -->
-      <div style="background: #f5f5f7; border-radius: 12px; padding: 18px 20px; margin-bottom: 28px;">
-        <p style="margin: 0 0 4px 0; font-size: 15px; font-weight: 600; color: #1c1c1e; text-transform: capitalize;">
+Per qualsiasi necessità contattaci:
+
+[[WHATSAPP]]
+
+A presto!`;
+
+  // HTML del BOX data/ora
+  const boxHtml = `
+      <div style="background: #f5f5f7; border-radius: 12px; padding: 18px 20px; margin: 20px 0;">
+        <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #1c1c1e; text-transform: capitalize;">
           ${dataIt}
         </p>
         <p style="margin: 0; font-size: 15px; font-weight: 400; color: #1c1c1e;">
           alle ore <strong>${ora}</strong>
         </p>
       </div>
+  `;
 
-      <!-- Testo promemoria (override o default) -->
-      ${testoAggiuntivo && testoAggiuntivo.trim() ? `
-        <p style="margin: 0 0 20px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e; white-space: pre-wrap;">${overrideElaborato.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+  // HTML del BOTTONE WhatsApp
+  const whatsappHtml = whatsappNum
+    ? `
+      <table cellpadding="0" cellspacing="0" border="0" style="margin: 16px auto;">
+        <tr>
+          <td align="center" style="background-color: #25D366; border-radius: 12px;">
+            <a href="https://wa.me/${whatsappNum}?text=${encodeURIComponent(
+              `Ciao, avrei necessità di spostare il mio appuntamento di ${dataIt} alle ore ${ora}, se possibile.\n\nAttendo, grazie.\n${nome}`
+            )}"
+               style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif; border-radius: 12px;">
+              💬 Scrivici su WhatsApp
+            </a>
+          </td>
+        </tr>
+      </table>
+    `
+    : '';
+
+  // Prepara corpo: usa override o template dal DB
+  const corpoBase = testoAggiuntivo && testoAggiuntivo.trim()
+    ? testoAggiuntivo.trim()
+    : templateCorpo;
+
+  // Sostituisci variabili
+  let corpoElaborato = corpoBase
+    .replace(/\{\{cliente\}\}/g, nome)
+    .replace(/\{cliente\}/g, nome)
+    .replace(/\{nome\}/g, nome)
+    .replace(/\{cognome\}/g, cognome)
+    .replace(/\{azienda\}/g, nomeAziendaFinale)
+    .replace(/\{data\}/g, dataBR)
+    .replace(/\{data_estesa\}/g, dataEstesa)
+    .replace(/\{ora\}/g, ora)
+    .replace(/\{servizio\}/g, '');
+
+  // Sostituisci placeholder BOX e WHATSAPP
+  corpoElaborato = corpoElaborato
+    .replace(/\[\[BOX\]\]/g, boxHtml)
+    .replace(/\[\[WHATSAPP\]\]/g, whatsappHtml)
+    .trim();
+
+  // Escape HTML (tranne il markup già presente)
+  // NOTA: se l'utente scrive HTML nel template, viene interpretato. Va bene per uso interno.
+  const corpoRighe = corpoElaborato.split('\n').map((line: string) => {
+    if (line.trim().startsWith('<')) return line;
+    if (line.trim() === '') return '<p style="margin: 0 0 12px 0;">&nbsp;</p>';
+    return `<p style="margin: 0 0 12px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e;">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
+  }).join('\n');
+
+  const corpoHtml = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px; background: #ffffff; color: #1c1c1e;">
+      ${logoUrl ? `
+        <div style="text-align: center; margin-bottom: 32px;">
+          <img src="${logoUrl}" alt="${nomeAziendaFinale}" style="max-height: 56px; max-width: 200px; object-fit: contain; display: block; margin: 0 auto;" />
+        </div>
       ` : ''}
 
-      <!-- Chiusura: solo se NON c'è override -->
-      ${!overrideElaborato ? `
-        <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e;">
-          Per qualsiasi necessit&agrave; contattaci pure.
-        </p>
-        <p style="margin: 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e;">
-          A presto!
-        </p>
-      ` : ''}
+      ${corpoRighe}
 
       <!-- Footer -->
       <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e5ea;">
@@ -259,9 +338,15 @@ export async function inviaEmailPromemoria(
     </div>
   `;
 
+  // Prepara oggetto
+  const oggetto = templateOggetto
+    .replace(/\{nome\}/g, nome)
+    .replace(/\{data\}/g, dataBR)
+    .replace(/\{ora\}/g, ora);
+
   await inviaEmailConConfig({
     destinatario: email.trim(),
-    oggetto: `Promemoria appuntamento — ${dataIt} ore ${ora}`,
+    oggetto,
     corpo_html: corpoHtml,
   });
 }
