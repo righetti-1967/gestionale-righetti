@@ -109,7 +109,7 @@ function normalizzaDati(raw: unknown): DatiAziendali {
   };
 }
 
-type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'comunicazioni' | 'promemoria' | 'testi_template' | 'automazioni' | 'sicurezza' | 'licenze' | 'app_cliente';
+type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'comunicazioni' | 'testi_template' | 'automazioni' | 'sicurezza' | 'licenze' | 'app_cliente';
 
 const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'profilo', label: 'Profilo', icon: '👤' },
@@ -120,7 +120,6 @@ const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'aspetto', label: 'Aspetto', icon: '🎨' },
   { id: 'google_sheets', label: 'Google Sheets', icon: '🔄' },
   { id: 'comunicazioni', label: 'Comunicazioni', icon: '💬' },
-  { id: 'promemoria', label: 'Promemoria', icon: '⏰' },
   { id: 'testi_template', label: 'Testi Messaggi', icon: '📝' },
   { id: 'automazioni', label: 'Automazioni', icon: '🔔' },
   { id: 'sicurezza', label: 'Sicurezza', icon: '🔐' },
@@ -971,7 +970,7 @@ export function Impostazioni() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab');
-      const validTabs: TabId[] = ['profilo', 'azienda', 'fatturazione', 'agenda', 'privacy', 'aspetto', 'google_sheets', 'comunicazioni', 'promemoria', 'testi_template', 'automazioni', 'sicurezza', 'licenze', 'app_cliente'];
+      const validTabs: TabId[] = ['profilo', 'azienda', 'fatturazione', 'agenda', 'privacy', 'aspetto', 'google_sheets', 'comunicazioni', 'testi_template', 'automazioni', 'sicurezza', 'licenze', 'app_cliente'];
       if (tabParam && validTabs.includes(tabParam as TabId)) {
         return tabParam as TabId;
       }
@@ -1042,7 +1041,6 @@ export function Impostazioni() {
         {tabAttiva === 'aspetto' && <TabAspetto registraSalva={registraSalva} />}
         {tabAttiva === 'google_sheets' && <TabGoogleSheets registraSalva={registraSalva} />}
         {tabAttiva === 'comunicazioni' && <TabComunicazioni registraSalva={registraSalva} />}
-        {tabAttiva === 'promemoria' && <TabPromemoria registraSalva={registraSalva} />}
         {tabAttiva === 'testi_template' && <TestiTemplateTab />}
         {tabAttiva === 'automazioni' && <AutomazioniTab />}
         {tabAttiva === 'sicurezza' && <SicurezzaTab />}

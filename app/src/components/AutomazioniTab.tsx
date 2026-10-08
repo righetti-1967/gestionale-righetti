@@ -305,60 +305,26 @@ function CardAutomazione({
 
           {(tipo === 'promemoria_appuntamento' || tipo === 'promemoria_checkup') && (() => {
             const pp = parametri as ParametriPromemoria;
-            const opzioni = [12, 24, 48, 72, 96, 120, 168];
             const oreAttuali = pp.ore_anticipo || 24;
-            const isCustom = !opzioni.includes(oreAttuali);
-            const inputId = `ore-input-${tipo}`;
             return (
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2">
-                    Invia prima (ore)
+                    Invia prima
                   </label>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <select
-                      value={isCustom ? 'custom' : oreAttuali}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === 'custom') {
-                          // Focus sull'input numerico per scrittura immediata
-                          setTimeout(() => {
-                            const el = document.getElementById(inputId) as HTMLInputElement | null;
-                            if (el) { el.focus(); el.select(); }
-                          }, 50);
-                          // Imposta un valore di default se non personalizzato
-                          if (!isCustom) cambiaParametro('ore_anticipo', 24);
-                          return;
-                        }
-                        cambiaParametro('ore_anticipo', parseInt(v));
-                      }}
-                      className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm font-semibold text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-purple-300/40"
-                    >
-                      <option value="12">12 ore (mezza giornata)</option>
-                      <option value="24">24 ore (1 giorno)</option>
-                      <option value="48">48 ore (2 giorni)</option>
-                      <option value="72">72 ore (3 giorni)</option>
-                      <option value="96">96 ore (4 giorni)</option>
-                      <option value="120">120 ore (5 giorni)</option>
-                      <option value="168">168 ore (7 giorni)</option>
-                      <option value="custom">Personalizzato…</option>
-                    </select>
-                    {isCustom && (
-                      <>
-                        <input
-                          id={inputId}
-                          type="number"
-                          min="1"
-                          max="720"
-                          value={oreAttuali}
-                          onChange={(e) => cambiaParametro('ore_anticipo', Math.max(1, parseInt(e.target.value) || 24))}
-                          className="w-24 px-3 py-2.5 bg-yellow-50 border-2 border-yellow-300 rounded-apple text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-purple-300/40"
-                          autoFocus
-                        />
-                        <span className="text-sm text-apple-gray">ore prima</span>
-                      </>
-                    )}
-                  </div>
+                  <select
+                    value={oreAttuali}
+                    onChange={(e) => cambiaParametro('ore_anticipo', parseInt(e.target.value))}
+                    className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm font-semibold text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-purple-300/40"
+                  >
+                    <option value="12">12 ore (mezza giornata)</option>
+                    <option value="24">24 ore (1 giorno)</option>
+                    <option value="48">48 ore (2 giorni)</option>
+                    <option value="72">72 ore (3 giorni)</option>
+                    <option value="96">96 ore (4 giorni)</option>
+                    <option value="120">120 ore (5 giorni)</option>
+                    <option value="168">168 ore (7 giorni)</option>
+                  </select>
                   <p className="text-[11px] text-apple-gray mt-2 italic">
                     💡 Promemoria inviato {oreAttuali} ore prima dell'appuntamento
                   </p>
