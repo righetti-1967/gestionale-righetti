@@ -6,6 +6,7 @@ import {
   type ParametriPostSeduta,
   type ParametriCompleanno,
   type ParametriRiattivazione,
+  type ParametriPromemoria,
   type Automazione,
   LABEL_AUTOMAZIONE,
   getAutomazioni,
@@ -90,6 +91,22 @@ export function AutomazioniTab() {
           </div>
         </div>
       </div>
+
+      {/* Card Promemoria Appuntamento */}
+      <CardAutomazione
+        tipo="promemoria_appuntamento"
+        automazione={automazioni.promemoria_appuntamento}
+        salvando={salvando === 'promemoria_appuntamento'}
+        onUpdate={(patch) => aggiornaAutomazione('promemoria_appuntamento', patch)}
+      />
+
+      {/* Card Promemoria Check-Up */}
+      <CardAutomazione
+        tipo="promemoria_checkup"
+        automazione={automazioni.promemoria_checkup}
+        salvando={salvando === 'promemoria_checkup'}
+        onUpdate={(patch) => aggiornaAutomazione('promemoria_checkup', patch)}
+      />
 
       {/* Card Post-Seduta */}
       <CardAutomazione
@@ -268,6 +285,72 @@ function CardAutomazione({
                     ⚠️ Il motore automatico gira ogni 15 min: tempi sotto i 15 min richiedono backend dedicato.
                   </p>
                 )}
+              </div>
+            );
+          })()}
+
+          {(tipo === 'promemoria_appuntamento' || tipo === 'promemoria_checkup') && (() => {
+            const pp = parametri as ParametriPromemoria;
+            const opzioni = [12, 24, 48, 72, 96, 120, 168];
+            return (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2">
+                    Invia prima (ore)
+                  </label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={opzioni.includes(pp.ore_anticipo || 24) ? pp.ore_anticipo : 'custom'}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === 'custom') return;
+                        cambiaParametro('ore_anticipo', parseInt(v));
+                      }}
+                      className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm font-semibold text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-purple-300/40"
+                    >
+                      <option value="12">12 ore (mezza giornata)</option>
+                      <option value="24">24 ore (1 giorno)</option>
+                      <option value="48">48 ore (2 giorni)</option>
+                      <option value="72">72 ore (3 giorni)</option>
+                      <option value="96">96 ore (4 giorni)</option>
+                      <option value="120">120 ore (5 giorni)</option>
+                      <option value="168">168 ore (7 giorni)</option>
+                      <option value="custom">Personalizzato…</option>
+                    </select>
+                    <input
+                      type="number"
+                      min="1"
+                      max="720"
+                      value={pp.ore_anticipo || 24}
+                      onChange={(e) => cambiaParametro('ore_anticipo', Math.max(1, parseInt(e.target.value) || 24))}
+                      className="w-24 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-purple-300/40"
+                    />
+                    <span className="text-sm text-apple-gray">ore prima</span>
+                  </div>
+                  <p className="text-[11px] text-apple-gray mt-2 italic">
+                    💡 Promemoria inviato {pp.ore_anticipo || 24} ore prima dell'appuntamento
+                  </p>
+                </div>
+
+                {/* Link modifica testi */}
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href={`/impostazioni?tab=testi_template&sottotab=email&template=${tipo === 'promemoria_checkup' ? 'email_promemoria_checkup' : 'email_promemoria'}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-apple hover:bg-blue-100"
+                  >
+                    ✏️ Modifica testo Email
+                  </a>
+                  <a
+                    href={`/impostazioni?tab=testi_template&sottotab=whatsapp&template=whatsapp_promemoria`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-50 text-green-700 border border-green-200 rounded-apple hover:bg-green-100"
+                  >
+                    ✏️ Modifica testo WhatsApp
+                  </a>
+                </div>
               </div>
             );
           })()}

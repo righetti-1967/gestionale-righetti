@@ -12,7 +12,7 @@ import { supabase } from './supabase';
 // TIPI
 // ============================================================
 
-export type TipoAutomazione = 'post_seduta' | 'compleanno' | 'riattivazione';
+export type TipoAutomazione = 'post_seduta' | 'compleanno' | 'riattivazione' | 'promemoria_appuntamento' | 'promemoria_checkup';
 
 export type ModalitaAutomazione = 'automatico' | 'manuale';
 
@@ -34,10 +34,21 @@ export interface ParametriRiattivazione {
   canale: CanaleAutomazione;
 }
 
+export interface ParametriPromemoria {
+  ore_anticipo: number; // 12, 24, 48, 72, 96, 120, 168
+  canale: CanaleAutomazione;
+}
+
+export interface ParametriPromemoria {
+  ore_anticipo: number; // 12, 24, 48, 72, 96, 120, 168
+  canale: CanaleAutomazione;
+}
+
 export type ParametriAutomazione =
   | ParametriPostSeduta
   | ParametriCompleanno
-  | ParametriRiattivazione;
+  | ParametriRiattivazione
+  | ParametriPromemoria;
 
 export interface Automazione {
   id?: number;
@@ -82,6 +93,24 @@ export const DEFAULT_AUTOMAZIONI: Record<TipoAutomazione, Automazione> = {
       canale: 'whatsapp',
     } as ParametriRiattivazione,
   },
+  promemoria_appuntamento: {
+    tipo: 'promemoria_appuntamento',
+    attivo: true,
+    modalita: 'manuale',
+    parametri: {
+      ore_anticipo: 24,
+      canale: 'entrambi',
+    } as ParametriPromemoria,
+  },
+  promemoria_checkup: {
+    tipo: 'promemoria_checkup',
+    attivo: true,
+    modalita: 'manuale',
+    parametri: {
+      ore_anticipo: 72,
+      canale: 'entrambi',
+    } as ParametriPromemoria,
+  },
 };
 
 // ============================================================
@@ -107,6 +136,16 @@ export const LABEL_AUTOMAZIONE: Record<TipoAutomazione, {
     label: 'Riattivazione Cliente',
     descrizione: 'Messaggio ai clienti che non vengono da N giorni',
     icona: '💤',
+  },
+  promemoria_appuntamento: {
+    label: 'Promemoria Appuntamento',
+    descrizione: 'Invia un promemoria prima dell\'appuntamento',
+    icona: '📅',
+  },
+  promemoria_checkup: {
+    label: 'Promemoria Check-Up Gratuito',
+    descrizione: 'Promemoria per la prima visita del nuovo cliente',
+    icona: '🆕',
   },
 };
 
