@@ -962,152 +962,23 @@ export function Agenda({
       {/* ============================================================ */}
       {/* MODALE PROMEMORIA BATCH */}
       {/* ============================================================ */}
-      {showPromemoriaBatch && configProm && (() => {
-        const lista = appuntamentiPerPromemoria();
+      {showPromemoriaBatch && (() => {
+        // Calcola Lunedì e Sabato della settimana visualizzata
+        const dataRif = new Date(dataCorrente + 'T00:00:00');
+        const day = dataRif.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        const lunedi = new Date(dataRif);
+        lunedi.setDate(dataRif.getDate() + diff);
+        const sabato = new Date(lunedi);
+        sabato.setDate(lunedi.getDate() + 5);
+        const fmtYMD = (d: Date) => d.toISOString().split('T')[0];
+
         return (
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
-            onClick={() => !inviandoBatch && setShowPromemoriaBatch(false)}
-          >
-            <div
-              className="bg-white rounded-apple shadow-apple-lg max-w-3xl w-full max-h-[90vh] flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200/60 shrink-0">
-                <div>
-                  <h2 className="text-lg font-bold text-apple-darkgray">
-                    ⏰ Promemoria da inviare
-                  </h2>
-                  <p className="text-xs text-apple-gray mt-0.5">
-                    {lista.length} appuntamenti entro le prossime {configProm.oreAnticipo} ore
-                  </p>
-                </div>
-                <button
-                  onClick={() => !inviandoBatch && setShowPromemoriaBatch(false)}
-                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-apple-gray"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Lista */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2">
-                {lista.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-4xl mb-3 opacity-30">📭</p>
-                    <p className="text-sm text-apple-gray">
-                      Nessun promemoria da inviare nelle prossime {configProm.oreAnticipo} ore
-                    </p>
-                  </div>
-                ) : (
-                  lista.map((app) => {
-                    const cell = app.cliente?.cellulare || '';
-                    const hasCell = !!cell.trim();
-                    return (
-                      <div
-                        key={app.id}
-                        className="p-3 bg-gray-50 rounded-apple border border-gray-200 flex items-center gap-3"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-apple-darkgray truncate">
-                            {app.cliente?.nome_cognome || 'Cliente'}
-                          </p>
-                          <p className="text-xs text-apple-gray mt-0.5">
-                            📅 {new Date(app.data + 'T00:00:00').toLocaleDateString('it-IT', {
-                              weekday: 'short',
-                              day: 'numeric',
-                              month: 'short',
-                            })}
-                            {' • '}
-                            {app.ora_inizio.slice(0, 5)}
-                            {' • '}
-                            {app.titolo}
-                          </p>
-                          {hasCell && (
-                            <p className="text-[10px] text-apple-gray mt-0.5">
-                              📱 {cell}
-                            </p>
-                          )}
-                        </div>
-                        <button
-                          onClick={async () => {
-                            if (!hasCell) {
-                              setToast({ message: '❌ Cellulare non disponibile', tipo: 'error' });
-                              return;
-                            }
-                            try {
-                              const testo = generaTestoPromemoria(app, configProm, azienda.ragioneSociale);
-                              apriWhatsAppPromemoria(cell, testo);
-                              await marcaPromemoriaInviato(app.id, 'whatsapp');
-                              setToast({
-                                message: `✅ WhatsApp aperto per ${app.cliente?.nome_cognome || 'cliente'}`,
-                                tipo: 'success',
-                              });
-                            } catch (err: any) {
-                              setToast({ message: '❌ ' + (err?.message || 'Errore'), tipo: 'error' });
-                            }
-                          }}
-                          disabled={!hasCell || inviandoBatch}
-                          className="shrink-0 px-3 py-2 bg-green-600 text-white rounded-apple font-semibold text-xs hover:bg-green-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          💬 WhatsApp
-                        </button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="flex flex-wrap gap-2 px-6 py-4 border-t border-gray-200/60 bg-gray-50/50 shrink-0">
-                <button
-                  onClick={() => setShowPromemoriaBatch(false)}
-                  disabled={inviandoBatch}
-                  className="px-4 py-2.5 bg-gray-100 text-apple-darkgray rounded-apple font-medium text-sm hover:bg-gray-200 transition-colors disabled:opacity-50"
-                >
-                  Chiudi
-                </button>
-                {lista.length > 0 && (
-                  <button
-                    onClick={async () => {
-                      if (!confirm(`Inviare promemoria a tutti i ${lista.length} appuntamenti?\n\nVerranno aperte ${lista.length} finestre WhatsApp.`)) return;
-                      setInviandoBatch(true);
-                      try {
-                        let inviati = 0;
-                        for (const app of lista) {
-                          const cell = app.cliente?.cellulare || '';
-                          if (!cell.trim()) continue;
-                          const testo = generaTestoPromemoria(app, configProm, azienda.ragioneSociale);
-                          const ok = apriWhatsAppPromemoria(cell, testo);
-                          if (ok) {
-                            await marcaPromemoriaInviato(app.id, 'whatsapp');
-                            inviati++;
-                            await new Promise((r) => setTimeout(r, 800));
-                          }
-                        }
-                        setToast({
-                          message: `✅ Aperti ${inviati} WhatsApp`,
-                          tipo: 'success',
-                        });
-                        setShowPromemoriaBatch(false);
-                        // Ricarica agenda
-                        ricarica();
-                      } catch (err: any) {
-                        setToast({ message: '❌ ' + (err?.message || 'Errore batch'), tipo: 'error' });
-                      } finally {
-                        setInviandoBatch(false);
-                      }
-                    }}
-                    disabled={inviandoBatch}
-                    className="flex-1 px-4 py-2.5 bg-amber-500 text-white rounded-apple font-bold text-sm hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {inviandoBatch ? '⏳ Invio in corso...' : `📱 Invia tutti (${lista.length})`}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+          <ModalePromemoria
+            lunedi={fmtYMD(lunedi)}
+            sabato={fmtYMD(sabato)}
+            onClose={() => setShowPromemoriaBatch(false)}
+          />
         );
       })()}
 

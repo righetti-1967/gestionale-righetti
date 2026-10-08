@@ -100,17 +100,19 @@ function getNomeServizio(app: AppuntamentoConCliente | Appuntamento): string {
 export function generaTestoPromemoria(
   app: AppuntamentoConCliente | Appuntamento,
   config: ConfigPromemoria,
-  nomeAzienda?: string
+  nomeAzienda?: string,
+  testoOverride?: string
 ): string {
   const isCheckup =
     app.tipo === 'checkup_nuovo' ||
     (app.titolo || '').toLowerCase().includes('check-up') ||
     (app.titolo || '').toLowerCase().includes('checkup');
 
-  const template =
-    isCheckup && config.attivoCheckup
-      ? config.messaggioCheckup
-      : config.messaggioStandard;
+  const template = testoOverride && testoOverride.trim().length > 0
+    ? testoOverride
+    : (isCheckup && config.attivoCheckup
+        ? config.messaggioCheckup
+        : config.messaggioStandard);
 
   const nomeCliente = 'cliente' in app
     ? estraiNome(app.cliente?.nome_cognome)
@@ -163,7 +165,8 @@ export function apriWhatsAppPromemoria(
 export async function inviaEmailPromemoria(
   app: AppuntamentoConCliente | Appuntamento,
   config: ConfigPromemoria,
-  nomeAzienda?: string
+  nomeAzienda?: string,
+  testoAggiuntivo?: string
 ): Promise<void> {
   const email = 'cliente' in app ? app.cliente?.email : null;
   if (!email || !email.trim()) {
@@ -211,6 +214,13 @@ export async function inviaEmailPromemoria(
           alle ore <strong>${ora}</strong>
         </p>
       </div>
+
+      <!-- Testo aggiuntivo (opzionale) -->
+      ${testoAggiuntivo && testoAggiuntivo.trim() ? `
+        <div style="background: #fffaf0; border-left: 3px solid #FF9500; padding: 14px 16px; margin-bottom: 28px; border-radius: 8px;">
+          <p style="margin: 0; font-size: 14px; font-weight: 400; line-height: 1.5; color: #1c1c1e; white-space: pre-wrap;">${testoAggiuntivo.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+        </div>
+      ` : ''}
 
       <!-- Chiusura -->
       <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e;">
