@@ -6,6 +6,7 @@ let promessaInCorso: Promise<DatiAziendali> | null = null;
 
 const DATI_AZIENDALI_VUOTI: DatiAziendali = {
   ragioneSociale: '',
+  nomeStudio: '',
   sedeLegale: {
     indirizzo: '',
     cap: '',
@@ -53,6 +54,7 @@ function adatta(raw: unknown, isRighetti: boolean, nomeAziendaUser?: string): Da
 
   return {
     ragioneSociale: r.ragioneSociale || (isRighetti ? fallback.ragioneSociale : (nomeAziendaUser || '')),
+    nomeStudio: r.nomeStudio ?? '',
     sedeLegale,
     sedeOperativa: {
       indirizzo: sedeOperativa.indirizzo ?? fallback.sedeOperativa.indirizzo,

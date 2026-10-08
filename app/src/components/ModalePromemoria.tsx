@@ -75,7 +75,7 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
       if (resApp.error) throw resApp.error;
       setAppuntamenti((resApp.data ?? []) as AppuntamentoProm[]);
       setConfig(cfg);
-      setNomeAzienda(datiAz?.ragioneSociale || '');
+      setNomeAzienda(datiAz?.nomeStudio || '');
     } catch (e: any) {
       setErrore(e.message || 'Errore caricamento');
     } finally {

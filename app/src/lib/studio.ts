@@ -14,6 +14,7 @@ export interface Sede {
 
 export interface DatiAziendali {
   ragioneSociale: string;
+  nomeStudio: string;
   sedeLegale: Sede;
   sedeOperativa: Sede;
   partitaIva: string;
@@ -36,6 +37,7 @@ export interface DatiAziendali {
 
 export const DATI_AZIENDALI_DEFAULT: DatiAziendali = {
   ragioneSociale: '',
+  nomeStudio: '',
   sedeLegale: {
     indirizzo: '',
     cap: '',

@@ -49,6 +49,7 @@ interface Sede {
 
 interface DatiAziendali {
   ragioneSociale: string;
+  nomeStudio: string;
   partitaIva: string;
   codiceFiscale: string;
   sedeLegale: Sede;
@@ -68,6 +69,7 @@ const SEDE_VUOTA: Sede = { indirizzo: '', cap: '', citta: '', provincia: '' };
 
 const AZIENDA_DEFAULT: DatiAziendali = {
   ragioneSociale: 'Righetti Since 1967',
+  nomeStudio: '',
   partitaIva: '',
   codiceFiscale: '',
   sedeLegale: { ...SEDE_VUOTA },
@@ -96,6 +98,7 @@ function normalizzaDati(raw: unknown): DatiAziendali {
 
   return {
     ragioneSociale: (r.ragioneSociale as string) ?? AZIENDA_DEFAULT.ragioneSociale,
+    nomeStudio: (r.nomeStudio as string) ?? '',
     partitaIva: (r.partitaIva as string) ?? '',
     codiceFiscale: (r.codiceFiscale as string) ?? '',
     sedeLegale,
@@ -1151,12 +1154,22 @@ function TabAzienda({ registraSalva }: { registraSalva?: (fn: () => void, salvan
 
       <Card title="Dati Aziendali" subtitle="Queste informazioni compariranno su fatture, DDT e documenti.">
         <div className="space-y-4">
-          <Campo
-            label="Ragione sociale"
-            value={dati.ragioneSociale}
-            onChange={(v) => aggiorna('ragioneSociale', v)}
-            placeholder="Es. Righetti Since 1967 S.r.l."
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Campo
+              label="Ragione sociale"
+              value={dati.ragioneSociale}
+              onChange={(v) => aggiorna('ragioneSociale', v)}
+              placeholder="Es. Righetti Consulting S.r.l."
+              help="Compare su fatture, DDT e documenti fiscali"
+            />
+            <Campo
+              label="Nome Studio"
+              value={dati.nomeStudio}
+              onChange={(v) => aggiorna('nomeStudio', v)}
+              placeholder="Es. Studio Righetti Since 1967"
+              help="Usato nelle email e comunicazioni ai clienti"
+            />
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Campo label="Partita IVA" value={dati.partitaIva} onChange={(v) => aggiorna('partitaIva', v)} placeholder="IT12345678901" />
