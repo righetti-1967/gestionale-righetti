@@ -4,3 +4,5 @@ _backup/
 supabase/.temp/
 supabase/.branches/
 .vscode/settings.json
+
+supabase/
