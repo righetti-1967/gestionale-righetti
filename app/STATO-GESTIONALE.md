@@ -473,3 +473,81 @@ App Cliente: /Users/luca/Desktop/Tricolab/CLIENTE/app/ (repo Gestionale-cliente)
 Gestionale: questo file
 
 FINE FILE
+
+---
+
+## 🆕 TODO AGGIUNTO 08/10/2026 — Promemoria Appuntamenti (Riscrittura)
+
+### Problema attuale
+- Modale "Promemoria" in Agenda guarda solo **24h dalla data selezionata**
+- Non mostra **stato invio** per riga (email / whatsapp)
+- Non permette **invio multiplo** (bulk)
+
+### Nuovo design (confermato)
+- **Range**: Lunedì → Sabato della settimana visualizzata in Agenda
+- **Modale esistente modificato** (pulsante "Promemoria" già presente in Agenda)
+- **Testo promemoria modificabile inline** (solo per la sessione corrente, non salva su Impostazioni)
+- **Bottoni bulk**: 📧 Email / 💬 WhatsApp / 📧💬 Entrambi
+- **Per ogni riga**:
+  - Cliente (nome, email, cellulare)
+  - Data/ora appuntamento
+  - Operatore + tipo
+  - **Stato invio**: ✅ Inviato / ⏸️ Da inviare / ⚠️ In ritardo / ⚪ Troppo presto
+  - Data/ora ultimo invio email e whatsapp
+- **Filtri**: stato invio + canale mancante
+- **Checkbox** selezione + "Seleziona tutti"
+
+### RPC da creare
+`get_appuntamenti_settimana(lunedi DATE, sabato DATE)`
+```sql
+RETURNS TABLE (
+  id, cliente_id, cliente_nome, cliente_email, cliente_cellulare,
+  data, ora_inizio, durata_minuti, operatore, tipo, titolo,
+  reminder_email_at, reminder_email_inviato,
+  reminder_whatsapp_at, reminder_whatsapp_inviato,
+  ore_anticipo,  -- 24 standard, 72 checkup
+  stato_invio    -- 'inviato' | 'da_inviare' | 'in_ritardo' | 'troppo_presto'
+)
+
+Filtro: data BETWEEN lunedi AND sabato
+
+Solo studio loggato (is_staff)
+
+Esclude cancellato, is_blocco
+
+Logica invio
+Email: inviaEmailConConfig (già esistente) + testo elaborato
+
+Sostituzione variabili: {cliente}, {data}, {ora}, {servizio}
+
+Aggiorna reminder_email_at, reminder_email_inviato = true
+
+WhatsApp: apre wa.me/<cell>?text=<testo> in nuova tab
+
+Modale di conferma "Hai inviato? [Sì] [No]"
+
+Se Sì → aggiorna reminder_whatsapp_at, reminder_whatsapp_inviato = true
+Entrambi: esegue Email + WhatsApp
+
+Config già esistente (Impostazioni → Promemoria)
+oreAnticipo (standard, default 24)
+
+oreAnticipoCheckup (checkup nuovo cliente, default 72)
+
+canale (email / whatsapp / entrambi)
+
+attivo (on/off)
+
+messaggioStandard, messaggioCheckup (testi template)
+
+File da modificare/creare
+Nuovo: src/components/ModalePromemoria.tsx (riscrittura completa)
+
+Modifica: src/pages/Agenda.tsx (pulsante Promemoria → apre nuovo modale)
+
+Riusa: inviaEmailConConfig (api.ts) + inviaEmailPromemoria (lib/promemoria.ts)
+
+Tempo stimato
+2-3 ore (sessione dedicata)
+
+FINE AGGIUNTA
