@@ -182,6 +182,19 @@ export async function inviaEmailPromemoria(
   const nomeAziendaFinale = nomeAzienda || '';
   const logoUrl = getLogoUrl();
 
+  // Se c'è override, sostituisci le variabili anche dentro
+  const overrideElaborato = testoAggiuntivo && testoAggiuntivo.trim()
+    ? testoAggiuntivo
+        .replace(/\{cliente\}/g, nome)
+        .replace(/\{nome\}/g, nome)
+        .replace(/\{data\}/g, dataIt)
+        .replace(/\{ora\}/g, ora)
+        .replace(/\{servizio\}/g, nomeServizio)
+        .replace(/\{azienda\}/g, nomeAziendaFinale)
+        .replace(/\\n/g, '\n')
+        .trim()
+    : '';
+
   const corpoHtml = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px; background: #ffffff; color: #1c1c1e;">
 
@@ -217,11 +230,11 @@ export async function inviaEmailPromemoria(
 
       <!-- Testo promemoria (override o default) -->
       ${testoAggiuntivo && testoAggiuntivo.trim() ? `
-        <p style="margin: 0 0 20px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e; white-space: pre-wrap;">${testoAggiuntivo.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+        <p style="margin: 0 0 20px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e; white-space: pre-wrap;">${overrideElaborato.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
       ` : ''}
 
       <!-- Chiusura: solo se NON c'è override -->
-      ${!testoAggiuntivo || !testoAggiuntivo.trim() ? `
+      ${!overrideElaborato ? `
         <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e;">
           Per qualsiasi necessit&agrave; contattaci pure.
         </p>
