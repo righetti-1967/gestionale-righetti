@@ -38,6 +38,9 @@ export interface Cliente {
   data_nascita?: string | null;
   dna?: string | null;
   created_at: string;
+  cancellato_at?: string | null;
+  cancellato_da?: string | null;
+  cancellato_motivo?: string | null;
 }
 
 export type NuovoCliente = Omit<
@@ -65,6 +68,7 @@ export async function getClienti(): Promise<Cliente[]> {
     .from('clienti')
     .select('*')
     .eq('user_id', user.id)
+    .is('cancellato_at', null)
     .order('nome_cognome', { ascending: true });
 
   if (error) {
@@ -111,6 +115,7 @@ export async function cercaClienti(query: string): Promise<Cliente[]> {
     .from('clienti')
     .select('*')
     .eq('user_id', user.id)
+    .is('cancellato_at', null)
     .or(`nome_cognome.ilike.%${query}%,email.ilike.%${query}%,cellulare.ilike.%${query}%`)
     .order('nome_cognome', { ascending: true });
 
@@ -172,18 +177,56 @@ export async function aggiornaCliente(
 /**
  * Elimina un cliente
  */
-export async function eliminaCliente(id: number): Promise<void> {
+/**
+ * Soft-delete di un cliente (marca cancellato_at, NON elimina il record).
+ * Il record resta nel DB per storico fatture/scontrini, ma non appare più in liste/ricerche.
+ */
+export async function eliminaCliente(id: number, motivo: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  const motivoPulito = (motivo || '').trim();
+  if (motivoPulito.length < 10) {
+    throw new Error('Motivo obbligatorio (minimo 10 caratteri)');
+  }
+
+  const { error } = await supabase
+    .from('clienti')
+    .update({
+      cancellato_at: new Date().toISOString(),
+      cancellato_da: user.id,
+      cancellato_motivo: motivoPulito,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('❌ Errore nella cancellazione:', error);
+    throw error;
+  }
+}
+
+/**
+ * Ripristina un cliente cancellato (soft-delete undo).
+ */
+export async function ripristinaCliente(id: number): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Non autenticato');
 
   const { error } = await supabase
     .from('clienti')
-    .delete()
+    .update({
+      cancellato_at: null,
+      cancellato_da: null,
+      cancellato_motivo: null,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', id)
     .eq('user_id', user.id);
 
   if (error) {
-    console.error('❌ Errore nell\'eliminazione:', error);
+    console.error('❌ Errore nel ripristino:', error);
     throw error;
   }
 }

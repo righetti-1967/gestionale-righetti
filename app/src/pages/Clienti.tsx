@@ -124,6 +124,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
   const [showFormPercorso, setShowFormPercorso] = useState(false);
   const [showFormPercorsoScontrino, setShowFormPercorsoScontrino] = useState(false);
   const [confermaElimina, setConfermaElimina] = useState<Cliente | null>(null);
+  const [motivoEliminazione, setMotivoEliminazione] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastTipo, setToastTipo] = useState<ToastTipo>('success');
 
@@ -555,14 +556,22 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
 
   async function confermaEliminazione() {
     if (!confermaElimina) return;
+    if (motivoEliminazione.trim().length < 10) {
+      setToastMessage('Il motivo deve avere almeno 10 caratteri');
+      setToastTipo('error');
+      return;
+    }
     try {
-      await eliminaCliente(confermaElimina.id);
+      await eliminaCliente(confermaElimina.id, motivoEliminazione.trim());
       setConfermaElimina(null);
+      setMotivoEliminazione('');
       setClienteSelezionato(null);
       caricaClienti();
+      setToastMessage('Cliente cancellato (soft-delete, recuperabile)');
+      setToastTipo('success');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setToastMessage("Errore nell'eliminazione: " + msg);
+      setToastMessage("Errore nella cancellazione: " + msg);
       setToastTipo('error');
     }
   }
@@ -1278,20 +1287,43 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
             className="bg-white rounded-apple shadow-apple-lg max-w-sm w-full p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-center mb-6">
+            <div className="text-center mb-4">
               <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center text-2xl">
                 🗑️
               </div>
               <h2 className="text-lg font-bold text-apple-darkgray mb-2">
-                Eliminare questo cliente?
+                Cancellare questo cliente?
               </h2>
               <p className="text-sm text-apple-gray">
-                Stai per eliminare <strong>{confermaElimina.nome_cognome}</strong>.
+                Stai per cancellare <strong>{confermaElimina.nome_cognome}</strong>.
+              </p>
+              <p className="text-xs text-apple-gray mt-2 italic">
+                Il cliente non apparirà più in liste e ricerche, ma lo storico di fatture,
+                scontrini e appuntamenti resta disponibile. Potrai ripristinarlo in seguito.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-apple-darkgray mb-1.5">
+                Motivo della cancellazione <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={motivoEliminazione}
+                onChange={(e) => setMotivoEliminazione(e.target.value)}
+                placeholder="Minimo 10 caratteri (es. cliente trasferito, duplicato, richiesta cliente...)"
+                rows={2}
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-apple text-xs text-apple-darkgray placeholder:text-apple-gray/60 focus:outline-none focus:ring-2 focus:ring-red-300"
+              />
+              <p className="text-[10px] text-apple-gray mt-1">
+                {motivoEliminazione.trim().length}/10 caratteri minimi
               </p>
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => setConfermaElimina(null)}
+                onClick={() => {
+                  setConfermaElimina(null);
+                  setMotivoEliminazione('');
+                }}
                 className="flex-1 px-4 py-2.5 bg-gray-100 text-apple-darkgray rounded-apple font-medium text-sm hover:bg-gray-200 transition-colors"
               >
                 Annulla
