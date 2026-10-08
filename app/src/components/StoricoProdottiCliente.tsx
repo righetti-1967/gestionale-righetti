@@ -670,12 +670,19 @@ export function StoricoProdottiCliente({ clienteId }: StoricoProdottiProps) {
       // Tab 'fatture' = documenti (fatture + scontrini)
       const isDocumento = v.tipo === 'fattura' || v.scontrino !== null;
 
+      // Filtro per tipo tab
       if (tab === 'prodotti' && v.tipo !== 'prodotto') return false;
       if (tab === 'servizi' && v.tipo !== 'servizio') return false;
       if (tab === 'extra' && !v.isExtra) return false;
+
+      // Escludi EXTRA dalle altre tab (tranne tutti e fatture)
       if (tab !== 'extra' && v.isExtra && tab !== 'tutti' && tab !== 'fatture') return false;
+
+      // Tab "Fatture & Scontrini": solo documenti (righe fattura o voci legate a scontrino)
       if (tab === 'fatture' && !isDocumento) return false;
-      if (tab !== 'fatture' && isDocumento && tab !== 'tutti' && tab !== 'extra') return false;
+
+      // Tab altri: OK sia documenti che righe, il raggruppamento gestisce tutto
+      // (rimuovi la vecchia logica che scartava le righe documento)
 
       if (ricerca.trim()) {
         const q = ricerca.toLowerCase();
