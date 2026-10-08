@@ -352,26 +352,29 @@ async function generaPdfDdt({
 
   const tipoDoc = mostraPrezzi ? 'Commercialista' : 'Cliente';
   const nomeFile = `DDT-${String(scarico.numero_ddt).padStart(3, '0')}-${annoSeduta}_${tipoDoc}_${(cliente?.nome_cognome || 'cliente').replace(/\s+/g, '_')}.pdf`;
-  if (scarica) {
-    // Upload su Storage + salva URL nel DB (best effort)
-    try {
-      const clienteId = (scarico as any).cliente_id;
-      const anno = new Date((scarico as any).data_seduta || Date.now()).getFullYear();
-      const scaricoId = (scarico as any).id;
-      if (clienteId && scaricoId) {
-        uploadJsPdfToStorage('scarichi-pdf', clienteId, nomeFile, doc, anno)
-          .then(async (url) => {
-            if (url) {
-              const { supabase } = await import('./supabase');
-              await supabase.from('scarichi_seduta').update({ pdf_url: url }).eq('id', scaricoId);
-              console.log('✅ PDF DDT salvato:', url);
-            }
-          })
-          .catch((e) => console.warn('⚠️ Upload PDF DDT fallito:', e));
-      }
-    } catch (e) {
-      console.warn('⚠️ Upload PDF DDT errore:', e);
+
+  // --- Upload su Storage SEMPRE (se cliente_id presente) ---
+  try {
+    const clienteId = (scarico as any).cliente_id;
+    const anno = new Date((scarico as any).data_seduta || Date.now()).getFullYear();
+    const scaricoId = (scarico as any).id;
+    if (clienteId && scaricoId) {
+      uploadJsPdfToStorage('scarichi-pdf', clienteId, nomeFile, doc, anno)
+        .then(async (url) => {
+          if (url) {
+            const { supabase } = await import('./supabase');
+            await supabase.from('scarichi_seduta').update({ pdf_url: url }).eq('id', scaricoId);
+            console.log('✅ PDF DDT salvato:', url);
+          }
+        })
+        .catch((e) => console.warn('⚠️ Upload PDF DDT fallito:', e));
     }
+  } catch (e) {
+    console.warn('⚠️ Upload PDF DDT errore:', e);
+  }
+
+  // --- Download solo se richiesto ---
+  if (scarica) {
     doc.save(nomeFile);
   }
   return doc;
