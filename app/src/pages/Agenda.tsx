@@ -38,6 +38,7 @@ import {
   isPromemoriaInviato,
   type ConfigPromemoria,
 } from '../lib/promemoria';
+import { ModalePromemoria } from '../components/ModalePromemoria';
 
 type Vista = 'giornaliera' | 'settimanale' | 'mensile';
 
