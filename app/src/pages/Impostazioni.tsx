@@ -57,6 +57,7 @@ interface DatiAziendali {
   email: string;
   pec: string;
   telefono: string;
+  whatsapp: string;
   sitoWeb: string;
   iban: string;
   codiceSdi: string;
@@ -75,6 +76,7 @@ const AZIENDA_DEFAULT: DatiAziendali = {
   email: '',
   pec: '',
   telefono: '',
+  whatsapp: '',
   sitoWeb: '',
   iban: '',
   codiceSdi: '',
@@ -102,6 +104,7 @@ function normalizzaDati(raw: unknown): DatiAziendali {
     email: (r.email as string) ?? '',
     pec: (r.pec as string) ?? '',
     telefono: (r.telefono as string) ?? '',
+    whatsapp: (r.whatsapp as string) ?? '',
     sitoWeb: (r.sitoWeb as string) ?? '',
     iban: (r.iban as string) ?? '',
     codiceSdi: (r.codiceSdi as string) ?? '',
@@ -1202,6 +1205,9 @@ function TabAzienda({ registraSalva }: { registraSalva?: (fn: () => void, salvan
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Campo label="Telefono" value={dati.telefono} onChange={(v) => aggiorna('telefono', v)} placeholder="+39 333 1234567" />
+            <Campo label="WhatsApp" value={dati.whatsapp} onChange={(v) => aggiorna('whatsapp', v)} placeholder="+39 348 895 8114" help="Formato internazionale: +39..." />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Campo label="Sito web" value={dati.sitoWeb} onChange={(v) => aggiorna('sitoWeb', v)} placeholder="https://azienda.it" />
           </div>
         </div>

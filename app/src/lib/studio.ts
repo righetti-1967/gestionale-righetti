@@ -20,6 +20,7 @@ export interface DatiAziendali {
   codiceFiscale: string;
   codiceSdi: string;
   telefono: string;
+  whatsapp: string;
   email: string;
   pec: string;
   iban: string;
@@ -51,6 +52,7 @@ export const DATI_AZIENDALI_DEFAULT: DatiAziendali = {
   codiceFiscale: '',
   codiceSdi: '',
   telefono: '',
+  whatsapp: '',
   email: '',
   pec: '',
   iban: '',
