@@ -302,12 +302,20 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
               ℹ️ Variabili: <code className="bg-white px-1 rounded">{'{nome}'}</code> <code className="bg-white px-1 rounded">{'{data}'}</code> <code className="bg-white px-1 rounded">{'{ora}'}</code> <code className="bg-white px-1 rounded">{'{servizio}'}</code> <code className="bg-white px-1 rounded">{'{azienda}'}</code>
             </span>
             <a
-              href="/impostazioni?tab=promemoria"
+              href="/impostazioni?tab=testi_template&sottotab=email&template=email_promemoria"
               target="_blank"
               rel="noreferrer"
               className="text-[10px] text-blue-600 hover:underline whitespace-nowrap"
             >
               ✏️ Modifica testo Email
+            </a>
+            <a
+              href="/impostazioni?tab=testi_template&sottotab=whatsapp&template=whatsapp_promemoria"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[10px] text-blue-600 hover:underline whitespace-nowrap"
+            >
+              ✏️ Modifica testo WhatsApp (default)
             </a>
           </div>
           {testoWhatsapp && testoWhatsapp !== (config?.messaggioStandard || '') && testoWhatsapp !== (config?.messaggioCheckup || '') && (

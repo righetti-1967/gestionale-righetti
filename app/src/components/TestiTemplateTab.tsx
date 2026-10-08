@@ -17,8 +17,27 @@ type Gruppo = 'email' | 'whatsapp' | 'pdf';
 
 export function TestiTemplateTab() {
   const [testi, setTesti] = useState<Record<ChiaveTesto, TestoTemplate> | null>(null);
-  const [chiaveAttiva, setChiaveAttiva] = useState<ChiaveTesto>('email_privacy');
-  const [gruppoAttivo, setGruppoAttivo] = useState<Gruppo>('email');
+  const [chiaveAttiva, setChiaveAttiva] = useState<ChiaveTesto>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const t = params.get('template');
+      if (t && ETICHETTE_CHIAVI[t as ChiaveTesto]) return t as ChiaveTesto;
+    }
+    return 'email_privacy';
+  });
+  const [gruppoAttivo, setGruppoAttivo] = useState<Gruppo>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const st = params.get('sottotab');
+      if (st === 'email' || st === 'whatsapp' || st === 'pdf') return st as Gruppo;
+      // Fallback: deduci dal template
+      const t = params.get('template');
+      if (t && ETICHETTE_CHIAVI[t as ChiaveTesto]) {
+        return ETICHETTE_CHIAVI[t as ChiaveTesto].gruppo;
+      }
+    }
+    return 'email';
+  });
 
   // Stato editor
   const [oggetto, setOggetto] = useState('');
