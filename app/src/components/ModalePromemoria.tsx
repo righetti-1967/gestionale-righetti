@@ -36,13 +36,13 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<ConfigPromemoria | null>(null);
   const [nomeAzienda, setNomeAzienda] = useState<string>('');
-  const [testoAggiuntivo, setTestoAggiuntivo] = useState<string>('');
+  const [testoWhatsapp, setTestoWhatsapp] = useState<string>('');
   const [selezionati, setSelezionati] = useState<Set<number>>(new Set());
   const [filtro, setFiltro] = useState<FiltroStato>('tutti');
   const [inviando, setInviando] = useState(false);
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
-  const templateInizializzatoRef = useState({ current: false })[0];
+  const templateWhatsappInizializzatoRef = useState({ current: false })[0];
 
   async function carica() {
     setLoading(true);
@@ -74,15 +74,15 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
 
   // Precompila il testo del promemoria dal template (una sola volta)
   useEffect(() => {
-    if (!templateInizializzatoRef.current && appuntamenti.length > 0 && config) {
+    if (!templateWhatsappInizializzatoRef.current && appuntamenti.length > 0 && config) {
       const primo = appuntamenti[0];
       const template = primo.tipo === 'checkup_nuovo' && config.attivoCheckup
         ? config.messaggioCheckup
         : config.messaggioStandard;
-      setTestoAggiuntivo(template || '');
-      templateInizializzatoRef.current = true;
+      setTestoWhatsapp(template || '');
+      templateWhatsappInizializzatoRef.current = true;
     }
-  }, [appuntamenti, config, templateInizializzatoRef]);
+  }, [appuntamenti, config, templateWhatsappInizializzatoRef]);
 
   const listaFiltrata = useMemo(() => {
     if (filtro === 'tutti') return appuntamenti;
@@ -151,7 +151,7 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
         continue;
       }
       try {
-        await inviaEmailPromemoria(getAppuntamentoDaRpc(a), config, nomeAzienda, testoAggiuntivo || undefined);
+        await inviaEmailPromemoria(getAppuntamentoDaRpc(a), config, nomeAzienda);
         await supabase
           .from('appuntamenti')
           .update({
@@ -179,8 +179,8 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
       }
       // Genera testo promemoria
       const { generaTestoPromemoria } = await import('../lib/promemoria');
-      const testo = testoAggiuntivo && testoAggiuntivo.trim()
-        ? generaTestoPromemoria(getAppuntamentoDaRpc(a), config!, nomeAzienda, testoAggiuntivo)
+      const testo = testoWhatsapp && testoWhatsapp.trim()
+        ? generaTestoPromemoria(getAppuntamentoDaRpc(a), config!, nomeAzienda, testoWhatsapp)
         : generaTestoPromemoria(getAppuntamentoDaRpc(a), config!, nomeAzienda);
       const numeroPulito = a.cliente_cellulare.replace(/[^0-9]/g, '');
       const url = `https://wa.me/${numeroPulito}?text=${encodeURIComponent(testo)}`;
@@ -284,27 +284,37 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
           ))}
         </div>
 
-        {/* Testo aggiuntivo */}
-        <div className="px-5 py-3 bg-orange-50/40 border-b border-orange-100">
+        {/* Testo WhatsApp */}
+        <div className="px-5 py-3 bg-green-50/40 border-b border-green-100">
           <label className="block text-xs font-medium text-gray-700 mb-1">
-            ✏️ Testo promemoria (modificabile)
+            💬 Testo WhatsApp (modificabile)
           </label>
           <textarea
-            value={testoAggiuntivo}
-            onChange={(e) => setTestoAggiuntivo(e.target.value)}
+            value={testoWhatsapp}
+            onChange={(e) => setTestoWhatsapp(e.target.value)}
             placeholder="Ciao {nome}, ti ricordiamo il tuo appuntamento di {data} alle ore {ora}..."
-            rows={5}
-            maxLength={1000}
+            rows={4}
+            maxLength={800}
             className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand resize-none bg-white font-mono"
           />
-          <div className="text-[10px] text-gray-500 mt-1">
-            ℹ️ Variabili: <code className="bg-white px-1 rounded">{'{nome}'}</code> <code className="bg-white px-1 rounded">{'{data}'}</code> <code className="bg-white px-1 rounded">{'{ora}'}</code> <code className="bg-white px-1 rounded">{'{servizio}'}</code> <code className="bg-white px-1 rounded">{'{azienda}'}</code>
+          <div className="text-[10px] text-gray-500 mt-1 flex items-center justify-between gap-2 flex-wrap">
+            <span>
+              ℹ️ Variabili: <code className="bg-white px-1 rounded">{'{nome}'}</code> <code className="bg-white px-1 rounded">{'{data}'}</code> <code className="bg-white px-1 rounded">{'{ora}'}</code> <code className="bg-white px-1 rounded">{'{servizio}'}</code> <code className="bg-white px-1 rounded">{'{azienda}'}</code>
+            </span>
+            <a
+              href="/impostazioni?tab=promemoria"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[10px] text-blue-600 hover:underline whitespace-nowrap"
+            >
+              ✏️ Modifica testo Email
+            </a>
           </div>
-          {testoAggiuntivo && testoAggiuntivo !== (config?.messaggioStandard || '') && testoAggiuntivo !== (config?.messaggioCheckup || '') && (
+          {testoWhatsapp && testoWhatsapp !== (config?.messaggioStandard || '') && testoWhatsapp !== (config?.messaggioCheckup || '') && (
             <button
               type="button"
               onClick={() => {
-                if (config) setTestoAggiuntivo(config.messaggioStandard || '');
+                if (config) setTestoWhatsapp(config.messaggioStandard || '');
               }}
               className="mt-1 text-[10px] text-blue-600 hover:underline"
             >
@@ -412,19 +422,7 @@ function RigaPromemoria({
   onToggle: () => void;
   formatDataShort: (iso: string) => string;
 }) {
-  const inviato = app.stato_invio === 'inviato';
-  const daInviare = app.stato_invio === 'da_inviare';
-  const inRitardo = app.stato_invio === 'in_ritardo';
   const troppoPresto = app.stato_invio === 'troppo_presto';
-
-  const statoLabel = inviato ? '✓ Inviato' : daInviare ? 'Da inviare' : inRitardo ? '⚠️ In ritardo' : 'Troppo presto';
-  const statoColor = inviato
-    ? 'bg-green-100 text-green-700 border-green-200'
-    : daInviare
-    ? 'bg-blue-100 text-blue-700 border-blue-200'
-    : inRitardo
-    ? 'bg-amber-100 text-amber-700 border-amber-200'
-    : 'bg-gray-100 text-gray-500 border-gray-200';
 
   return (
     <div
@@ -436,7 +434,6 @@ function RigaPromemoria({
         type="checkbox"
         checked={selezionato}
         onChange={onToggle}
-        disabled={inviato}
         className="w-4 h-4 mt-1 shrink-0"
       />
       <div className="flex-1 min-w-0">
@@ -450,22 +447,39 @@ function RigaPromemoria({
               <div className="text-xs text-gray-600 mt-0.5 truncate">{app.titolo}</div>
             )}
           </div>
-          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border whitespace-nowrap ${statoColor}`}>
-            {statoLabel}
-          </span>
+          {/* Badge stato per canale */}
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            {troppoPresto && (
+              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border bg-gray-100 text-gray-500 border-gray-200 whitespace-nowrap">
+                ⚪ Troppo presto
+              </span>
+            )}
+            {!troppoPresto && (
+              <>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                  app.reminder_email_inviato
+                    ? 'bg-green-100 text-green-700 border-green-200'
+                    : 'bg-orange-50 text-orange-700 border-orange-200'
+                }`}>
+                  📧 {app.reminder_email_inviato ? 'Inviata' : 'Da inviare'}
+                </span>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                  app.reminder_whatsapp_inviato
+                    ? 'bg-green-100 text-green-700 border-green-200'
+                    : 'bg-orange-50 text-orange-700 border-orange-200'
+                }`}>
+                  💬 {app.reminder_whatsapp_inviato ? 'Inviato' : 'Da inviare'}
+                </span>
+              </>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-gray-500">
           {app.cliente_email && (
-            <span className={app.reminder_email_inviato ? 'text-green-600' : ''}>
-              📧 {app.cliente_email}
-              {app.reminder_email_inviato && ' ✓'}
-            </span>
+            <span>📧 {app.cliente_email}</span>
           )}
           {app.cliente_cellulare && (
-            <span className={app.reminder_whatsapp_inviato ? 'text-green-600' : ''}>
-              💬 {app.cliente_cellulare}
-              {app.reminder_whatsapp_inviato && ' ✓'}
-            </span>
+            <span>💬 {app.cliente_cellulare}</span>
           )}
         </div>
       </div>
