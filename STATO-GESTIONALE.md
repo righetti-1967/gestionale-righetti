@@ -1,15 +1,20 @@
-# REGOLA FISSA PER OGNI NUOVA FUNZIONALITA'
+# STATO GESTIONALE RIGHETTI 1967
+Ultimo aggiornamento: 08/10/2026 (pomeriggio)
 
-Ogni nuova funzionalita' deve essere costruita e testata per:
-1. Desktop (1280px+)
-2. Tablet (768px - 1024px)
-3. Mobile (375px - 430px)
+---
+
+## 📌 REGOLA FISSA RESPONSIVE
+
+Ogni nuova funzionalita' deve essere testata su:
+- **Desktop** (1280px+)
+- **Tablet** (768px - 1024px)
+- **Mobile** (375px - 430px)
 
 Check obbligatori:
-- Pulsanti w-full sm:w-auto (mai full-width su desktop)
-- Grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-X
-- Padding p-3 sm:p-4 lg:p-6
-- Font text-sm sm:text-base lg:text-lg
+- Pulsanti `w-full sm:w-auto` (mai full-width su desktop)
+- Grid `grid-cols-1 sm:grid-cols-2 lg:grid-cols-X`
+- Padding `p-3 sm:p-4 lg:p-6`
+- Font `text-sm sm:text-base lg:text-lg`
 - Modali scrollabili senza scroll orizzontale
 - Tabelle scrollabili o trasformate in card su mobile
 
@@ -17,884 +22,532 @@ Nessuna eccezione. Se non e' responsive, non e' finita.
 
 ---
 
-# STATO GESTIONALE RIGHETTI 1967
-Data ultimo aggiornamento: 02/10/2026 (sera)
+## 🎯 VISIONE GENERALE
+
+Gestionale per Studio Tricologico Righetti (Talamona, SO). PWA installabile su iPhone/iPad/Mac.
+
+**Domini:**
+- `gestionale.righetti.club` → Gestionale (interno studio)
+- `trico.righetti.club` → TricoAI v2 (assistente AI)
+- `cliente.righetti.club` → **App Cliente** (ATTIVA in PROD)
+
+**Regimi documenti:**
+- **Regime FATTURE**: fatture + DDT
+- **Regime SCONTRINI**: cassa fiscale + scontrini
 
 ---
 
-## 🛡️ ISOLAMENTO UTENTE DEMO — COMPLETATO ✅
+## 📌 STACK TECNICO
 
-| Componente / Sezione | Stato |
-| :--- | :--- |
-| Logo in Sidebar | ✅ Icona neutra 🏢 + titolo "Studio" per DEMO senza logo |
-| Logo in Impostazioni → Azienda | ✅ Box neutro "Nessun logo caricato" + pulsante Carica |
-| Pulsante TricoAI in Sidebar | ✅ Bloccato per DEMO con badge 🔒 Pro + alert registrazione |
-| Tab Comunicazioni (Email) | ✅ Dicitura neutra "dal tuo account Gmail / Google Workspace" |
-| Anteprime Documenti (Fatture/DDT) | ✅ Dicitura dinamica `Protocollo [RagioneSociale]` |
-| Luogo Firma Privacy | ✅ Dinamico da sede aziendale (no Talamona hardcoded) |
-| Logo nei PDF (Fatture/DDT/Privacy) | ✅ Nessun fallback a logo Righetti per utenti non-Righetti |
-| Email DDT/Fatture/Privacy | ✅ Rimossi riferimenti "Righetti Since 1967" hardcoded |
-| Etichetta PDF Fattura | ✅ "DICITURA" al posto di "DICITURA LEGALE" |
+- **Frontend:** Vite + React + TypeScript + Tailwind
+- **PWA:** vite-plugin-pwa (registerType: prompt, strategies: injectManifest, custom SW)
+- **Backend:** Python FastAPI (Railway) per TricoAI
+- **Edge Function:** Supabase Edge Functions (Deno) per magic link + push
+- **DB:** Supabase PostgreSQL (RLS abilitato) + `pg_net` per HTTP da trigger
+- **Email:** Google Workspace HTTPS Relay (Apps Script)
+- **Push:** Web Push API + VAPID + Service Worker custom
+- **Deploy:** Vercel (auto su push main) + vercel.json (rewrites SPA)
 
----
-
-## 🚀 AGGIORNAMENTI COMPLETATI IL 02/10/2026
-
-### 1. Fix CRITICO: Invio Email Fatture/DDT/Privacy
-- ✅ **Bug risolto:** tutte le email (fatture, DDT cliente, DDT commercialista, privacy) fallivano con `400 Bad Request` dal backend Railway
-- ✅ **Causa:** il frontend non passava più `google_script_url` nel payload
-- ✅ **Fix:** creata funzione `inviaEmailConConfig` in `api.ts` che:
-  - Carica `config_email` dal DB dell'utente loggato
-  - Estrae `googleScriptUrl` o `host` (SMTP)
-  - Invia al backend con config completa
-- ✅ **Fix nome mittente:** ora usa `Nome Mittente Visibile` dalle Impostazioni (non più hardcoded `Studio - NomeCliente`)
-- ✅ Sostituito in `DettaglioFattura.tsx`, `DDT.tsx`, `Clienti.tsx`
-
-### 2. Fix PDF Privacy: rimosso header blu
-- ✅ **Bug:** il PDF Privacy scaricato aveva una banda blu in alto (mentre l'anteprima HTML era bianca)
-- ✅ **Causa:** `pdfPrivacy.ts` disegnava `doc.rect(0, 0, 210, 32, 'F')` con `setFillColor(0, 122, 255)`
-- ✅ **Fix:** rimosso header blu, ora sfondo bianco con logo a sinistra e dati aziendali a destra (come l'anteprima)
-
-### 3. Fix DB: `config_email.provider` riportato a `google_relay`
-- ✅ **Bug:** il campo `provider` nel DB era stato impostato a `smtp` (invece di `google_relay`) → backend rifiutava l'invio
-- ✅ **Fix SQL:** `UPDATE impostazioni SET valore = valore || jsonb_build_object('provider', 'google_relay')`
-
-### 4. Dashboard: responsive mobile iPhone
-- ✅ **Grid:** da `grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8` a `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-8 gap-3 sm:gap-4`
-- ✅ **Padding card:** da `p-5` a `p-3 sm:p-5`
-- ✅ **Emoji card:** da `text-2xl` a `text-xl sm:text-2xl`
-- ✅ **Numeri card:** da `text-2xl font-bold` a `text-lg sm:text-2xl font-bold`
-- ✅ **Card Fatturato Mese:** aggiunto `flex-wrap`, `overflow-hidden`, `shrink-0`, select con `max-w-[70px]` su mobile
-- ✅ **Risultato:** layout pulito e leggibile su iPhone
-
-### 5. Sync Google Sheets: da 15 min a 1 volta/giorno alle 08:00
-- ✅ **Motivo:** ridurre il carico su Supabase (Disk I/O + CPU)
-- ✅ **Fix in `App.tsx`:** timer da 15 min a check ogni 60 secondi, sync solo se ora >= 08:00 E non già fatto oggi
-- ✅ **Fix in `Impostazioni.tsx`:** rimosso il blocco SMART SYNC duplicato
-- ✅ **Fix in TricoAI (`Layout.tsx`):** stessa logica
-
-### 6. PWA (Progressive Web App)
-- ✅ **Gestionale:** installabile su iPhone/iPad/Mac (icona Righetti + nome "Gestionale")
-- ✅ **TricoAI v2:** installabile su iPhone/iPad/Mac (icona "R" nera + nome "TricoAI")
-- ✅ Aggiunto `apple-touch-icon`, `theme-color`, `apple-mobile-web-app-capable` in entrambi gli `index.html`
-- ✅ Icone distinte per non confondere le 2 app
-
-### 7. Agenda: Stati Visivi Migliorati
-- ✅ **Pending** → bordo giallo
-- ✅ **Completato** → trasparente
-- ✅ **Rebooking aperto** → trasparente + bordo rosso
-- ✅ **Rebooking chiuso** → grigio scuro archiviato
-- ✅ **Spostamento** → trasparente + blu chiaro (`!bg-blue-100`)
-- ✅ **Operatori orfani** → mostra anche operatori non in config
-
-### 8. Spostamenti con Tracciamento
-- ✅ Funzione `spostaAppuntamento` in `appuntamenti.ts`
-- ✅ Modale conferma in `FormNuovoAppuntamento` (se data cambiata)
-- ✅ Nota con **data italiana** (`Spostato a 30 set 2026 10:30 — nota`)
-- ✅ Tab "Disdette" cliente: mostra **destinazione** + **nota utente pulita**
-- ✅ Modale ricerca cliente: **colori e label distinti** per motivo
-  - 🔴 Definitiva | 🟠 Rebooking | 🟡 Disdetta | 🔄 Spostato | 🔵 Attivo
-
-### 9. Fix CRITICO: Drag&Drop Agenda
-- ✅ **Bug risolto:** trascinando un appuntamento in agenda, l'orario/operatore non veniva salvato su Supabase
-- ✅ **Effetto:** aprendo modale dettaglio o attivando Blocco Unico, gli orari "saltavano" indietro
-- ✅ **Fix:** il drag&drop ora esegue UPDATE reale su Supabase + aggiorna lo stato locale
-
-### 10. Firma DDT Anonima Ripristinata
-- ✅ Fix bug introdotto da `feat(security): isolamento White-Label` che richiedeva auth su `getScarico`/`salvaFirmaScarico`
-- ✅ Ora la firma DDT funziona da iPhone/tablet cliente (anonimo) senza login
-
-### 11. Fix DB (Supabase)
-- ✅ Vincolo `UNIQUE(user_id, numero_ddt)` su `scarichi_seduta`
-- ✅ Operatori DEMO riassegnati (`luca` → `op1`, `lorenzo` → `op2`)
-- ✅ Dati DEMO percorsi con prezzi corretti
-
-### 12. Motore Comunicazioni Email & Allegati PDF (già completato)
-- Google Workspace HTTPS Relay su porta 443
-- Supporto allegati PDF reali
-- Email commercialista configurabile
-- Rimozione termine "salone"
-
-### 13. Agenda Reattiva & Drag and Drop Avanzato (già completato)
-- Realtime WebSocket Supabase
-- Risoluzione sovrapposizioni a colonne
-- Modalità Blocco Unico
-- Persistenza pagina al reload
-
-### 14. Sincronizzazione Google Sheets (già completato)
-- Auto-sync globale ora **1 volta al giorno alle 08:00**
-
-### 15. Firma Digitale Touch-Friendly (già completato)
-- Condivisione link firma via WhatsApp, Email, Copia Link
-- Stabilizzazione canvas iOS
-
-### 16. TricoAI v2 — Pulsante Gestionale
-- ✅ Aggiunto pulsante "📊 Gestionale" in Sidebar TricoAI
-- ✅ Bloccato per utenti DEMO con badge 🔒 Pro
-- ✅ Utenti reali/Righetti: link diretto a `gestionale.righetti.club`
+**Ambiente unico:** PROD (sviluppo diretto in prod, no TEST)
+**Supabase PROD:** `yporpszebtasalwazirz.supabase.co`
 
 ---
 
-## 📌 PROSSIMI PASSI IN ROADMAP
+## 🚀 SESSIONE 06-08/10/2026 — APP CLIENTE + NOTIFICHE PUSH + FIX PDF
 
-### 🟡 Priorità Media
-1. **Motore Promemoria e Automazioni**
-   - Invio reminder WhatsApp ed Email automatici
-   - Configurazione anticipo (24h/48h/72h), canale, testo personalizzabile
-   - Regola specifica per Check-Up Gratuito nuovo cliente
+### 📌 Riepilogo
 
-2. **Cassa Fiscale e Scontrini**
-   - Tab Cassa Fiscale in sidebar visibile solo se attivo il regime scontrini
-   - Scontrino Madre (incasso + IVA immediata) e Scontrino Figlio a 0 euro
-   - Supporto scontrino digitale cloud e stampanti fisiche RCH ed Epson 80mm
+Creata da zero l'**App Cliente PWA** (`cliente.righetti.club`), collegata al
+Gestionale, con autenticazione magic link, visione documenti, note studio,
+appuntamenti, percorsi e **sistema completo notifiche push**.
+Fixati bug critici React #310 (Agenda, Testi Messaggi, FormPercorso, FormOrdine).
+Implementato **UpdateBanner** PWA per aggiornamenti automatici.
+Risolto **upload automatico PDF** con righe e path corretto su Storage.
 
-3. **🌐 WEB APP CLIENTE (PWA)**
-   - **Obiettivo:** portale dedicato dove il cliente vede i suoi dati, senza accesso al Gestionale
-   - **Architettura consigliata:** sotto-dominio separato `cliente.righetti.club` (Vercel)
-   - **Stack:** Vite + React + TypeScript + Tailwind (riusa Supabase)
-   - **Autenticazione:** login dedicato (OTP via Email/WhatsApp o Magic Link)
-   - **Contenuti visibili (configurabili per cliente):**
-     - 📅 I suoi appuntamenti (futuri + storico)
-     - 📇 Contatti studio (indirizzo, telefono, email, sito)
-     - 🧬 Scheda tricologica (foto, analisi, note)
-     - 📄 PDF scaricabili (report tricologico, cura domiciliare, grafico)
-   - **Controllo permessi:** tabella Supabase `permessi_cliente` con flag booleani per ogni sezione
-   - **Punti di forza:** isolamento totale, codice separato, riuso di PDF/Auth/DB esistenti
+### ✅ COMPLETATO — App Cliente PWA
 
-### 🟢 Priorità Bassa
-4. **Ottimizzazione DB: Indici SQL**
-   - Creare indici su `analisi`, `bozze`, `appuntamenti`, `clienti`, `scarichi_seduta`, `fatture`
-   - Ridurre Disk I/O e CPU su Supabase
-   - Ridurre errori Database/Realtime
+**Nuovo progetto:** `/Users/luca/Desktop/Tricolab/CLIENTE/app`
+- Vite + React + TS + Tailwind + vite-plugin-pwa
+- Deploy Vercel: `cliente.righetti.club`
+- Repo GitHub: `righetti-1967/Gestionale-cliente`
+- **`vercel.json`** con rewrites SPA (CRITICO per routing)
 
-5. **Migrazione storage PDF su Supabase Storage**
-   - Attualmente PDF generati al volo lato client
-   - Spostare su Storage per accesso storico dal cliente
+**Auth:**
+- Magic link Supabase (via Edge Function `generate-invite-link`)
+- Redirect 1-click: email → Safari → `/auth/callback` → `/welcome` → PWA
+- Sessione in **cookie** (per copia iOS 17.2+ Safari → PWA)
+- Auto-binding via RPC `find_pending_invite_for_me()`
+- RPC `bind_client_session()`
+
+**Pagine complete:**
+- `/login` — magic link email
+- `/invite?token=...` — accettazione invito (con auto-invio)
+- `/auth/callback` — gestione sessione + binding
+- `/welcome` — istruzioni installazione PWA (**iOS + Android visibili**, badge "Il tuo caso")
+- `/` — Home (profilo + prossimo appuntamento + contatti studio + quick links + badge)
+- `/privacy` — Privacy firmata (PDF da Storage o generazione al volo)
+- `/documenti` — Fatture / Scontrini / DDT (raggruppati per documento)
+- `/note` — Note studio (badge rosso, modale lettura, stato letta/non letta)
+- `/appuntamenti` — Prossimi + Storico (ASC/DESC, stati normalizzati)
+- `/percorsi` — Attivi + Conclusi (senza residui)
+- `/notifiche` — Centro notifiche ricevute
+- `/attiva-notifiche` — Opt-in push + gestione subscription
+- `/profilo` — Profilo + Logout + link notifiche
+
+**PWA:**
+- Nome: **Area Riservata**
+- Icone: **chiave arancione** (placeholder neutro)
+- **Favicon dinamica**: cambia con logo studio loggato
+- Cookie storage per copia sessione Safari → PWA
+- **UpdateBanner** (banner "Nuova versione disponibile" → update 1-click)
+- **Service Worker custom** (`src/sw.ts`) con handler `push` + `notificationclick`
+- Auto-check update: 30 min + on `visibilitychange`
+
+**RLS + RPC App Cliente:**
+- `is_client()`, `is_staff()`, `current_client_id()`
+- `validate_invite`, `bind_client_session`, `find_pending_invite_for_me`
+- `get_my_client_profile`, `get_my_next_appuntamento`, `get_my_studio_contatti`, `get_my_studio_logo`
+- `get_my_privacy_pdf_data` (con `privacy_pdf_url`)
+- `get_my_fatture`, `get_my_scontrini`, `get_my_ddt`
+- `get_my_appuntamenti`, `get_my_percorsi`
+- `get_my_note`, `mark_nota_letta`, `mark_my_note_lette`, `get_my_note_unread_count`
+- `get_my_notifiche`, `get_my_notifiche_unread_count`, `mark_notifica_letta`, `mark_all_notifiche_lette`
+- `save_push_subscription`, `delete_push_subscription`
+
+### ✅ COMPLETATO — Gestionale
+
+**Tab App Cliente (Impostazioni):**
+- Lista clienti + stato App (Attivo / Invitato / Non attivo / Bloccato)
+- Card statistiche cliccabili per filtro
+- Toggle visibilità moduli (7): Appuntamenti, Documenti, Percorsi, Scheda tricologica, Cura domiciliare, Privacy firmata, Note studio
+- Blocco/sblocco accesso con motivo
+- **Genera link invito** (Edge Function)
+- **Invia via email** (automatico via Apps Script)
+- **Invia WhatsApp** (link pre-compilato con numero cliente)
+- **📝 Note per il cliente** (cumulate, con stato lettura ✓ Letta / Non letta + auto-refresh 20 sec)
+- **🔔 Invia notifica push** (form + storico con stato lettura)
+
+**Edge Function Supabase:**
+- `generate-invite-link` → genera magic link diretto Supabase
+- `send-push` → invia notifiche push Web Push Protocol
+- Deploy: `supabase functions deploy <nome>`
+- `supabase/` + `.vscode/settings.json` in `.gitignore`
+
+**Upload PDF su Storage:**
+- `fatture-pdf`, `scontrini-pdf`, `scarichi-pdf`, `privacy-pdf`
+- Upload automatico ad ogni generazione PDF con **path corretto**: `<client_id>/<anno>/<nome_file>.pdf`
+- URL salvato in DB (`fatture.pdf_url`, `scontrini.pdf_url`, `scarichi_seduta.pdf_url`, `clienti.privacy_pdf_url`)
+
+**Storico Sedute & Consegne (modale cliente):**
+- Tab: Tutti / Prodotti / Servizi / EXTRA / Fatture & Scontrini
+- **Raggruppamento per documento** con freccia ▼
+- **Documenti cliccabili** in TUTTE le tab → aprono **modale anteprima**
+- **Proforma**: cliccabili (aprono anteprima Proforma)
+- **Scontrini figli**: suffisso "(Figlio)" + raggruppati sotto madre
+- **Fatture proforma**: etichetta "Proforma" + "IN ATTESA"
+- Se `pdf_url` esiste → apre da Storage; altrimenti genera al volo
+
+### ✅ COMPLETATO — Sistema Notifiche Push (end-to-end)
+
+**Tabelle:**
+- `push_subscriptions`: id, client_id, endpoint, p256dh, auth, user_agent, created_at, last_used_at
+- `notifiche`: id, client_id, tipo, titolo, messaggio, priorita, url, dettagli, letta, letta_at, push_inviata, push_inviata_at, push_errore, created_at, dedup_key
+- `push_automazioni_config`: id, user_id, chiave, valore (JSONB), updated_at
+
+**RLS complete** su tutte e 3.
+
+**RPC (8):**
+- `save_push_subscription`, `delete_push_subscription`
+- `get_my_notifiche`, `get_my_notifiche_unread_count`
+- `mark_notifica_letta`, `mark_all_notifiche_lette`
+- `admin_send_custom_notifica`, `admin_list_notifiche_cliente`
+
+**Edge Function `send-push`:**
+- Deno + `web-push` lib
+- Autenticazione: service_role (cron/trigger) o staff autenticato
+- Legge/crea notifica, recupera subscriptions, invia push, aggiorna stato
+- Rimuove subscription scadute (404/410)
+- VAPID: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` in Supabase secrets
+
+**Frontend App Cliente:**
+- `usePushNotifications` hook (chiede permesso + registra subscription)
+- Pagina `/attiva-notifiche` (attiva/disattiva + stato)
+- Pagina `/notifiche` (lista + badge non lette)
+- Badge rosso su tab **Profilo** (BottomNav) + quick link **Notifiche** in Home
+- Auto-refresh contatore ogni 60 sec + on focus
+
+**Frontend Gestionale:**
+- Sezione **🔔 Invia notifica push** nel modale cliente
+- Form: titolo + messaggio + priorità (alta/media/bassa) + URL opzionale
+- **Storico notifiche** con stato ✓ Letta / Non letta + orario lettura
+- Auto-refresh ogni 20 sec
+
+### ✅ COMPLETATO — Note Studio → Cliente
+
+**Tabella `cliente_note`:**
+- id, client_id, contenuto, autore_user_id, visibile_cliente, letta, letta_at, created_at, updated_at
+
+**RPC:**
+- Staff: `admin_list_note_cliente`, `admin_create_nota_cliente`, `admin_update_nota_cliente`, `admin_delete_nota_cliente`
+- Cliente: `get_my_note`, `mark_nota_letta`, `mark_my_note_lette`, `get_my_note_unread_count`
+
+**UX App Cliente:**
+- Badge rosso su quick link "Note studio" in Home
+- Lista con stato visivo: **arancione = da leggere** / **grigio = letta**
+- Testo **nascosto in preview** (privacy) → "Tocca per leggere il messaggio"
+- Tap → **modale** con testo completo
+- Marcatura automatica come letta all'apertura modale
+
+**UX Gestionale:**
+- Sezione **📝 Note per il cliente** nel modale
+- Badge ✓ Letta / Non letta + orario
+- Auto-refresh ogni 20 sec
+
+### ✅ COMPLETATO — Fix Upload PDF automatico (08/10/2026)
+
+**Problema risolto:**
+- PDF di scontrini/fatture/DDT non venivano caricati automaticamente su Storage
+- Alcuni PDF venivano caricati **senza righe** (path sbagliato + generazione parziale)
+- Cliente doveva attendere che lo studio aprisse manualmente il PDF
+
+**Fix:**
+- **`pdfScontrino.ts`** / **`pdfDdt.ts`** / **`pdfFattura.ts`**: separato **upload** (sempre) da **download** (`scarica=true`)
+- **`creaScontrino`** / **`creaFattura`** / **`creaScarico`**: ricaricano il documento con **righe + cliente** e chiamano la funzione di generazione PDF corretta
+- **`registraIncasso`**: rigenera PDF come **fattura** (senza "PROFORMA")
+- **Path Storage corretto** uniforme: `<client_id>/<anno>/<nome_file>.pdf`
+- **RLS Storage `fatture-pdf`**: aggiunte policy INSERT/UPDATE per authenticated
+
+**Comportamento finale:**
+- Emesso scontrino → PDF con righe su Storage **immediatamente** ✅
+- Creata fattura (proforma) → PDF proforma su Storage ✅
+- Incassata fattura → PDF rigenerato come fattura ✅
+- Creato DDT → PDF con righe su Storage ✅
+
+### 🐛 FIX CRITICI
+
+- **React error #310 in Agenda**: `useDraft` + 2 `useEffect` + `useRef` erano dopo `return if (loading)`. Spostati prima.
+- **React error #310 in Testi Messaggi** (`TestiTemplateTab.tsx`): stesso pattern, fixato.
+- **React error #310 in FormNuovoPercorso.tsx**: stesso pattern, fixato.
+- **React error #310 in FormNuovoOrdine.tsx**: stesso pattern, fixato.
+- **RPC "column reference ambiguous"**: qualificare sempre `tabella.colonna` in `RETURNS TABLE`
+- **vercel.json mancante**: routing SPA rotto su Vercel (`/attiva-notifiche` → 404). Aggiunto rewrites.
+- **RLS UPDATE su `cliente_note`**: policy mancante per marcatura letta → risolto
+- **RPC `get_my_note` senza `letta`**: aggiunto campo
+- **RLS INSERT/UPDATE `fatture-pdf`**: upload bloccato → aggiunte policy
+- **Tab Prodotti/Servizi/EXTRA** in Storico: `isDocumento` scartava le righe → fix
+
+**Bug fix TricoAI:**
+- Fix `main.tsx`: aggiunti `<BrowserRouter>` + `<AuthProvider>` mancanti (commit `abfea82`)
+
+---
+
+## 🔴 TODO — PRIORITÀ ALTA
+
+### 1. Notifiche Push — Automazioni automatiche (IN CORSO)
+- ⏸️ **Trigger DB** su `cliente_note` (INSERT → notifica + push)
+- ⏸️ **Trigger DB** su `appuntamenti` (INSERT/UPDATE → notifica + push)
+- ⏸️ **Trigger DB** su `fatture` (UPDATE pdf_url → notifica + push)
+- ⏸️ **Trigger DB** su `scontrini` (INSERT → notifica + push)
+- ⏸️ **Trigger DB** su `scarichi_seduta` (INSERT → notifica + push)
+- ⏸️ **Trigger DB** su `clienti` (UPDATE privacy_pdf_url → notifica + push)
+- ⏸️ **Trigger DB** su `percorsi` (INSERT/UPDATE stato → notifica + push)
+- ⏸️ **Trigger DB** su schede TricoAI (INSERT → notifica + push)
+- ⏸️ **Cron edge function** ogni 1 min → processa `notifiche` con `push_inviata = false` → invia push
+- ⏸️ **Cron compleanni** (giornaliero)
+- ⏸️ **Cron promemoria pre-appuntamento** (configurabile ore/giorni prima)
+- ⏸️ **Cron riattivazione** (90gg senza attività)
+- ⏸️ **Config automazioni** in Impostazioni → Automazioni (on/off + timing + testo per tipo)
+- ⏸️ **Badge automatico** in Home/BottomNav quando arriva una nuova notifica
+
+### 2. TricoAI → App Cliente (schede tricologiche)
+- ⏸️ TricoAI ha Supabase **separato**
+- ⏸️ Edge Function di TricoAI che invia PDF al Supabase PROD
+- ⏸️ Autenticazione via secret condiviso
+- ⏸️ Mappatura cliente: usare `tricoai_id` su `clienti` PROD
+- ⏸️ Schede: "Report Tricologico Righetti" + "Rituale di Cura Domiciliare"
+- ⏸️ Pagine App Cliente `/schede` + `/cura-domiciliare`
+
+### 3. App Cliente — Migliorie
+- ⏸️ Banner "Installa app" in Home (se non installata)
+- ⏸️ Icona PWA dinamica per studio (manifest sottodominio)
+- ⏸️ Test completo su iPhone
+
+### 4. Filtri prenotazioni (App Cliente)
+- ⏸️ Filtri per cliente: cosa può prenotare online
+- ⏸️ Configurazione in Impostazioni
+
+### 5. Integrazione API reali
+- ⏸️ FPT (fatturazione elettronica)
+- ⏸️ ADE (Agenzia Entrate)
+- ⏸️ RCH, Epson (stampanti fiscali)
+
+---
+
+## 🟡 TODO — PRIORITÀ MEDIA
+
+### 6. Agenda — Completare
+- ⏸️ Vista Settimanale adattiva
+- ⏸️ Vista Mensile adattiva
+- ✅ Fix React #310
+
+### 7. Cassa Fiscale
+- ⏸️ Chiusura giornaliera con fondo iniziale
+- ⏸️ Export CSV scontrini
+- ⏸️ Tastiera numerica touch-friendly
+
+### 8. Report Analytics
+- ⏸️ Ranking clienti per spesa
+- ⏸️ Export PDF A4
+- ⏸️ Upload PDF commercialista
+
+---
+
+## 🟢 TODO — PRIORITÀ BASSA
+
+### 9. Sicurezza
+- ⏸️ Conferma cambio regime documenti
+- ⏸️ Log accessi/azioni critiche
+- ⏸️ Timeout sessione inattività
+
+### 10. Performance
+- ⏸️ Indici SQL su: appuntamenti, clienti, fatture, scontrini, bozze
+- ⏸️ Riduzione Disk I/O e CPU Supabase
+
+### 11. Icona PWA dinamica per studio
+- ⏸️ Manifest dinamico per sottodominio
+- ⏸️ Icona PWA = logo studio
 
 ---
 
 ## 📋 NOTE TECNICHE
 
-### Stack
-- **Frontend Gestionale:** Vite + React + TypeScript + Tailwind (Railway)
-- **Frontend TricoAI v2:** Vite + React + TypeScript + Tailwind (Vercel)
-- **Backend TricoAI/Gestionale:** Python FastAPI (Railway)
-- **DB:** Supabase (PostgreSQL)
-- **Email:** Google Workspace HTTPS Relay (Apps Script)
+### Tabella `bozze` (persistenza multi-device)
+- Chiave: user_id + chiave_draft (UNIQUE)
+- Payload: JSONB
+- Hook: `src/lib/useDraft.ts`
+- **REGOLA**: hook sempre PRIMA di qualsiasi `return` condizionale
 
-### Domini
-- `gestionale.righetti.club` → Gestionale
-- `trico.righetti.club` → TricoAI v2
-- `cliente.righetti.club` → **Web App Cliente (futura)**
+### Storage Buckets (PROD)
+- `azienda` (pubblico) → logo azienda
+- `avatars` (pubblico) → foto profilo
+- `scontrini-pdf` (pubblico) → PDF scontrini
+- `fatture-pdf` (pubblico) → PDF fatture
+- `scarichi-pdf` (pubblico) → PDF DDT
+- `privacy-pdf` (pubblico) → PDF privacy firmata
 
-### PWA
-- **Gestionale:** icona RIGHETTI, nome "Gestionale", theme #007AFF
-- **TricoAI:** icona "R" nera, nome "TricoAI", theme #007AFF
-- **Installazione iPhone:** Safari → Condividi → Aggiungi a Home
-- **Installazione Mac:** Chrome → icona "Installa" nella barra indirizzi
+### App Cliente — Tabelle chiave
+- `client_users`: `auth_user_id uuid` ↔ `client_id bigint`
+- `client_portal_settings`: 7 toggle visibilità (appointments, documents, percorsi, scheda_tricologica, cura_domiciliare, privacy_pdf, note) + is_blocked
+- `client_invites`: token invito + `action_link` (magic link)
+- `cliente_note`: note studio → cliente
+- `clienti.tricoai_id uuid`: collegamento a TricoAI
 
-### Sync Google Sheets
-- **Frequenza:** 1 volta al giorno alle 08:00
-- **Manuale:** pulsante "🔄 Sincronizza ora" sempre disponibile
-- **LocalStorage:** `gestionale_sheets_last_sync` (timestamp ultimo sync)
-- **Tabella:** `impostazioni` chiave `google_sheet_url`
+### App Cliente — Notifiche Push
+- `push_subscriptions`: subscription Web Push per device
+- `notifiche`: log notifiche + stato lettura + stato push
+- `push_automazioni_config`: config per studio (futuro)
+- Edge Function `send-push` (Deno + web-push)
+- Service Worker custom `src/sw.ts` con handler push
+- VAPID keys in Supabase secrets
+- ⚠️ iOS 16.4+ richiede PWA installata
+- ⚠️ Prompt autorizzazione solo dopo azione utente
+- ⚠️ **VAPID_PUBLIC_KEY**: attenzione a `=` finale (errore ricorrente)
 
-### Watcher Foto Panoramica (Mac)
-- **Script:** `~/tricolab_watcher.py`
-- **Config:** `~/.tricolab_watcher.json`
-- **LaunchAgent:** `~/Library/LaunchAgents/com.righetti.tricolab.watcher.plist`
-- **Log:** `~/Library/Logs/tricolab_watcher.log`
-- **Mac attivi:** MacBook Pro, iMac Studio
-- **Vedi documentazione completa:** `/Users/luca/Desktop/Tricolab_v2/STATO.md`
+### Edge Functions Supabase
+- `generate-invite-link`: magic link diretto (service role)
+- `send-push`: notifiche push (service role o staff)
+- Deploy: `supabase functions deploy <nome>`
+- Setup: `supabase login` + `supabase link --project-ref yporpszebtasalwazirz`
+- Secrets: `supabase secrets set CHIAVE="valore"`
 
-### File di stato correlati
-- **TricoAI v2:** `/Users/luca/Desktop/Tricolab_v2/STATO.md`
-- **Gestionale:** questo file
+### PWA Auto-Update (UpdateBanner)
+- `registerType: 'prompt'` + `strategies: 'injectManifest'`
+- Service Worker custom `src/sw.ts`
+- Banner "Nuova versione disponibile" → update 1-click
+- Auto-check: 30 min + on `visibilitychange`
+- ⚠️ iOS a volte non rileva update → reinstallo manuale
 
-### Comandi utili
-```bash
-# Build locale Gestionale
-cd /Users/luca/Desktop/Tricolab/GESTIONALE/app && npm run build
+### vercel.json (SPA Routing)
+```json
+{
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "headers": [
+    { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] },
+    { "source": "/manifest.webmanifest", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] }
+  ]
+}
 
-# Build locale TricoAI v2
-cd /Users/luca/Desktop/Tricolab_v2 && npm run build
+Annullo Fatture/DDT
+Password gestionale: Impostazioni → Sicurezza (hash SHA-256)
 
-# Dev server Gestionale
-cd /Users/luca/Desktop/Tricolab/GESTIONALE/app && npm run dev
+Motivo obbligatorio: min 10 caratteri
 
-# Dev server TricoAI v2
-cd /Users/luca/Desktop/Tricolab_v2 && npm run dev
+Soft-delete: annullato_at, annullato_motivo, annullato_da
 
----
+Blocco DDT collegati: annullare prima i DDT
 
-## 🚀 AGGIORNAMENTI COMPLETATI IL 02/10/2026 (parte 2)
+Email Professionale
+src/lib/emailWrapper.ts → wrapEmailHtml(corpo, azienda)
 
-### 17. Fix CRITICO: Firma Anonima su Safari/iPhone
-- ✅ **Bug:** le pagine firma anonime (Privacy, DDT, Fattura) fallivano su Safari con "Non autenticato"
-- ✅ **Causa:** funzioni `getCliente`, `getFattura`, `salvaFirmaPrivacy`, `salvaFirmaFattura` richiedevano auth Supabase
-- ✅ **Fix:** rese pubbliche (senza auth) le seguenti funzioni:
-  - `getCliente(id)` (clienti.ts)
-  - `salvaFirmaPrivacy(id, firma)` (clienti.ts)
-  - `getFattura(id)` (fatture.ts)
-  - `salvaFirmaFattura(id, firma)` (fatture.ts)
-- ✅ **Sicurezza:** RLS Supabase già configurate per lettura/update pubblici per id
+Variabile {data_estesa}: "Lunedì 5 Ottobre 2026"
 
-### 18. Fix Email cliente in DDT
-- ✅ **Bug:** nella modale firma DDT mancava email/cellulare del cliente → "Email cliente non disponibile"
-- ✅ **Fix:** aggiunto `cellulare, email` al select delle query `scarichi.ts`
+App Cliente — Magic Link
+Template email Supabase: bottone "Accedi" stile Apple
 
-### 19. Fix Email cliente in Fattura
-- ✅ **Bug:** nella modale firma Fattura il cliente era passato come `null`
-- ✅ **Fix:** passato `fattura.cliente as any` in `DettaglioFattura.tsx`
-- ✅ Aggiunto `cellulare` a tutte le query `fatture.ts`
+Link generato da Edge Function (no magic link standard)
 
-### 20. Fix Email cliente in Privacy
-- ✅ **Bug:** nella modale firma Privacy mancava email/cellulare del cliente
-- ✅ **Fix:** verificato che `clienteSelezionato` è passato correttamente
+Cookie storage per copia sessione iOS 17.2+
 
-### 21. Invio Email Firma Diretto (no più mailto:)
-- ✅ **Bug:** cliccando "Invia Email" nella modale firma si apriva Mail.app con campo destinatario vuoto
-- ✅ **Fix:** `CondividiLinkFirma.tsx` ora usa `inviaEmailConConfig` → invio diretto + banner esito:
-  - ⏳ Invio...
-  - ✅ Email inviata a [email cliente]
-  - ❌ Errore: [messaggio]
-- ✅ Funziona in tutte e 3 le modali (Privacy, DDT, Fattura)
+Appuntamenti — Stati
+prenotato (default) / confermato / pending / completato / cancellato
 
-### 22. Bug Safari vs Chrome: ITP e Storage
-- ✅ **Nota:** il bug della firma anonima era visibile su Safari (non su Chrome) perché Safari blocca la sessione Supabase per pagine anonime
-- ✅ **Fix:** rendendo pubbliche le funzioni, la pagina firma non richiede più la sessione
+App Cliente normalizza: pending → "In attesa di conferma" (ambra), altri → "Prenotato" (blu), completato → "Completato" (grigio), cancellato → "Annullato" (rosso)
 
-### 23. Dashboard + Fatture Responsive iPhone
-- ✅ **Dashboard:** grid responsive (`grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-8`)
-- ✅ **Card:** padding `p-3 sm:p-5`, font ridotti, `flex-wrap` per i select
-- ✅ **Fatture:** layout card verticale su mobile (numero + stato | cliente + importo | data)
-- ✅ **Risultato:** niente sovrapposizioni, tutto leggibile
+Fatture — Visibilità cliente
+Proforma (data_incasso = NULL): visibili ma non cliccabili
 
----
+Fatture pagate (data_incasso != NULL): visibili e cliccabili
 
-## 🚀 AGGIORNAMENTI COMPLETATI IL 02/10/2026 (parte 3)
+Comportamento coerente con il Gestionale
 
-### 24. Ambiente di Test Isolato
-- ✅ Creato progetto Supabase separato **`Scontrini_test`** (Free)
-- ✅ Ref: `wahkvaxvgcnqpnjaaooz.supabase.co`
-- ✅ Configurato `.env.local.TEST` / `.env.local.PROD` per switch rapido ambiente
-- ✅ Aggiornato `.gitignore` per escludere varianti `.env.local.PROD/TEST`
-- ✅ Creato utente test `luca.trainer@icloud.com` + dati demo (2 clienti, 3 prodotti, 2 servizi)
-- ✅ Schema DB completo: `clienti`, `prodotti`, `servizi`, `impostazioni`, `scontrini`, `scontrini_righe`, `chiusure_cassa`
-- ✅ Policy RLS permissive per test
+Upload PDF — Regola
+Sempre al momento della creazione/emissione (fatture, scontrini, DDT, privacy)
 
-### 25. Nuova Feature: Regime Documenti (Fatture vs Scontrini)
-- ✅ Aggiunto campo `regimeDocumenti: 'fatture' | 'scontrini'` in `DatiAziendali` (`studio.ts`)
-- ✅ Funzione `salvaDatiAziendali()` in `datiAziendali.ts`
-- ✅ Aggiornato `adatta()` + `DATI_AZIENDALI_VUOTI` con `regimeDocumenti`
-- ✅ **Sidebar dinamica** basata sul regime attivo:
-  - Regime `fatture`: visibili `Fatture`, `DDT`; **nascosto** `Cassa Fiscale`
-  - Regime `scontrini`: visibile `Cassa Fiscale`; **nascosti** `Fatture`, `DDT`
-  - Voci sempre visibili: `Dashboard`, `Clienti`, `Percorsi`, `Prodotti`, `Servizi`, `Agenda`, `Magazzino`, `Ordini`
-- ✅ **Event System** con `CustomEvent('datiAziendali-aggiornati')` per aggiornamento istantaneo Sidebar (no refresh)
-- ✅ **Selettore Regime Documenti** in `Impostazioni → Fatturazione`:
-  - Card in cima con 2 opzioni radio stilizzate (Regime Fatture blu / Regime Scontrini ambra)
-  - Testo esplicativo + avviso su cambio Sidebar automatico
-  - Salvataggio contestuale a `salvaFatturazione` + `salvaDatiAziendali`
+Path Storage: <client_id>/<anno>/<nome_file>.pdf
 
-### 26. Cassa Fiscale (in corso - ambiente TEST)
-- 🚧 **Obiettivo:** Cassa fiscale stile UALA (Apple-like), touch-friendly, pulita
-- 🚧 **Struttura pianificata:**
-  - **Area sinistra:** Griglia prodotti/servizi touch + ricerca rapida
-  - **Area destra:** Riepilogo scontrino live (righe, subtotale, IVA 22%, totale, metodo pagamento, pulsante "Emetti")
-  - **Report:** Chiusura giornaliera, storico scontrini, export commercialista
-- 🚧 **Regole fiscali:**
-  - IVA 22% fissa (regime ordinario)
-  - Scontrino Madre (incasso + IVA) + eventuale Figlio (0€)
-  - NO doppia emissione scontrino + fattura sulla stessa operazione
-  - Numerazione progressiva per anno
-- 🚧 **File previsti:**
-  - `src/lib/scontrini.ts` (CRUD + calcoli)
-  - `src/pages/CassaFiscale.tsx` (UI principale)
-  - `src/components/FormNuovoScontrino.tsx` (modale)
-  - `src/components/ListaScontrini.tsx` (storico)
-  - `src/lib/pdfScontrino.ts` (PDF)
+uploadJsPdfToStorage fuori da if (scarica) (upload indipendente dal download)
 
-### 27. Event System — Aggiornamenti Live
-- ✅ Pattern adottato: `window.dispatchEvent(new CustomEvent('datiAziendali-aggiornati', { detail: dati }))`
-- ✅ Ascoltatori registrati in `Sidebar.tsx` per refresh istantaneo
-- ✅ Esportata costante `EVENT_DATI_AZIENDALI_AGGIORNATI` da `datiAziendali.ts`
-- ✅ **Vantaggio:** cambio regime → Sidebar aggiornata **senza refresh pagina**
+Righe incluse nel PDF (ricaricare con select *, righe:tabella_righe(*))
 
----
+🔧 COMANDI UTILI
+Build Gestionale: cd /Users/luca/Desktop/Tricolab/GESTIONALE/app && npm run build
 
-## 📌 STATO AMBIENTI
+Dev Gestionale: cd /Users/luca/Desktop/Tricolab/GESTIONALE/app && npm run dev
 
-### Produzione (Railway)
-- **Frontend:** `gestionale.righetti.club`
-- **Supabase:** `yporpszebtasalwazirz.supabase.co` (progetto `gestionale-righetti`)
-- **Config:** `.env.local.PROD`
-- **Commit pushati:** fino a `fb5d607`
+Build App Cliente: cd /Users/luca/Desktop/Tricolab/CLIENTE/app && npm run build
 
-### Sviluppo Locale (Test)
-- **Frontend:** `http://localhost:5173`
-- **Supabase:** `wahkvaxvgcnqpnjaaooz.supabase.co` (progetto `Scontrini_test`)
-- **Config:** `.env.local.TEST`
-- **Commit locali:** `544398b`, `0ff4332`, + altri non pushati
+Dev App Cliente: cd /Users/luca/Desktop/Tricolab/CLIENTE/app && npm run dev
 
-### Switch ambiente
-```bash
-# Attiva TEST
-cp app/.env.local.TEST app/.env.local
-npm run dev
+Build TricoAI: cd /Users/luca/Desktop/Tricolab_v2 && npm run build
 
-# Torna a PROD
-cp app/.env.local.PROD app/.env.local
-npm run dev
+Push PROD: git add -A && git commit -m "..." && git push origin main
 
-🎯 ROADMAP CASSA FISCALE (prossimi step)
-Fase 1 — Schema DB ✅ Completato
+Deploy Edge Function: cd /Users/luca/Desktop/Tricolab/GESTIONALE/app && supabase functions deploy <nome>
 
-Fase 2 — Regime Documenti ✅ Completato (selettore + Sidebar dinamica)
+Secrets: cd /Users/luca/Desktop/Tricolab/GESTIONALE/app && supabase secrets set CHIAVE="valore"
 
-Fase 3 — UI Cassa Fiscale 🚧 In corso
+🎯 PRINCIPI DI SVILUPPO
+Nessuna feature senza responsive (desktop/tablet/mobile)
 
-Pagina CassaFiscale.tsx
+Test in PROD prima di dire "fatto"
 
-Modale FormNuovoScontrino.tsx
+Backup automatico prima di modifiche critiche (_backup/)
 
-Lista ListaScontrini.tsx
+Commit piccoli e chiari (un fix = un commit)
 
-Fase 4 — PDF e Stampa
+Deploy frequenti (Vercel automatico)
 
-Fase 5 — Report Commercialista
+Realtime quando serve (Agenda, Cassa)
 
-Fase 6 — Test completo in locale
+Multi-device quando serve (bozze + realtime)
 
-Fase 7 — Deploy produzione (solo dopo test ok)
+Lavoriamo direttamente in PROD
+
+Tutti gli hook React prima di qualsiasi return condizionale
+
+In RPC con RETURNS TABLE, qualificare sempre tabella.colonna
+
+Verifica sempre l'utente loggato (admin vs demo)
+
+Test su PROD dopo ogni push
+
+PWA: forza hard reload dopo deploy (Cmd+Shift+R) o usa UpdateBanner
+
+Upload PDF: sempre fuori da if (scarica) — mai condizionato al download
+
+📂 FILE CORRELATI
+TricoAI v2: /Users/luca/Desktop/Tricolab_v2/STATO.md
+
+App Cliente: /Users/luca/Desktop/Tricolab/CLIENTE/app/ (repo Gestionale-cliente)
+
+Gestionale: questo file
+
+FINE FILE
 
 ---
 
-## AGGIORNAMENTI COMPLETATI IL 02/10/2026 (parte 4) — CASSA FISCALE COMPLETA
+## 🆕 TODO AGGIUNTO 08/10/2026 — Promemoria Appuntamenti (Riscrittura)
 
-### 28. Cassa Fiscale Completa (ambiente TEST)
-- COMPLETATO **Pagina `CassaFiscale.tsx`** con **3 tab**:
-  - `Cassa` — vendita normale con sconti
-  - `Archivio` — storico scontrini con filtri Fisico/Digitale
-  - `Riscatta Percorso` — riscatto percorsi prepagati
-- COMPLETATO **Tabelle DB**:
-  - `scontrini` (con `scontrino_madre_id`, `scontrino_madre_numero`, `scontrino_madre_data`, `sconto_totale_tipo`, `sconto_totale_valore`)
-  - `scontrini_righe` (con `sconto_tipo`, `sconto_valore`)
-  - `movimenti_magazzino` (con trigger SQL per aggiornare `prodotti.giacenza`)
-  - `percorsi` (con `scontrino_madre_id`)
-- COMPLETATO **Regole fiscali ADE**:
-  - IVA 22% fissa
-  - Scontrino madre (vendita) + scontrino figlio (riscatto a 0€)
-  - Opzione B confermata: figlio con righe positive scontate + riga storno compensativa
-  - Numerazione progressiva per anno (`SC-00001/2026`)
+### Problema attuale
+- Modale "Promemoria" in Agenda guarda solo **24h dalla data selezionata**
+- Non mostra **stato invio** per riga (email / whatsapp)
+- Non permette **invio multiplo** (bulk)
 
-### 29. Sconti su Cassa
-- COMPLETATO **Sconto per riga** (con toggle `%` / `€`)
-  - Campo in ogni riga del carrello
-  - Il prezzo unitario cambia in tempo reale
-  - La stampa mostra: prezzo pieno, sotto-riga "Sconto X%" con importo negativo
-- COMPLETATO **Sconto sul totale** (con toggle `%` / `€`)
-  - Campo in basso al carrello
-  - Calcolo automatico + riga "Sconto totale" nella stampa
-- COMPLETATO **5 metodi pagamento**: Contanti, Carta, Bancomat, **Bonifico**, Altro
+### Nuovo design (confermato)
+- **Range**: Lunedì → Sabato della settimana visualizzata in Agenda
+- **Modale esistente modificato** (pulsante "Promemoria" già presente in Agenda)
+- **Testo promemoria modificabile inline** (solo per la sessione corrente, non salva su Impostazioni)
+- **Bottoni bulk**: 📧 Email / 💬 WhatsApp / 📧💬 Entrambi
+- **Per ogni riga**:
+  - Cliente (nome, email, cellulare)
+  - Data/ora appuntamento
+  - Operatore + tipo
+  - **Stato invio**: ✅ Inviato / ⏸️ Da inviare / ⚠️ In ritardo / ⚪ Troppo presto
+  - Data/ora ultimo invio email e whatsapp
+- **Filtri**: stato invio + canale mancante
+- **Checkbox** selezione + "Seleziona tutti"
 
-### 30. Percorsi Prepagati (regime scontrini)
-- COMPLETATO **`FormNuovoPercorso.tsx`** con `regime="scontrini"`:
-  - Crea percorso + **scontrino madre** automatico
-  - Madre con **1 sola riga** "Percorso [nome]" importo scontato (modello fatture/DDT)
-- COMPLETATO **`FormRiscattaPercorso.tsx`**:
-  - Mostra residuo per riga
-  - Precompila quantità se ci sono `vociIniziali`
-  - Genera **scontrino figlio** con righe scontate + riga storno → totale **0,00 € / IVA 0,00 €**
-- COMPLETATO **`scontrini-figli.ts`**:
-  - `creaScontrinoFiglio()` con magazzino automatico (trigger SQL)
-  - `getRigheRiscattateDaFigli()` per calcolare residuo percorso
-- COMPLETATO **Tab "Riscatta Percorso"** nella Cassa Fiscale:
-  - Lista percorsi attivi con residuo € / totale €
-  - Pulsante **"➕ Nuovo Percorso"**
-  - Pulsante **"Riscatta →"** per aprire form
+### RPC da creare
+`get_appuntamenti_settimana(lunedi DATE, sabato DATE)`
+```sql
+RETURNS TABLE (
+  id, cliente_id, cliente_nome, cliente_email, cliente_cellulare,
+  data, ora_inizio, durata_minuti, operatore, tipo, titolo,
+  reminder_email_at, reminder_email_inviato,
+  reminder_whatsapp_at, reminder_whatsapp_inviato,
+  ore_anticipo,  -- 24 standard, 72 checkup
+  stato_invio    -- 'inviato' | 'da_inviare' | 'in_ritardo' | 'troppo_presto'
+)
 
-### 31. Pulsante Intelligente Overlap
-- COMPLETATO **Auto-rilevamento overlap**: quando nel carrello ci sono voci che sono anche nel percorso attivo del cliente
-- COMPLETATO **Pulsante cambia colore**:
-  - **Verde** → `✅ EMETTI SCONTRINO (€X)` (flusso normale)
-  - **Giallo** → `🎫 Scarica voci Percorso | Emetti Figlio` (con overlap)
-- COMPLETATO **Auto-rimozione**: dopo aver emesso il figlio, le voci in overlap **spariscono dal carrello**
-- COMPLETATO **Ricarica live**: il residuo del percorso si aggiorna senza refresh
+Filtro: data BETWEEN lunedi AND sabato
 
-### 32. Stampa Scontrino (carta termica 80mm)
-- COMPLETATO **`StampaScontrino.tsx`**:
-  - Layout monospace stile carta termica
-  - **Colonna IVA** + **riga "di cui IVA"**
-  - Sotto-riga "Sconto X%" per ogni riga scontata
-  - Riga "Sconto totale X%" se applicato
-  - Barcode finto in fondo
-  - Per figli: badge "FIGLIO (0€)" + dicitura "Documento di cortesia — nessun pagamento" + riferimento al madre
-  - Warning "simulazione stampa termica 80mm" per scontrini fisici
+Solo studio loggato (is_staff)
 
-### 33. Bug Fix Cassa
-- COMPLETATO Bug `[object Object]` in Clienti/Percorsi (causato da `getFatture()` che fallisce in TEST)
-- COMPLETATO Fix campi mancanti nel tipo `Scontrino` (`scontrino_madre_numero`, `scontrino_madre_data`, `note_cliente`)
-- COMPLETATO Fix campi sconto in `RigaScontrino` + `Scontrino`
-- COMPLETATO Fix `MetodoPagamento` con `'Bonifico'` e `'Non richiesto'`
+Esclude cancellato, is_blocco
 
-### 34. File Nuovi / Modificati
-- NUOVO `src/pages/CassaFiscale.tsx` (riscritto con 3 tab + sconti + overlap)
-- NUOVO `src/components/StampaScontrino.tsx`
-- NUOVO `src/components/FormRiscattaPercorso.tsx`
-- NUOVO `src/lib/scontrini-figli.ts`
-- MODIFICATO `src/components/FormNuovoPercorso.tsx` (regime scontrini)
-- MODIFICATO `src/lib/scontrini.ts` (Bonifico, sconto totale, scontrino_madre_*)
-- MODIFICATO `src/lib/percorsi.ts` (scontrino_madre_id opzionale)
-- MODIFICATO `src/pages/Clienti.tsx` (getFatture tollerante)
-- MODIFICATO `src/pages/Percorsi.tsx` (getFatture tollerante)
+Logica invio
+Email: inviaEmailConConfig (già esistente) + testo elaborato
 
----
+Sostituzione variabili: {cliente}, {data}, {ora}, {servizio}
 
-## ROADMAP CASSA FISCALE (aggiornata 02/10/2026)
+Aggiorna reminder_email_at, reminder_email_inviato = true
 
-- Fase 1 — Schema DB: COMPLETATO
-- Fase 2 — Regime Documenti: COMPLETATO
-- Fase 3 — UI Cassa Fiscale: COMPLETATO
-  - Pagina CassaFiscale.tsx con 3 tab
-  - Sconti riga + totale
-  - Pulsante intelligente overlap
-- Fase 4 — Stampa: COMPLETATO (simulazione a video)
-- Fase 5 — Report Commercialista: IN CORSO
-- Fase 6 — Test completo in locale: IN CORSO
-- Fase 7 — Deploy produzione: DA FARE (solo dopo test ok)
+WhatsApp: apre wa.me/<cell>?text=<testo> in nuova tab
 
-### Prossimi step Cassa Fiscale
-- Grouping madre/figli in Archivio (madre con figli indentati)
-- Pulsante "Stampa" reale (window.print con CSS 80mm)
-- Riepilogo incassi in cima all'Archivio (oggi / settimana / mese)
-- Filtri data in Archivio (oggi, ieri, settimana, mese, custom)
-- Ricerca per numero scontrino o nome cliente
-- Annullo scontrino (soft delete con motivo)
-- Chiusura cassa giornaliera con fondo iniziale
-- Export CSV scontrini per commercialista
-- PDF scontrino (oltre alla stampa termica)
+Modale di conferma "Hai inviato? [Sì] [No]"
 
+Se Sì → aggiorna reminder_whatsapp_at, reminder_whatsapp_inviato = true
+Entrambi: esegue Email + WhatsApp
 
----
+Config già esistente (Impostazioni → Promemoria)
+oreAnticipo (standard, default 24)
 
-## AGGIORNAMENTI COMPLETATI IL 03/10/2026
+oreAnticipoCheckup (checkup nuovo cliente, default 72)
 
-### 35. Cassa Fiscale — Email, WhatsApp e PDF
-- COMPLETATO **PDF scontrino formato 80mm** (`src/lib/pdfScontrino.ts`)
-  - Generazione con jsPDF
-  - Base64 per upload/allegato
-- COMPLETATO **Supabase Storage** bucket `scontrini-pdf`
-  - Policy lettura pubblica + upload autenticato
-  - Upload PDF → URL pubblico
-- COMPLETATO **Invio Email scontrino** (`inviaScontrinoEmail`)
-  - PDF in allegato
-  - Body HTML professionale
-  - Riferimento madre per i figli
-- COMPLETATO **Invio WhatsApp scontrino** (`inviaScontrinoWhatsApp`)
-  - PDF caricato su Storage → link pubblico nel messaggio
-  - Apre `wa.me` con testo precompilato
-- COMPLETATO **Pulsanti in `StampaScontrino`**: ⬇️ Scarica PDF | 📧 Email | 💬 WhatsApp
+canale (email / whatsapp / entrambi)
 
-### 36. Fix CORS con Proxy Vite
-- AGGIUNTO **proxy `/api/*`** in `vite.config.ts` per sviluppo locale
-  - Target: `https://gestionale-righetti-production.up.railway.app`
-  - Permette test email/backend da `localhost:5173` senza CORS
-- MODIFICATO **`.env.local.TEST`** con `VITE_FASTAPI_URL=` (vuoto → usa proxy)
+attivo (on/off)
 
-### 37. Fix clienti TEST
-- AGGIUNTE **colonne mancanti** in `clienti`:
-  - `data_nascita`, `dna`, `note_anamnesi`
-  - `indirizzo_spedizione`, `cap_spedizione`, `citta_spedizione`, `provincia_spedizione`
-  - `privacy_firmata`, `privacy_firma_immagine`, `privacy_data_firma`
-  - `privacy_inviata_email_at`, `privacy_inviata_whatsapp_at`
+messaggioStandard, messaggioCheckup (testi template)
 
-### 38. Annullo Scontrini (Fiscalmente Tracciato)
-- COMPLETATO **soft-delete** con metadati:
-  - `annullato_at`, `annullato_motivo`, `annullato_da`, `ripristino_magazzino`
-- COMPLETATO **Password gestionale hashata** (SHA-256, `src/lib/sicurezza.ts`)
-  - Tab **🔐 Sicurezza** in Impostazioni
-  - Imposta/cambia/rimuovi password
-- COMPLETATO **Blocco annullo madre con figli attivi**
-  - Messaggio con elenco dei figli da annullare prima
-- COMPLETATO **Ripristino magazzino opzionale**
-  - Checkbox nella modale annullo
-  - Crea movimenti di carico per ogni prodotto
-- COMPLETATO **Segnalazione su scheda cliente**
-  - Colonna `clienti.segnalazioni_annulli`
-  - Append automatico con data + numero scontrino + motivo
-- COMPLETATO **Badge "❌ ANNULLATO"** in `StampaScontrino`
-  - Mostra motivo + data + utente
+File da modificare/creare
+Nuovo: src/components/ModalePromemoria.tsx (riscrittura completa)
 
----
+Modifica: src/pages/Agenda.tsx (pulsante Promemoria → apre nuovo modale)
 
-## TODO / ROADMAP FUTURA
+Riusa: inviaEmailConConfig (api.ts) + inviaEmailPromemoria (lib/promemoria.ts)
 
-### Priorita ALTA — Allineamento Regime Fatture
-- **Annullo/storno anche per Fatture, DDT cliente, DDT commercialista**
-  - Stessa logica degli scontrini (password + motivo + tracciamento)
-  - Nota di credito automatica al commercialista via email
-  - Blocco fattura con DDT collegati
-  - Segnalazione su scheda cliente
-  - Soft-delete su `scarichi_seduta`
-- **Applicare i fix TEST a PROD** (colonne clienti mancanti, schema percorsi, ecc.)
+Tempo stimato
+2-3 ore (sessione dedicata)
 
-### Priorita MEDIA — Miglioramenti Cassa
-- Grouping madre/figli in Archivio (madre con figli indentati)
-- Filtri data in Archivio (oggi/ieri/settimana/mese/custom)
-- Riepilogo incassi in cima all'Archivio
-- Ricerca per numero scontrino o cliente
-- Chiusura cassa giornaliera con fondo iniziale
-- Export CSV scontrini per commercialista
-- Tastiera numerica touch-friendly
-
-### Priorita BASSA — Sicurezza
-- Conferma prima di salvare il cambio di regime documenti (evita click accidentali)
-- Log accessi/azioni critiche
-- Timeout sessione per inattivita
-
-
----
-
-## AGGIORNAMENTI COMPLETATI IL 03/10/2026
-
-### 35. Cassa Fiscale — Email, WhatsApp e PDF
-- COMPLETATO **PDF scontrino formato 80mm** (`src/lib/pdfScontrino.ts`)
-  - Generazione con jsPDF
-  - Base64 per upload/allegato
-- COMPLETATO **Supabase Storage** bucket `scontrini-pdf`
-  - Policy lettura pubblica + upload autenticato
-  - Upload PDF → URL pubblico
-- COMPLETATO **Invio Email scontrino** (`inviaScontrinoEmail`)
-  - PDF in allegato
-  - Body HTML professionale
-  - Riferimento madre per i figli
-- COMPLETATO **Invio WhatsApp scontrino** (`inviaScontrinoWhatsApp`)
-  - PDF caricato su Storage → link pubblico nel messaggio
-  - Apre `wa.me` con testo precompilato
-- COMPLETATO **Pulsanti in `StampaScontrino`**: Scarica PDF | Email | WhatsApp
-
-### 36. Fix CORS con Proxy Vite
-- AGGIUNTO **proxy `/api/*`** in `vite.config.ts` per sviluppo locale
-  - Target: `https://gestionale-righetti-production.up.railway.app`
-  - Permette test email/backend da `localhost:5173` senza CORS
-- MODIFICATO **`.env.local.TEST`** con `VITE_FASTAPI_URL=` (vuoto → usa proxy)
-
-### 37. Fix clienti TEST
-- AGGIUNTE **colonne mancanti** in `clienti`:
-  - `data_nascita`, `dna`, `note_anamnesi`
-  - `indirizzo_spedizione`, `cap_spedizione`, `citta_spedizione`, `provincia_spedizione`
-  - `privacy_firmata`, `privacy_firma_immagine`, `privacy_data_firma`
-  - `privacy_inviata_email_at`, `privacy_inviata_whatsapp_at`
-
-### 38. Annullo Scontrini (Fiscalmente Tracciato)
-- COMPLETATO **soft-delete** con metadati:
-  - `annullato_at`, `annullato_motivo`, `annullato_da`, `ripristino_magazzino`
-- COMPLETATO **Password gestionale hashata** (SHA-256, `src/lib/sicurezza.ts`)
-  - Tab **Sicurezza** in Impostazioni
-  - Imposta/cambia/rimuovi password
-- COMPLETATO **Blocco annullo madre con figli attivi**
-  - Messaggio con elenco dei figli da annullare prima
-- COMPLETATO **Ripristino magazzino opzionale**
-  - Checkbox nella modale annullo
-  - Crea movimenti di carico per ogni prodotto
-- COMPLETATO **Segnalazione su scheda cliente**
-  - Colonna `clienti.segnalazioni_annulli`
-  - Append automatico con data + numero scontrino + motivo
-- COMPLETATO **Badge "ANNULLATO"** in `StampaScontrino`
-  - Mostra motivo + data + utente
-
----
-
-## TODO / ROADMAP FUTURA
-
-### Priorita ALTA — Allineamento Regime Fatture
-- **Annullo/storno anche per Fatture, DDT cliente, DDT commercialista**
-  - Stessa logica degli scontrini (password + motivo + tracciamento)
-  - Nota di credito automatica al commercialista via email
-  - Blocco fattura con DDT collegati
-  - Segnalazione su scheda cliente
-  - Soft-delete su `scarichi_seduta`
-- **Applicare i fix TEST a PROD** (colonne clienti mancanti, schema percorsi, ecc.)
-
-### Priorita MEDIA — Miglioramenti Cassa
-- Grouping madre/figli in Archivio (madre con figli indentati)
-- Filtri data in Archivio (oggi/ieri/settimana/mese/custom)
-- Riepilogo incassi in cima all'Archivio
-- Ricerca per numero scontrino o cliente
-- Chiusura cassa giornaliera con fondo iniziale
-- Export CSV scontrini per commercialista
-- Tastiera numerica touch-friendly
-
-### Priorita BASSA — Sicurezza
-- Conferma prima di salvare il cambio di regime documenti (evita click accidentali)
-- Log accessi/azioni critiche
-- Timeout sessione per inattivita
-
-
----
-
-## AGGIORNAMENTI COMPLETATI IL 03/10/2026 (parte 8) — SESSIONE FINALE
-
-### 54. Storico Cliente Unificato
-- COMPLETATO **caricamento unificato**: scontrini + fatture + DDT insieme
-- COMPLETATO **lista unica** con link cliccabili per ogni documento:
-  - 🧾 Scontrino → apre `StampaScontrino`
-  - 📄 Fattura → apre anteprima fattura
-  - 📋 DDT → apre `AnteprimaDdtMinimale`
-
-### 55. Card Totale Spesa Cliente
-- COMPLETATO **card in cima allo Storico** con:
-  - 🧾 Totale scontrini
-  - 📄 Totale fatture
-  - 💰 **TOTALE SPESA**
-  - 📊 **Fiches media** (valore medio di ogni servizio/prodotto venduto)
-  - Numero documenti totali
-  - Numero fiches totali
-  - Scontrino medio
-
-### 56. Post-Seduta con tempistiche flessibili
-- COMPLETATO **Post-Seduta** con:
-  - Quantità + unità (minuti / ore / giorni)
-  - Descrizione dinamica ("2 ore dopo la seduta", "1 giorno dopo la seduta")
-  - Avviso se < 15 min (limite scheduler futuro)
-
-### 57. Fix layout email Promemoria
-- Layout uniforme Apple-style
-- Zero emoji (bug duplicazione backend)
-- Footer con ragione sociale + disclaimer
-
----
-
-## TODO / ROADMAP FUTURA (finale)
-
-### 🔴 PRIORITÀ ALTA
-1. **📊 Report Analytics Clienti**
-   - Singolo cliente (cercabile)
-   - Aggregato periodo (settimana/mese/anno)
-   - Ranking clienti per spesa
-   - Export PDF A4 + video
-   - Card in Dashboard
-
-2. **🔗 Collegamento Automazioni → Azione manuale**
-   - Modale in scheda cliente
-   - "📸 Post-seduta" / "🎂 Auguri" / "💤 Riattiva"
-   - Selezione clienti + invio
-
-3. **🤖 Motore automatico promemoria** (scheduler backend)
-   - Cron job
-   - Invio post-seduta/compleanno/riattivazione
-   - Log in `promemoria_inviati`
-
-4. **🔌 Integrazione API reali** (FPT, ADE, RCH, Epson)
-
-5. **📲 Push App Cliente** (PWA)
-
-6. **🔄 Annullo/storno Fatture, DDT, Commercialista**
-
-### 🟡 PRIORITÀ MEDIA
-7. Grouping madre/figli in Archivio
-8. Filtri data Archivio
-9. Ricerca scontrini
-10. Riepilogo incassi in Archivio
-11. Tastiera numerica Cassa
-12. Tabelle DB mancanti in TEST
-
-### 🟢 PRIORITÀ BASSA
-13. Conferma cambio regime
-14. Log azioni critiche
-15. Timeout sessione
-
-
----
-
-## 🎯 PIANO FINALE — INTEGRAZIONE IN PRODUZIONE
-
-**Quando**: dopo che TUTTE le prove su TEST sono OK
-**Obiettivo**: portare il lavoro da TEST (locale) a PROD (online)
-
-### Strategia generale
-Non fondere i due database. Invece:
-1. Allineare lo SCHEMA (TEST a PROD)
-2. Promuovere il CODICE (locale a main a Vercel/Railway)
-3. Verificare in PROD
-
-I dati non si toccano: PROD mantiene i dati reali di Righetti Consulting.
-
----
-
-### STEP 1 — Allineare Schema DB (TEST a PROD)
-
-Dove: SQL Editor di Supabase PROD (`yporpszebtasalwazirz`)
-
-Cosa applicare (SOLO istruzioni CREATE TABLE + ALTER TABLE, NON i dati):
-
-Tabelle nuove da creare in PROD:
-- percorsi (con scontrino_madre_id)
-- movimenti_magazzino (con trigger SQL)
-- config_fiscale
-- testi_template
-- automazioni
-
-Colonne nuove su tabelle esistenti:
-- scontrini: scontrino_madre_id, scontrino_madre_numero, scontrino_madre_data, sconto_totale_tipo, sconto_totale_valore, annullato_at, annullato_motivo, annullato_da, ripristino_magazzino, note_cliente
-- scontrini_righe: sconto_tipo, sconto_valore, prodotto_percorso_id, sconto_percorso_id, riga_tipo
-- clienti: segnalazioni_annulli
-- chiusure_cassa: totale_bancomat, totale_prepagate, totale_bonifico, contanti_contati, differenza_cassa
-- appuntamenti: promemoria_inviato_at, promemoria_canale, percorso_id, servizio_id, prodotto_id, scontistica_percorso
-
-Storage:
-- Bucket scontrini-pdf con policy lettura pubblica + upload autenticato
-
-Verifica: dopo ALTER, esegui SELECT column_name FROM information_schema.columns per ogni tabella modificata.
-
----
-
-### STEP 2 — Promuovere Codice React (Locale a main)
-
-Dove: terminale locale
-
-cd /Users/luca/Desktop/Tricolab/GESTIONALE
-git checkout main
-git status
-git add -A
-git commit -m "feat: integrazione moduli scontrini, percorsi, automazioni e report"
-git push origin main
-
-
-Effetto: Vercel rileva il push su main e fa deploy automatico in produzione.
-
-Verifica build: prima di pushare, fai npm run build in locale e verifica che sia verde.
-
----
-
-### STEP 3 — Aggiornare Backend FastAPI (Railway)
-
-Dove: repo backend su Railway
-
-Cosa serve:
-- Endpoint /api/email/invia funzionante (già c'è)
-- Endpoint per report commercialista (se implementato)
-- Endpoint per promemoria automatico (se implementato)
-- Endpoint per integrazione FPT/ADE (futuro)
-
-Verifica: apri https://gestionale-righetti-production.up.railway.app/health
-
----
-
-### STEP 4 — Verifica in PROD
-
-Dopo STEP 1+2+3:
-
-1. Apri gestionale.righetti.club (tab anonima)
-2. Sidebar: verifica nuove voci in base al regime
-3. Testa ogni funzionalità:
-   - Emetti scontrino
-   - Crea percorso
-   - Riscatta percorso (figlio)
-   - Annulla scontrino (con password)
-   - Invia email con PDF
-   - Report commercialista
-   - Chiusura cassa
-   - Promemoria
-   - Configurazione fiscale
-   - Testi Messaggi
-   - Automazioni
-4. Controlla Console DevTools per errori
-5. Controlla log Vercel
-6. Controlla Supabase PROD
-
----
-
-### STEP 5 — Comunicazione Utente
-
-Dopo che PROD funziona:
-- Backup PROD prima del push
-- Comunicare a Righetti le nuove funzionalità
-- Documentare con GUIDA-UTENTE.md
-- Formazione breve su: emettere scontrino, creare percorso, configurare regime
-
----
-
-### ATTENZIONI CRITICHE
-
-Prima del push su main:
-- Fare backup schema PROD (Supabase, Backups, Download)
-- Fare backup DB TEST
-- Verificare policy RLS su PROD
-- Verificare bucket Storage scontrini-pdf in PROD
-- Verificare config_email in PROD
-
-Dopo il push:
-- Non toccare codice main per 24h
-- Non eseguire DELETE su PROD
-- Non modificare schemi PROD se non necessario
-
-Se qualcosa va storto:
-- Rollback codice: git revert HEAD + git push
-- Rollback schema: ripristina backup Supabase
-- Rollback DB: DROP TABLE nuove tabelle (attenzione: perdi dati)
-
----
-
-### CHECKLIST FINALE
-
-- [ ] Backup PROD scaricato
-- [ ] Schema PROD allineato
-- [ ] Policy RLS PROD verificate
-- [ ] Bucket Storage scontrini-pdf in PROD
-- [ ] Codice committato in locale
-- [ ] Build locale verde
-- [ ] git push origin main eseguito
-- [ ] Vercel deploy verde
-- [ ] Railway backend up
-- [ ] gestionale.righetti.club si apre
-- [ ] Test emetti scontrino OK
-- [ ] Test percorso OK
-- [ ] Test annullo OK
-- [ ] Test email PDF OK
-- [ ] Test WhatsApp link OK
-- [ ] Test promemoria OK
-- [ ] Test report commercialista OK
-- [ ] Test chiusura cassa OK
-- [ ] Test config fiscale OK
-- [ ] Test automazioni OK
-- [ ] Documentazione utente preparata
-- [ ] Formazione Righetti fatta
-
-Quando tutti i check sono verdi: SIAMO ONLINE.
-
-
----
-
-## TODO / ROADMAP (aggiornata 05/10/2026)
-
-### PRIORITA ALTA
-
-#### 1. Design System Pulsanti + Responsive
-- Pulsanti full-width -> auto-width (w-full sm:w-auto)
-- Pagine: ChiusuraCassaTab, ReportCommercialistaTab, TestiTemplateTab, SicurezzaTab
-- Creare components/Button.tsx con varianti
-
-#### 2. Responsive Mobile/Tablet — REGOLA OBBLIGATORIA
-- OGNI funzionalita' testata su Mobile (375-430px), Tablet (768-1024px), Desktop (1280px+)
-- Check: layout ok, pulsanti 44px+, testi 14px+, tabelle scrollabili, modali senza scroll orizzontale
-
-#### 3. Analytics Clienti — Fix Pulsanti
-- TestiTemplateTab, ReportCommercialistaTab, ChiusuraCassaTab, SicurezzaTab
-
-### PRIORITA MEDIA
-
-#### 4. Agenda orari per giorno
-#### 5. Collegamento Automazioni -> Azione manuale
-#### 6. Grouping madre/figli in Archivio
-#### 7. Filtri ricerca in Archivio scontrini
-#### 8. Riepilogo incassi in Archivio
-#### 9. Motore automatico promemoria (backend)
-#### 10. Integrazione API reali (FPT, ADE, RCH, Epson)
-
-### PRIORITA BASSA
-#### 11. Push App Cliente (PWA)
-#### 12. Annullo/storno Fatture + DDT
-#### 13. Indici SQL
-#### 14. Migrazione PDF su Storage
+FINE AGGIUNTA

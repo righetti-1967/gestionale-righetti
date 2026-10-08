@@ -206,10 +206,15 @@ Grazie,
     oggetto: 'Promemoria appuntamento — {data} ore {ora}',
     corpo: `Ciao {nome},
 
-ti ricordiamo il tuo appuntamento di {data_estesa} alle ore {ora}.
+Ti ricordiamo il tuo appuntamento di:
 
-Grazie e a presto!
-{azienda}`,
+[[BOX]]
+
+Per qualsiasi necessità contattaci:
+
+[[WHATSAPP]]
+
+A presto!`,
   },
 
   email_promemoria_checkup: {
@@ -217,10 +222,15 @@ Grazie e a presto!
     oggetto: 'Promemoria Check-Up — {data} ore {ora}',
     corpo: `Ciao {nome},
 
-ti ricordiamo la tua prima visita presso il nostro Studio per il tuo "Check-Up Gratuito" di {data_estesa} alle ore {ora}.
+Ti ricordiamo la tua prima visita presso il nostro Studio per il tuo "Check-Up Gratuito" di:
 
-Ti aspettiamo!
-{azienda}`,
+[[BOX]]
+
+Per qualsiasi necessità contattaci:
+
+[[WHATSAPP]]
+
+Ti aspettiamo!`,
   },
 
   email_post_seduta: {
