@@ -292,6 +292,9 @@ function CardAutomazione({
           {(tipo === 'promemoria_appuntamento' || tipo === 'promemoria_checkup') && (() => {
             const pp = parametri as ParametriPromemoria;
             const opzioni = [12, 24, 48, 72, 96, 120, 168];
+            const oreAttuali = pp.ore_anticipo || 24;
+            const isCustom = !opzioni.includes(oreAttuali);
+            const inputId = `ore-input-${tipo}`;
             return (
               <div className="space-y-4">
                 <div>
@@ -300,10 +303,19 @@ function CardAutomazione({
                   </label>
                   <div className="flex items-center gap-2 flex-wrap">
                     <select
-                      value={opzioni.includes(pp.ore_anticipo || 24) ? pp.ore_anticipo : 'custom'}
+                      value={isCustom ? 'custom' : oreAttuali}
                       onChange={(e) => {
                         const v = e.target.value;
-                        if (v === 'custom') return;
+                        if (v === 'custom') {
+                          // Focus sull'input numerico per scrittura immediata
+                          setTimeout(() => {
+                            const el = document.getElementById(inputId) as HTMLInputElement | null;
+                            if (el) { el.focus(); el.select(); }
+                          }, 50);
+                          // Imposta un valore di default se non personalizzato
+                          if (!isCustom) cambiaParametro('ore_anticipo', 24);
+                          return;
+                        }
                         cambiaParametro('ore_anticipo', parseInt(v));
                       }}
                       className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm font-semibold text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-purple-300/40"
@@ -317,18 +329,24 @@ function CardAutomazione({
                       <option value="168">168 ore (7 giorni)</option>
                       <option value="custom">Personalizzato…</option>
                     </select>
-                    <input
-                      type="number"
-                      min="1"
-                      max="720"
-                      value={pp.ore_anticipo || 24}
-                      onChange={(e) => cambiaParametro('ore_anticipo', Math.max(1, parseInt(e.target.value) || 24))}
-                      className="w-24 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-purple-300/40"
-                    />
-                    <span className="text-sm text-apple-gray">ore prima</span>
+                    {isCustom && (
+                      <>
+                        <input
+                          id={inputId}
+                          type="number"
+                          min="1"
+                          max="720"
+                          value={oreAttuali}
+                          onChange={(e) => cambiaParametro('ore_anticipo', Math.max(1, parseInt(e.target.value) || 24))}
+                          className="w-24 px-3 py-2.5 bg-yellow-50 border-2 border-yellow-300 rounded-apple text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-purple-300/40"
+                          autoFocus
+                        />
+                        <span className="text-sm text-apple-gray">ore prima</span>
+                      </>
+                    )}
                   </div>
                   <p className="text-[11px] text-apple-gray mt-2 italic">
-                    💡 Promemoria inviato {pp.ore_anticipo || 24} ore prima dell'appuntamento
+                    💡 Promemoria inviato {oreAttuali} ore prima dell'appuntamento
                   </p>
                 </div>
 
