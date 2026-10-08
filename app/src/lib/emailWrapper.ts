@@ -39,10 +39,12 @@ export function wrapEmailHtml(corpoGrezzo: string, azienda: DatiAziendali): stri
 
   const logoUrl = azienda.logo_url || '';
   const nomeStudio = azienda.ragioneSociale || 'Studio';
-  const indirizzo = azienda.sedeLegale?.indirizzo || '';
-  const cap = azienda.sedeLegale?.cap || '';
-  const citta = azienda.sedeLegale?.citta || '';
-  const provincia = azienda.sedeLegale?.provincia || '';
+  // Usa la sede operativa effettiva (già gestita in datiAziendali.adatta() come fallback alla legale)
+  const sedeEffettiva = azienda.sedeOperativa || azienda.sedeLegale;
+  const indirizzo = sedeEffettiva?.indirizzo || '';
+  const cap = sedeEffettiva?.cap || '';
+  const citta = sedeEffettiva?.citta || '';
+  const provincia = sedeEffettiva?.provincia || '';
   const piva = azienda.partitaIva || '';
   const telefono = azienda.telefono || '';
   const email = azienda.email || '';
