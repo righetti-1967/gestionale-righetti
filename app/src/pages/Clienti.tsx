@@ -89,31 +89,27 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
     loading: clientiDraftLoading,
   } = useDraft<ClientiDraft>('clienti_stato', CLIENTI_DRAFT_DEFAULT);
 
-  // Alias per compatibilità
+  // Alias per compatibilità (ricerca resta su draft per persistenza cross-device)
   const ricerca = clientiDraft.ricerca;
-  const clienteSelezionato = useMemo(() => {
-    if (!clientiDraft.clienteId) return null;
-    return clienti.find((c) => c.id === clientiDraft.clienteId) || null;
-  }, [clientiDraft.clienteId, clienti]);
 
-  function setRicerca(valore: string) {
-    setClientiDraft((prev) => ({ ...prev, ricerca: valore }));
-  }
+  // ⚠️ clienteSelezionato è STATO LOCALE (non draft) — la selezione di un cliente
+  // per vederne il dettaglio è transiente, non va persistita cross-device
+  const [clienteSelezionato, setClienteSelezionatoState] = useState<Cliente | null>(null);
 
+  // Wrapper per mantenere la firma compatibile con il vecchio setClienteSelezionato
   function setClienteSelezionato(
     updater: Cliente | null | ((prev: Cliente | null) => Cliente | null)
   ) {
-    if (typeof updater === 'function') {
-      setClientiDraft((prev) => {
-        const clienteAttuale = prev.clienteId
-          ? clienti.find((c) => c.id === prev.clienteId) || null
-          : null;
-        const nuovo = updater(clienteAttuale);
-        return { ...prev, clienteId: nuovo?.id ?? null };
-      });
-    } else {
-      setClientiDraft((prev) => ({ ...prev, clienteId: updater?.id ?? null }));
-    }
+    setClienteSelezionatoState((prev) => {
+      if (typeof updater === 'function') {
+        return updater(prev);
+      }
+      return updater;
+    });
+  }
+
+  function setRicerca(valore: string) {
+    setClientiDraft((prev) => ({ ...prev, ricerca: valore }));
   }
   const [modaleTemplate, setModaleTemplate] = useState<{
     chiave: 'email_post_seduta' | 'email_compleanno' | 'email_riattivazione';
