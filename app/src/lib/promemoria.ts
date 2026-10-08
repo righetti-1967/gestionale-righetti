@@ -169,10 +169,24 @@ function estraiCognome(nomeCompleto?: string | null): string {
   return parti.length > 1 ? parti.slice(1).join(' ') : '';
 }
 
-function formatDataEstesa(dataISO: string): string {
+function capitalizza(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatDataEstesa(dataISO: string, ora?: string): string {
   try {
     const d = new Date(dataISO + 'T00:00:00');
-    return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const base = d.toLocaleDateString('it-IT', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const capitalizzata = capitalizza(base);
+    if (ora) {
+      return `${capitalizzata} alle ore ${ora.slice(0, 5)}`;
+    }
+    return capitalizzata;
   } catch {
     return dataISO;
   }
@@ -205,8 +219,8 @@ export async function inviaEmailPromemoria(
     ? estraiCognome(app.cliente?.nome_cognome)
     : '';
   const dataIt = formatDataIt(app.data);
-  const dataEstesa = formatDataEstesa(app.data);
   const ora = formatOra(app.ora_inizio);
+  const dataEstesa = formatDataEstesa(app.data, ora);
   const nomeAziendaFinale = nomeAzienda || '';
   const dataBR = formatDataBreve(app.data);
 
@@ -265,17 +279,17 @@ A presto!`;
       </div>
   `;
 
-  // HTML del BOTTONE WhatsApp
+  // HTML del BOTTONE WhatsApp (stile Apple: bianco + bordo verde, testo verde)
   const whatsappHtml = whatsappNum
     ? `
-      <table cellpadding="0" cellspacing="0" border="0" style="margin: 16px auto;">
+      <table cellpadding="0" cellspacing="0" border="0" style="margin: 16px 0;">
         <tr>
-          <td align="center" style="background-color: #25D366; border-radius: 12px;">
+          <td align="center" style="background-color: #ffffff; border: 1.5px solid #34C759; border-radius: 12px;">
             <a href="https://wa.me/${whatsappNum}?text=${encodeURIComponent(
-              `Ciao, avrei necessità di spostare il mio appuntamento di ${dataIt} alle ore ${ora}, se possibile.\n\nAttendo, grazie.\n${nome}`
+              `Ciao, avrei necessità di spostare il mio appuntamento di ${dataEstesa}, se possibile.\n\nAttendo, grazie.\n${nome}`
             )}"
-               style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif; border-radius: 12px;">
-              💬 Scrivici su WhatsApp
+               style="display: inline-block; padding: 10px 22px; font-size: 14px; font-weight: 600; color: #34C759; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif; border-radius: 12px; letter-spacing: 0.2px;">
+              Scrivici su WhatsApp
             </a>
           </td>
         </tr>
