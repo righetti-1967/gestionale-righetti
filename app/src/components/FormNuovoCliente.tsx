@@ -159,12 +159,21 @@ export function FormCliente({
 
   useEffect(() => {
     if (clienteDraftLoading) return;
+    // 🔴 FIX: in MODIFICA non salvare il draft (altrimenti inquina il form)
+    if (isModifica) return;
     setClienteDraft({ cliente, paeseTelefono, numeroLocale });
-  }, [cliente, paeseTelefono, numeroLocale, clienteDraftLoading]);
+  }, [cliente, paeseTelefono, numeroLocale, clienteDraftLoading, isModifica]);
 
   const draftCaricatoRef = useRef(false);
   useEffect(() => {
     if (draftCaricatoRef.current || clienteDraftLoading) return;
+
+    // 🔴 FIX: in MODIFICA non caricare il draft (bug "AAAA BBBB → Antonio Pacilio")
+    if (isModifica) {
+      draftCaricatoRef.current = true;
+      return;
+    }
+
     const haContenuto = clienteDraft.cliente && Object.values(clienteDraft.cliente || {}).some((v) => v && String(v).trim() !== '');
     if (haContenuto) {
       setCliente(clienteDraft.cliente);
@@ -172,7 +181,7 @@ export function FormCliente({
       setNumeroLocale(clienteDraft.numeroLocale);
     }
     draftCaricatoRef.current = true;
-  }, [clienteDraftLoading, clienteDraft]);
+  }, [clienteDraftLoading, clienteDraft, isModifica]);
 
   return (
     <div
