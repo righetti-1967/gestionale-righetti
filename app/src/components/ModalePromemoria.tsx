@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ModaleTestoPromemoria } from './ModaleTestoPromemoria';
+import { getTestoTemplate } from '../lib/testiTemplate';
 import { caricaConfigPromemoria, inviaEmailPromemoria, marcaPromemoriaInviato, type ConfigPromemoria } from '../lib/promemoria';
 import { caricaDatiAziendali } from '../lib/datiAziendali';
 
@@ -50,6 +51,8 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
     return '';
   });
   const [modaleTestoAperto, setModaleTestoAperto] = useState<'email' | 'whatsapp' | null>(null);
+  const [templateEmailDefault, setTemplateEmailDefault] = useState<string>('');
+  const [templateEmailCheckupDefault, setTemplateEmailCheckupDefault] = useState<string>('');
   const [selezionati, setSelezionati] = useState<Set<number>>(new Set());
   const [filtro, setFiltro] = useState<FiltroStato>('tutti');
   const [inviando, setInviando] = useState(false);
@@ -82,6 +85,14 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
 
   useEffect(() => {
     carica();
+    // Carica i template email da Testi Messaggi
+    Promise.all([
+      getTestoTemplate('email_promemoria'),
+      getTestoTemplate('email_promemoria_checkup'),
+    ]).then(([t1, t2]) => {
+      setTemplateEmailDefault(t1?.corpo || '');
+      setTemplateEmailCheckupDefault(t2?.corpo || '');
+    }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lunedi, sabato]);
 
@@ -444,17 +455,25 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
         )}
       </div>
 
-      {modaleTestoAperto === 'email' && (
-        <ModaleTestoPromemoria
-          tipo="email"
-          valoreIniziale={testoEmailCustom || config?.messaggioStandard || ''}
-          onSave={(nuovo) => {
-            setTestoEmailCustom(nuovo);
-            sessionStorage.setItem('promemoria_testo_email', nuovo);
-          }}
-          onClose={() => setModaleTestoAperto(null)}
-        />
-      )}
+      {modaleTestoAperto === 'email' && (() => {
+        // Determina il template corretto in base al primo appuntamento selezionato
+        const primo = Array.from(selezionati)
+          .map(id => appuntamenti.find(a => a.id === id))
+          .filter(Boolean)[0] as any;
+        const isCheckup = primo?.tipo === 'checkup_nuovo';
+        const templateBase = isCheckup ? templateEmailCheckupDefault : templateEmailDefault;
+        return (
+          <ModaleTestoPromemoria
+            tipo="email"
+            valoreIniziale={testoEmailCustom || templateBase || ''}
+            onSave={(nuovo) => {
+              setTestoEmailCustom(nuovo);
+              sessionStorage.setItem('promemoria_testo_email', nuovo);
+            }}
+            onClose={() => setModaleTestoAperto(null)}
+          />
+        );
+      })()}
       {modaleTestoAperto === 'whatsapp' && (
         <ModaleTestoPromemoria
           tipo="whatsapp"

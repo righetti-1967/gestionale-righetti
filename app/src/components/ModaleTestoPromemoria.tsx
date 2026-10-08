@@ -7,7 +7,7 @@ interface Props {
   onClose: () => void;
 }
 
-const VARIABILI_EMAIL = ['{nome}', '{cognome}', '{azienda}', '{data}', '{ora}', '{servizio}', '{data_estesa}'];
+const VARIABILI_EMAIL = ['{nome}', '{cognome}', '{azienda}', '{data_estesa}', '{ora}', '{servizio}'];
 const VARIABILI_WHATSAPP = ['{nome}', '{data}', '{ora}', '{servizio}', '{azienda}'];
 
 export function ModaleTestoPromemoria({ tipo, valoreIniziale, onSave, onClose }: Props) {
@@ -97,9 +97,20 @@ export function ModaleTestoPromemoria({ tipo, valoreIniziale, onSave, onClose }:
           )}
 
           {isEmail && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-apple text-xs text-blue-800 leading-relaxed">
-              📧 <strong>Nota</strong>: l'email avrà sempre il layout con logo aziendale e box data/ora.
-              Il testo che scrivi qui viene inserito come corpo del messaggio.
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-apple text-xs text-blue-800 leading-relaxed space-y-2">
+              <div>
+                📧 <strong>Nota</strong>: l'email ha sempre logo aziendale + footer.
+              </div>
+              <div>
+                <strong>Placeholder automatici:</strong>
+                <ul className="mt-1 ml-4 list-disc">
+                  <li><code className="bg-white px-1 rounded">{'[[BOX]]'}</code> → box grigio con data/ora appuntamento</li>
+                  <li><code className="bg-white px-1 rounded">{'[[WHATSAPP]]'}</code> → bottone verde WhatsApp</li>
+                </ul>
+              </div>
+              <div>
+                Se rimuovi un placeholder, quella parte <strong>non appare</strong> nell'email.
+              </div>
             </div>
           )}
         </div>
