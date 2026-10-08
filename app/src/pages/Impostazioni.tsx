@@ -966,7 +966,18 @@ export function Impostazioni() {
   const tabs = isAdmin
     ? [...BASE_TABS, { id: 'licenze' as TabId, label: 'Licenze', icon: '👑' }]
     : BASE_TABS;
-  const [tabAttiva, setTabAttiva] = useState<TabId>('azienda');
+  const [tabAttiva, setTabAttiva] = useState<TabId>(() => {
+    // Legge ?tab=xxx dalla URL
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      const validTabs: TabId[] = ['profilo', 'azienda', 'fatturazione', 'agenda', 'privacy', 'aspetto', 'google_sheets', 'comunicazioni', 'promemoria', 'testi_template', 'automazioni', 'sicurezza', 'licenze', 'app_cliente'];
+      if (tabParam && validTabs.includes(tabParam as TabId)) {
+        return tabParam as TabId;
+      }
+    }
+    return 'azienda';
+  });
   const [salvaCorrente, setSalvaCorrente] = useState<(() => void) | null>(null);
   const [salvandoCorrente, setSalvandoCorrente] = useState(false);
 

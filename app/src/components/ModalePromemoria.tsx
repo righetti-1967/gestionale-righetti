@@ -474,12 +474,18 @@ function RigaPromemoria({
             )}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-gray-500">
+        <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px]">
           {app.cliente_email && (
-            <span>📧 {app.cliente_email}</span>
+            <span className={app.reminder_email_inviato ? 'text-green-600 font-medium' : 'text-gray-500'}>
+              📧 {app.cliente_email}
+              {app.reminder_email_inviato && ' ✓'}
+            </span>
           )}
           {app.cliente_cellulare && (
-            <span>💬 {app.cliente_cellulare}</span>
+            <span className={app.reminder_whatsapp_inviato ? 'text-green-600 font-medium' : 'text-gray-500'}>
+              💬 {app.cliente_cellulare}
+              {app.reminder_whatsapp_inviato && ' ✓'}
+            </span>
           )}
         </div>
       </div>
