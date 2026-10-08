@@ -256,7 +256,7 @@ A presto!`;
   // HTML del BOX data/ora
   const boxHtml = `
       <div style="background: #f5f5f7; border-radius: 12px; padding: 18px 20px; margin: 20px 0;">
-        <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #1c1c1e; text-transform: capitalize;">
+        <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #1c1c1e;">
           ${dataIt}
         </p>
         <p style="margin: 0; font-size: 15px; font-weight: 400; color: #1c1c1e;">
@@ -306,12 +306,19 @@ A presto!`;
     .replace(/\[\[WHATSAPP\]\]/g, whatsappHtml)
     .trim();
 
-  // Escape HTML (tranne il markup già presente)
-  // NOTA: se l'utente scrive HTML nel template, viene interpretato. Va bene per uso interno.
-  const corpoRighe = corpoElaborato.split('\n').map((line: string) => {
-    if (line.trim().startsWith('<')) return line;
-    if (line.trim() === '') return '<p style="margin: 0 0 12px 0;">&nbsp;</p>';
-    return `<p style="margin: 0 0 12px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e;">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
+  // Split su doppio newline: ogni blocco è un paragrafo
+  // Se un blocco contiene HTML (box/whatsapp) → lascia intatto
+  const blocchi = corpoElaborato.split(/\n\s*\n/);
+  const corpoRighe = blocchi.map((blocco: string) => {
+    const trimmed = blocco.trim();
+    if (trimmed === '') return '';
+    // Blocco HTML (contiene tag) → lascia intatto
+    if (/<[a-z][\s\S]*>/i.test(trimmed)) return trimmed;
+    // Blocco testo → converti newline interni in <br> e avvolgi in <p>
+    const righeInterno = trimmed.split('\n').map((r: string) =>
+      r.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    ).join('<br>');
+    return `<p style="margin: 0 0 16px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e;">${righeInterno}</p>`;
   }).join('\n');
 
   const corpoHtml = `
