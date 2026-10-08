@@ -215,20 +215,20 @@ export async function inviaEmailPromemoria(
         </p>
       </div>
 
-      <!-- Testo aggiuntivo (opzionale) -->
+      <!-- Testo promemoria (override o default) -->
       ${testoAggiuntivo && testoAggiuntivo.trim() ? `
-        <div style="background: #fffaf0; border-left: 3px solid #FF9500; padding: 14px 16px; margin-bottom: 28px; border-radius: 8px;">
-          <p style="margin: 0; font-size: 14px; font-weight: 400; line-height: 1.5; color: #1c1c1e; white-space: pre-wrap;">${testoAggiuntivo.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
-        </div>
+        <p style="margin: 0 0 20px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e; white-space: pre-wrap;">${testoAggiuntivo.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
       ` : ''}
 
-      <!-- Chiusura -->
-      <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e;">
-        Per qualsiasi necessit&agrave; contattaci pure.
-      </p>
-      <p style="margin: 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e;">
-        A presto!
-      </p>
+      <!-- Chiusura: solo se NON c'è override -->
+      ${!testoAggiuntivo || !testoAggiuntivo.trim() ? `
+        <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e;">
+          Per qualsiasi necessit&agrave; contattaci pure.
+        </p>
+        <p style="margin: 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #1c1c1e;">
+          A presto!
+        </p>
+      ` : ''}
 
       <!-- Footer -->
       <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e5ea;">

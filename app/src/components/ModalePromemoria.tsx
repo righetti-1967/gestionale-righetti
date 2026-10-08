@@ -42,6 +42,7 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
   const [inviando, setInviando] = useState(false);
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
+  const templateInizializzatoRef = useState({ current: false })[0];
 
   async function carica() {
     setLoading(true);
@@ -70,6 +71,18 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
     carica();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lunedi, sabato]);
+
+  // Precompila il testo del promemoria dal template (una sola volta)
+  useEffect(() => {
+    if (!templateInizializzatoRef.current && appuntamenti.length > 0 && config) {
+      const primo = appuntamenti[0];
+      const template = primo.tipo === 'checkup_nuovo' && config.attivoCheckup
+        ? config.messaggioCheckup
+        : config.messaggioStandard;
+      setTestoAggiuntivo(template || '');
+      templateInizializzatoRef.current = true;
+    }
+  }, [appuntamenti, config, templateInizializzatoRef]);
 
   const listaFiltrata = useMemo(() => {
     if (filtro === 'tutti') return appuntamenti;
@@ -165,9 +178,11 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
       }
       // Genera testo promemoria
       const { generaTestoPromemoria } = await import('../lib/promemoria');
-      const testo = generaTestoPromemoria(getAppuntamentoDaRpc(a), config!, nomeAzienda);
+      const testo = testoAggiuntivo && testoAggiuntivo.trim()
+        ? generaTestoPromemoria(getAppuntamentoDaRpc(a), config!, nomeAzienda, testoAggiuntivo)
+        : generaTestoPromemoria(getAppuntamentoDaRpc(a), config!, nomeAzienda);
       const numeroPulito = a.cliente_cellulare.replace(/[^0-9]/g, '');
-      const url = `https://wa.me/${numeroPulito}?text=${encodeURIComponent(testoAggiuntivo ? testo + '\n\n' + testoAggiuntivo : testo)}`;
+      const url = `https://wa.me/${numeroPulito}?text=${encodeURIComponent(testo)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
       // Marca come inviato (l'utente confermerà manualmente su WhatsApp)
       await supabase
@@ -268,16 +283,30 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
         {/* Testo aggiuntivo */}
         <div className="px-5 py-3 bg-orange-50/40 border-b border-orange-100">
           <label className="block text-xs font-medium text-gray-700 mb-1">
-            ✏️ Testo aggiuntivo (opzionale — appare nell'email in evidenza)
+            ✏️ Testo promemoria (modificabile)
           </label>
           <textarea
             value={testoAggiuntivo}
             onChange={(e) => setTestoAggiuntivo(e.target.value)}
-            placeholder="Es. Ricordati di portare la spazzola nuova!"
-            rows={2}
-            maxLength={300}
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand resize-none bg-white"
+            placeholder="Ciao {nome}, ti ricordiamo il tuo appuntamento di {data} alle ore {ora}..."
+            rows={5}
+            maxLength={1000}
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand resize-none bg-white font-mono"
           />
+          <div className="text-[10px] text-gray-500 mt-1">
+            ℹ️ Variabili: <code className="bg-white px-1 rounded">{'{nome}'}</code> <code className="bg-white px-1 rounded">{'{data}'}</code> <code className="bg-white px-1 rounded">{'{ora}'}</code> <code className="bg-white px-1 rounded">{'{servizio}'}</code> <code className="bg-white px-1 rounded">{'{azienda}'}</code>
+          </div>
+          {testoAggiuntivo && testoAggiuntivo !== (config?.messaggioStandard || '') && testoAggiuntivo !== (config?.messaggioCheckup || '') && (
+            <button
+              type="button"
+              onClick={() => {
+                if (config) setTestoAggiuntivo(config.messaggioStandard || '');
+              }}
+              className="mt-1 text-[10px] text-blue-600 hover:underline"
+            >
+              ↺ Ripristina testo di default
+            </button>
+          )}
         </div>
 
         {/* Lista */}
