@@ -161,7 +161,8 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
           .eq('id', id);
         ok++;
       } catch (e: any) {
-        errori.push(`${a.cliente_nome}: ${e.message}`);
+        console.error('[promemoria email] errore:', e);
+        errori.push(`${a.cliente_nome}: ${e.message || e}`);
       }
     }
     return { ok, errori };
@@ -220,12 +221,15 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
         risultati = { ok: r1.ok + r2.ok, errori: [...r1.errori, ...r2.errori] };
       }
 
-      setMessaggio(
-        `✅ Inviati ${risultati.ok} promemoria` +
-        (risultati.errori.length > 0 ? ` — ⚠️ ${risultati.errori.length} errori` : '')
-      );
+      if (risultati.ok > 0) {
+        setMessaggio(`✅ Inviati ${risultati.ok} promemoria`);
+      } else {
+        setMessaggio(null);
+      }
       if (risultati.errori.length > 0) {
-        setErrore(risultati.errori.join(' | '));
+        setErrore('⚠️ ' + risultati.errori.join(' | '));
+      } else {
+        setErrore(null);
       }
 
       setSelezionati(new Set());
