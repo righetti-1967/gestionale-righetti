@@ -392,7 +392,7 @@ export async function spostaAppuntamento(
     scarico_id: null,
     fattura_proforma_id: null,
     rebooking_fissato: false,
-    rebooking_da_id: null,
+    rebooking_da_id: originale.id,   // traccia lo spostamento
     is_blocco: false,
   });
 
