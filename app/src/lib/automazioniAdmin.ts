@@ -57,3 +57,26 @@ export async function eseguiDryRun(chiave: string): Promise<{ ok: boolean; logCr
   }
   return { ok: true, logCreati: json.log_creati ?? 0 };
 }
+
+
+/**
+ * Elimina un singolo log automazione (hard-delete: i log non hanno audit).
+ */
+export async function eliminaAutomazioneLog(logId: string): Promise<void> {
+  const { error } = await supabase.rpc('admin_elimina_automazione_log', {
+    log_id_input: logId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Pulisce tutti i log di una modalità (es. 'simulazione').
+ * Ritorna il numero di log eliminati.
+ */
+export async function pulisciAutomazioniLog(modalita?: string): Promise<number> {
+  const { data, error } = await supabase.rpc('admin_pulisci_automazioni_log', {
+    modalita_input: modalita ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return (data as number) ?? 0;
+}

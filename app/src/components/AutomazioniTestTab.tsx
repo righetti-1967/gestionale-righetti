@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listAutomazioniLog, eseguiDryRun, type AutomazioneLog } from '../lib/automazioniAdmin';
+import { listAutomazioniLog, eseguiDryRun, eliminaAutomazioneLog, pulisciAutomazioniLog, type AutomazioneLog } from '../lib/automazioniAdmin';
 import { LABEL_AUTOMAZIONE, type TipoAutomazione } from '../lib/automazioni';
 
 const CHIAVI_DISPONIBILI: { chiave: TipoAutomazione; label: string }[] = [
@@ -15,6 +15,8 @@ export function AutomazioniTestTab() {
   const [filtroModalita, setFiltroModalita] = useState<string>('');
   const [eseguendo, setEseguendo] = useState<string | null>(null);
   const [expandId, setExpandId] = useState<string | null>(null);
+  const [eliminandoLogId, setEliminandoLogId] = useState<string | null>(null);
+  const [pulendo, setPulendo] = useState(false);
 
   async function carica() {
     setLoading(true);
@@ -37,6 +39,33 @@ export function AutomazioniTestTab() {
     carica();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtroChiave, filtroModalita]);
+
+  async function handleEliminaLog(logId: string, titolo: string) {
+    if (!confirm(`Eliminare questo log?\n\n"${titolo}"`)) return;
+    setEliminandoLogId(logId);
+    try {
+      await eliminaAutomazioneLog(logId);
+      setLogs((prev) => prev.filter((l) => l.id !== logId));
+    } catch (e: any) {
+      alert(e.message || 'Errore eliminazione');
+    } finally {
+      setEliminandoLogId(null);
+    }
+  }
+
+  async function handlePulisci() {
+    if (!confirm('Eliminare TUTTI i log di simulazione?\n\nAzione irreversibile.')) return;
+    setPulendo(true);
+    try {
+      const n = await pulisciAutomazioniLog('simulazione');
+      await carica();
+      alert(`✅ ${n} log eliminati`);
+    } catch (e: any) {
+      alert(e.message || 'Errore pulizia');
+    } finally {
+      setPulendo(false);
+    }
+  }
 
   async function handleEsegui(chiave: string) {
     setEseguendo(chiave);
@@ -61,13 +90,22 @@ export function AutomazioniTestTab() {
             Anteprime delle automazioni in modalità simulazione (nessun invio reale).
           </p>
         </div>
-        <button
-          onClick={carica}
-          disabled={loading}
-          className="px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-apple hover:bg-gray-50 disabled:opacity-50"
-        >
-          🔄 Aggiorna
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePulisci}
+            disabled={pulendo || loading || logs.length === 0}
+            className="px-3 py-1.5 text-xs bg-red-50 border border-red-200 text-red-700 rounded-apple hover:bg-red-100 disabled:opacity-50"
+          >
+            {pulendo ? '🧹 Pulisco…' : '🧹 Pulisci log simulazione'}
+          </button>
+          <button
+            onClick={carica}
+            disabled={loading}
+            className="px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-apple hover:bg-gray-50 disabled:opacity-50"
+          >
+            🔄 Aggiorna
+          </button>
+        </div>
       </div>
 
       {/* Pulsanti Esegui Dry-Run */}
@@ -171,12 +209,23 @@ export function AutomazioniTestTab() {
                       <div className="text-red-600 mt-1">❌ {log.errore}</div>
                     )}
                   </div>
-                  <button
-                    onClick={() => setExpandId(isExpanded ? null : log.id)}
-                    className="text-[10px] text-gray-500 hover:text-blue-600 flex-shrink-0"
-                  >
-                    {isExpanded ? '▲ Chiudi' : '▼ Anteprima'}
-                  </button>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => setExpandId(isExpanded ? null : log.id)}
+                      className="text-[10px] text-gray-500 hover:text-blue-600"
+                    >
+                      {isExpanded ? '▲ Chiudi' : '▼ Anteprima'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleEliminaLog(log.id, log.oggetto || log.chiave)}
+                      disabled={eliminandoLogId === log.id}
+                      title="Elimina log"
+                      className="text-gray-300 hover:text-red-500 transition-colors disabled:opacity-40 p-0.5 text-sm"
+                    >
+                      {eliminandoLogId === log.id ? '⏳' : '🗑️'}
+                    </button>
+                  </div>
                 </div>
 
                 {isExpanded && (
