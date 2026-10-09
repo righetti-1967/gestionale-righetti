@@ -9,6 +9,15 @@ from pydantic import BaseModel
 from app.config import settings
 from app.services.supabase_client import get_supabase
 
+def _get_clienti_app_cliente_uuid(supabase):
+    try:
+        res = supabase.table("client_users").select("auth_user_id").execute()
+        rows = res.data or []
+        return {str(r.get("auth_user_id")) for r in rows if r.get("auth_user_id")}
+    except Exception as e:
+        logger.warning(f"Impossibile leggere client_users: {e}")
+        return set()
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/licenze", tags=["licenze"])
@@ -42,6 +51,7 @@ async def lista_utenti(admin_email: str = Query(..., description="Email admin"))
     _verifica_admin(admin_email)
     try:
         supabase = get_supabase()
+        clienti_app_cliente = _get_clienti_app_cliente_uuid(supabase)
         res = supabase.auth.admin.list_users()
         utenti_raw = getattr(res, "users", res) if hasattr(res, "users") else res
 
@@ -54,6 +64,11 @@ async def lista_utenti(admin_email: str = Query(..., description="Email admin"))
             app_meta = u_dict.get("app_metadata") or u_dict.get("raw_app_meta_data") or {}
 
             email = u_dict.get("email") or ""
+            user_uuid = str(u_dict.get("id") or "")
+
+            if user_uuid in clienti_app_cliente:
+                continue
+
             is_righetti = email.lower().strip() == ADMIN_EMAIL.lower()
             ruolo = "admin" if is_righetti else (raw_meta.get("ruolo") or app_meta.get("ruolo") or "demo").lower()
 
