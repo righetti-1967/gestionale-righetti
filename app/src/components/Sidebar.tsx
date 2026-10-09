@@ -105,7 +105,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
       >
         <div className="px-3 lg:px-2 py-3 sm:py-6 border-b border-gray-200/60 flex items-center">
           <div className="flex items-center gap-3 w-full">
-            <div className="w-14 h-14 shrink-0 flex items-center justify-center">
+            <div className="w-14 h-14 shrink-0 flex items-center justify-center relative bg-apple-lightgray" style={{ transform: 'translateZ(0)' }}>
               {isUserDemo && !logoUrl ? (
                 <div className="w-14 h-14 rounded-apple bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold shadow-sm">
                   🏢
