@@ -103,7 +103,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
         className={`fixed lg:static top-0 left-0 h-screen h-[100dvh] z-50 overflow-hidden bg-apple-lightgray border-r border-gray-200/60 flex flex-col group transition-all duration-300 ease-out w-64 lg:w-16 lg:hover:w-64 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
-        <div className="px-3 lg:px-2 py-6 border-b border-gray-200/60 h-[100px] flex items-center shrink-0">
+        <div className="px-3 lg:px-2 py-4 sm:py-6 border-b border-gray-200/60 h-[80px] sm:h-[100px] flex items-center shrink-0">
           <div className="flex items-center gap-3 w-full">
             <div className="w-14 h-14 shrink-0 flex items-center justify-center">
               {isUserDemo && !logoUrl ? (
@@ -134,7 +134,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
           </div>
         </div>
 
-        <nav className="px-2 py-4 space-y-1 flex-1 overflow-y-auto overscroll-contain">
+        <nav className="px-2 py-4 space-y-1 flex-1 min-h-0 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
           {menuFiltrato.map((item) => (
             <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-apple text-sm font-medium transition-all ${currentPageId === item.id ? 'bg-apple-blue text-white shadow-apple' : 'text-apple-darkgray hover:bg-white/60'}`}>
               <span className="text-lg w-6 flex items-center justify-center">{item.icon}</span>
@@ -165,7 +165,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
           )}
         </nav>
 
-        <div className="shrink-0 px-2 pb-3 pt-2 border-t border-gray-200/60">
+        <div className="shrink-0 mt-auto px-2 pb-3 pt-2 border-t border-gray-200/60">
           <button onClick={() => handleNavigate('impostazioni')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-apple text-sm font-medium transition-all ${currentPageId === 'impostazioni' ? 'bg-apple-blue text-white shadow-apple' : 'text-apple-darkgray hover:bg-white/60'}`}>
             <span className="text-lg w-6 flex items-center justify-center">⚙️</span>
             <span className="whitespace-nowrap overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">Impostazioni</span>
