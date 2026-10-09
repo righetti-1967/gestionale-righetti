@@ -61,21 +61,22 @@ export function getCurrentLogoPath(): string {
 /**
  * Restituisce l'URL pubblico del logo aziendale.
  */
-export function getLogoUrl(cacheBuster = false, userEmail?: string | null): string {
+export function getLogoUrl(cacheBuster = true, userEmail?: string | null): string {
   const isRighetti = userEmail ? userEmail.toLowerCase().trim() === RIGHETTI_EMAIL : false;
 
   // Se utente e' Righetti
   if (isRighetti) {
     const { data } = supabase.storage.from(BUCKET).getPublicUrl("logo.png");
     const baseUrl = data?.publicUrl || LOGO_DEFAULT;
-    return cacheBuster ? `${baseUrl}?v=${_cacheBuster}` : baseUrl;
+    // Sempre cache-buster per evitare logo vecchio in sidebar/header
+    return `${baseUrl}?v=${_cacheBuster}`;
   }
 
   // Se utente DEMO / altro salone: usa il suo logo se caricato
   if (_logoPathCache && _logoPathCache !== "logo.png") {
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(_logoPathCache);
     if (data?.publicUrl) {
-      return cacheBuster ? `${data.publicUrl}?v=${_cacheBuster}` : data.publicUrl;
+      return `${data.publicUrl}?v=${_cacheBuster}`;
     }
   }
 
@@ -209,6 +210,10 @@ export async function uploadLogo(file: File): Promise<{ url: string | null; erro
     if (error) throw error;
 
     refreshLogoCacheBuster();
+    // Notifica i componenti di ricaricare il logo
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('datiAziendali-aggiornati'));
+    }
     return { url: getLogoUrl(), error: null };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Errore durante il caricamento.';
