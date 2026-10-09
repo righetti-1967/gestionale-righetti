@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { eliminaNotifica } from '../lib/notificheAdmin';
 
 type Priorita = 'alta' | 'media' | 'bassa';
 
@@ -28,6 +29,7 @@ export function InviaNotificaSezione({ clientId }: { clientId: number }) {
 
   const [notifiche, setNotifiche] = useState<NotificaItem[]>([]);
   const [loadingLista, setLoadingLista] = useState(true);
+  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
 
   async function caricaLista() {
     setLoadingLista(true);
@@ -39,6 +41,21 @@ export function InviaNotificaSezione({ clientId }: { clientId: number }) {
       if (!error && data) setNotifiche(data as NotificaItem[]);
     } finally {
       setLoadingLista(false);
+    }
+  }
+
+  async function handleElimina(id: string, titolo: string) {
+    if (!confirm(`Eliminare la notifica "${titolo}"?\n\nSparirà dalla lista ma resterà nello storico.`)) {
+      return;
+    }
+    setEliminandoId(id);
+    try {
+      await eliminaNotifica(id);
+      setNotifiche((prev) => prev.filter((n) => n.id !== id));
+    } catch (e: any) {
+      alert(e.message || 'Errore eliminazione');
+    } finally {
+      setEliminandoId(null);
     }
   }
 
@@ -242,15 +259,26 @@ export function InviaNotificaSezione({ clientId }: { clientId: number }) {
                     <div className="font-medium text-gray-900 truncate">{n.titolo}</div>
                     <div className="text-gray-600 mt-0.5 line-clamp-2">{n.messaggio}</div>
                   </div>
-                  <span
-                    className={`flex-shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded whitespace-nowrap ${
-                      n.letta
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
-                    {n.letta ? '✓ Letta' : 'Non letta'}
-                  </span>
+                  <div className="flex-shrink-0 flex items-center gap-1">
+                    <span
+                      className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded whitespace-nowrap ${
+                        n.letta
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      {n.letta ? '✓ Letta' : 'Non letta'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleElimina(n.id, n.titolo)}
+                      disabled={eliminandoId === n.id}
+                      title="Elimina notifica"
+                      className="text-gray-300 hover:text-red-500 transition-colors disabled:opacity-40 p-0.5"
+                    >
+                      {eliminandoId === n.id ? '⏳' : '🗑️'}
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between mt-1.5 text-[10px] text-gray-400">
                   <span>📅 {formatDataOra(n.created_at)}</span>

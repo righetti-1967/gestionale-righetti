@@ -1,5 +1,5 @@
 # STATO GESTIONALE RIGHETTI 1967
-Ultimo aggiornamento: 08/10/2026 (pomeriggio)
+Ultimo aggiornamento: 09/10/2026 (pomeriggio)
 
 ---
 
@@ -41,288 +41,163 @@ Gestionale per Studio Tricologico Righetti (Talamona, SO). PWA installabile su i
 
 - **Frontend:** Vite + React + TypeScript + Tailwind
 - **PWA:** vite-plugin-pwa (registerType: prompt, strategies: injectManifest, custom SW)
-- **Backend:** Python FastAPI (Railway) per TricoAI
-- **Edge Function:** Supabase Edge Functions (Deno) per magic link + push
-- **DB:** Supabase PostgreSQL (RLS abilitato) + `pg_net` per HTTP da trigger
+- **Backend TricoAI:** Python FastAPI (Railway)
+- **Backend Gestionale:** Supabase Edge Functions (Deno)
+- **DB:** Supabase PostgreSQL (RLS abilitato) + `pg_net` + `pg_cron`
 - **Email:** Google Workspace HTTPS Relay (Apps Script)
 - **Push:** Web Push API + VAPID + Service Worker custom
-- **Deploy:** Vercel (auto su push main) + vercel.json (rewrites SPA)
+- **Deploy:** Vercel (auto su push main)
 
 **Ambiente unico:** PROD (sviluppo diretto in prod, no TEST)
 **Supabase PROD:** `yporpszebtasalwazirz.supabase.co`
-
----
-
-## 🚀 SESSIONE 06-08/10/2026 — APP CLIENTE + NOTIFICHE PUSH + FIX PDF
-
-### 📌 Riepilogo
-
-Creata da zero l'**App Cliente PWA** (`cliente.righetti.club`), collegata al
-Gestionale, con autenticazione magic link, visione documenti, note studio,
-appuntamenti, percorsi e **sistema completo notifiche push**.
-Fixati bug critici React #310 (Agenda, Testi Messaggi, FormPercorso, FormOrdine).
-Implementato **UpdateBanner** PWA per aggiornamenti automatici.
-Risolto **upload automatico PDF** con righe e path corretto su Storage.
-
-### ✅ COMPLETATO — App Cliente PWA
-
-**Nuovo progetto:** `/Users/luca/Desktop/Tricolab/CLIENTE/app`
-- Vite + React + TS + Tailwind + vite-plugin-pwa
-- Deploy Vercel: `cliente.righetti.club`
-- Repo GitHub: `righetti-1967/Gestionale-cliente`
-- **`vercel.json`** con rewrites SPA (CRITICO per routing)
-
-**Auth:**
-- Magic link Supabase (via Edge Function `generate-invite-link`)
-- Redirect 1-click: email → Safari → `/auth/callback` → `/welcome` → PWA
-- Sessione in **cookie** (per copia iOS 17.2+ Safari → PWA)
-- Auto-binding via RPC `find_pending_invite_for_me()`
-- RPC `bind_client_session()`
-
-**Pagine complete:**
-- `/login` — magic link email
-- `/invite?token=...` — accettazione invito (con auto-invio)
-- `/auth/callback` — gestione sessione + binding
-- `/welcome` — istruzioni installazione PWA (**iOS + Android visibili**, badge "Il tuo caso")
-- `/` — Home (profilo + prossimo appuntamento + contatti studio + quick links + badge)
-- `/privacy` — Privacy firmata (PDF da Storage o generazione al volo)
-- `/documenti` — Fatture / Scontrini / DDT (raggruppati per documento)
-- `/note` — Note studio (badge rosso, modale lettura, stato letta/non letta)
-- `/appuntamenti` — Prossimi + Storico (ASC/DESC, stati normalizzati)
-- `/percorsi` — Attivi + Conclusi (senza residui)
-- `/notifiche` — Centro notifiche ricevute
-- `/attiva-notifiche` — Opt-in push + gestione subscription
-- `/profilo` — Profilo + Logout + link notifiche
-
-**PWA:**
-- Nome: **Area Riservata**
-- Icone: **chiave arancione** (placeholder neutro)
-- **Favicon dinamica**: cambia con logo studio loggato
-- Cookie storage per copia sessione Safari → PWA
-- **UpdateBanner** (banner "Nuova versione disponibile" → update 1-click)
-- **Service Worker custom** (`src/sw.ts`) con handler `push` + `notificationclick`
-- Auto-check update: 30 min + on `visibilitychange`
-
-**RLS + RPC App Cliente:**
-- `is_client()`, `is_staff()`, `current_client_id()`
-- `validate_invite`, `bind_client_session`, `find_pending_invite_for_me`
-- `get_my_client_profile`, `get_my_next_appuntamento`, `get_my_studio_contatti`, `get_my_studio_logo`
-- `get_my_privacy_pdf_data` (con `privacy_pdf_url`)
-- `get_my_fatture`, `get_my_scontrini`, `get_my_ddt`
-- `get_my_appuntamenti`, `get_my_percorsi`
-- `get_my_note`, `mark_nota_letta`, `mark_my_note_lette`, `get_my_note_unread_count`
-- `get_my_notifiche`, `get_my_notifiche_unread_count`, `mark_notifica_letta`, `mark_all_notifiche_lette`
-- `save_push_subscription`, `delete_push_subscription`
-
-### ✅ COMPLETATO — Gestionale
-
-**Tab App Cliente (Impostazioni):**
-- Lista clienti + stato App (Attivo / Invitato / Non attivo / Bloccato)
-- Card statistiche cliccabili per filtro
-- Toggle visibilità moduli (7): Appuntamenti, Documenti, Percorsi, Scheda tricologica, Cura domiciliare, Privacy firmata, Note studio
-- Blocco/sblocco accesso con motivo
-- **Genera link invito** (Edge Function)
-- **Invia via email** (automatico via Apps Script)
-- **Invia WhatsApp** (link pre-compilato con numero cliente)
-- **📝 Note per il cliente** (cumulate, con stato lettura ✓ Letta / Non letta + auto-refresh 20 sec)
-- **🔔 Invia notifica push** (form + storico con stato lettura)
-
-**Edge Function Supabase:**
-- `generate-invite-link` → genera magic link diretto Supabase
-- `send-push` → invia notifiche push Web Push Protocol
-- Deploy: `supabase functions deploy <nome>`
-- `supabase/` + `.vscode/settings.json` in `.gitignore`
-
-**Upload PDF su Storage:**
-- `fatture-pdf`, `scontrini-pdf`, `scarichi-pdf`, `privacy-pdf`
-- Upload automatico ad ogni generazione PDF con **path corretto**: `<client_id>/<anno>/<nome_file>.pdf`
-- URL salvato in DB (`fatture.pdf_url`, `scontrini.pdf_url`, `scarichi_seduta.pdf_url`, `clienti.privacy_pdf_url`)
-
-**Storico Sedute & Consegne (modale cliente):**
-- Tab: Tutti / Prodotti / Servizi / EXTRA / Fatture & Scontrini
-- **Raggruppamento per documento** con freccia ▼
-- **Documenti cliccabili** in TUTTE le tab → aprono **modale anteprima**
-- **Proforma**: cliccabili (aprono anteprima Proforma)
-- **Scontrini figli**: suffisso "(Figlio)" + raggruppati sotto madre
-- **Fatture proforma**: etichetta "Proforma" + "IN ATTESA"
-- Se `pdf_url` esiste → apre da Storage; altrimenti genera al volo
-
-### ✅ COMPLETATO — Sistema Notifiche Push (end-to-end)
-
-**Tabelle:**
-- `push_subscriptions`: id, client_id, endpoint, p256dh, auth, user_agent, created_at, last_used_at
-- `notifiche`: id, client_id, tipo, titolo, messaggio, priorita, url, dettagli, letta, letta_at, push_inviata, push_inviata_at, push_errore, created_at, dedup_key
-- `push_automazioni_config`: id, user_id, chiave, valore (JSONB), updated_at
-
-**RLS complete** su tutte e 3.
-
-**RPC (8):**
-- `save_push_subscription`, `delete_push_subscription`
-- `get_my_notifiche`, `get_my_notifiche_unread_count`
-- `mark_notifica_letta`, `mark_all_notifiche_lette`
-- `admin_send_custom_notifica`, `admin_list_notifiche_cliente`
-
-**Edge Function `send-push`:**
-- Deno + `web-push` lib
-- Autenticazione: service_role (cron/trigger) o staff autenticato
-- Legge/crea notifica, recupera subscriptions, invia push, aggiorna stato
-- Rimuove subscription scadute (404/410)
-- VAPID: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` in Supabase secrets
-
-**Frontend App Cliente:**
-- `usePushNotifications` hook (chiede permesso + registra subscription)
-- Pagina `/attiva-notifiche` (attiva/disattiva + stato)
-- Pagina `/notifiche` (lista + badge non lette)
-- Badge rosso su tab **Profilo** (BottomNav) + quick link **Notifiche** in Home
-- Auto-refresh contatore ogni 60 sec + on focus
-
-**Frontend Gestionale:**
-- Sezione **🔔 Invia notifica push** nel modale cliente
-- Form: titolo + messaggio + priorità (alta/media/bassa) + URL opzionale
-- **Storico notifiche** con stato ✓ Letta / Non letta + orario lettura
-- Auto-refresh ogni 20 sec
-
-### ✅ COMPLETATO — Note Studio → Cliente
-
-**Tabella `cliente_note`:**
-- id, client_id, contenuto, autore_user_id, visibile_cliente, letta, letta_at, created_at, updated_at
-
-**RPC:**
-- Staff: `admin_list_note_cliente`, `admin_create_nota_cliente`, `admin_update_nota_cliente`, `admin_delete_nota_cliente`
-- Cliente: `get_my_note`, `mark_nota_letta`, `mark_my_note_lette`, `get_my_note_unread_count`
-
-**UX App Cliente:**
-- Badge rosso su quick link "Note studio" in Home
-- Lista con stato visivo: **arancione = da leggere** / **grigio = letta**
-- Testo **nascosto in preview** (privacy) → "Tocca per leggere il messaggio"
-- Tap → **modale** con testo completo
-- Marcatura automatica come letta all'apertura modale
-
-**UX Gestionale:**
-- Sezione **📝 Note per il cliente** nel modale
-- Badge ✓ Letta / Non letta + orario
-- Auto-refresh ogni 20 sec
-
-### ✅ COMPLETATO — Fix Upload PDF automatico (08/10/2026)
-
-**Problema risolto:**
-- PDF di scontrini/fatture/DDT non venivano caricati automaticamente su Storage
-- Alcuni PDF venivano caricati **senza righe** (path sbagliato + generazione parziale)
-- Cliente doveva attendere che lo studio aprisse manualmente il PDF
-
-**Fix:**
-- **`pdfScontrino.ts`** / **`pdfDdt.ts`** / **`pdfFattura.ts`**: separato **upload** (sempre) da **download** (`scarica=true`)
-- **`creaScontrino`** / **`creaFattura`** / **`creaScarico`**: ricaricano il documento con **righe + cliente** e chiamano la funzione di generazione PDF corretta
-- **`registraIncasso`**: rigenera PDF come **fattura** (senza "PROFORMA")
-- **Path Storage corretto** uniforme: `<client_id>/<anno>/<nome_file>.pdf`
-- **RLS Storage `fatture-pdf`**: aggiunte policy INSERT/UPDATE per authenticated
-
-**Comportamento finale:**
-- Emesso scontrino → PDF con righe su Storage **immediatamente** ✅
-- Creata fattura (proforma) → PDF proforma su Storage ✅
-- Incassata fattura → PDF rigenerato come fattura ✅
-- Creato DDT → PDF con righe su Storage ✅
-
-### 🐛 FIX CRITICI
-
-- **React error #310 in Agenda**: `useDraft` + 2 `useEffect` + `useRef` erano dopo `return if (loading)`. Spostati prima.
-- **React error #310 in Testi Messaggi** (`TestiTemplateTab.tsx`): stesso pattern, fixato.
-- **React error #310 in FormNuovoPercorso.tsx**: stesso pattern, fixato.
-- **React error #310 in FormNuovoOrdine.tsx**: stesso pattern, fixato.
-- **RPC "column reference ambiguous"**: qualificare sempre `tabella.colonna` in `RETURNS TABLE`
-- **vercel.json mancante**: routing SPA rotto su Vercel (`/attiva-notifiche` → 404). Aggiunto rewrites.
-- **RLS UPDATE su `cliente_note`**: policy mancante per marcatura letta → risolto
-- **RPC `get_my_note` senza `letta`**: aggiunto campo
-- **RLS INSERT/UPDATE `fatture-pdf`**: upload bloccato → aggiunte policy
-- **Tab Prodotti/Servizi/EXTRA** in Storico: `isDocumento` scartava le righe → fix
-
-**Bug fix TricoAI:**
-- Fix `main.tsx`: aggiunti `<BrowserRouter>` + `<AuthProvider>` mancanti (commit `abfea82`)
+**Supabase TricoAI:** `fucagtrfydacobostdoa.supabase.co`
 
 ---
 
 ## 🔴 TODO — PRIORITÀ ALTA
 
-### 1. Notifiche Push — Automazioni automatiche (IN CORSO)
-- ⏸️ **Trigger DB** su `cliente_note` (INSERT → notifica + push)
-- ⏸️ **Trigger DB** su `appuntamenti` (INSERT/UPDATE → notifica + push)
-- ⏸️ **Trigger DB** su `fatture` (UPDATE pdf_url → notifica + push)
-- ⏸️ **Trigger DB** su `scontrini` (INSERT → notifica + push)
-- ⏸️ **Trigger DB** su `scarichi_seduta` (INSERT → notifica + push)
-- ⏸️ **Trigger DB** su `clienti` (UPDATE privacy_pdf_url → notifica + push)
-- ⏸️ **Trigger DB** su `percorsi` (INSERT/UPDATE stato → notifica + push)
-- ⏸️ **Trigger DB** su schede TricoAI (INSERT → notifica + push)
-- ⏸️ **Cron edge function** ogni 1 min → processa `notifiche` con `push_inviata = false` → invia push
-- ⏸️ **Cron compleanni** (giornaliero)
-- ⏸️ **Cron promemoria pre-appuntamento** (configurabile ore/giorni prima)
-- ⏸️ **Cron riattivazione** (90gg senza attività)
-- ⏸️ **Config automazioni** in Impostazioni → Automazioni (on/off + timing + testo per tipo)
-- ⏸️ **Badge automatico** in Home/BottomNav quando arriva una nuova notifica
+### 1. Automazioni Notifiche Push (configurabili)
+**Stato**: trigger + cron + send-push **funzionano**. Manca la UI per **configurare** cosa notificare.
 
-### 2. TricoAI → App Cliente (schede tricologiche)
-- ⏸️ TricoAI ha Supabase **separato**
-- ⏸️ Edge Function di TricoAI che invia PDF al Supabase PROD
-- ⏸️ Autenticazione via secret condiviso
-- ⏸️ Mappatura cliente: usare `tricoai_id` su `clienti` PROD
-- ⏸️ Schede: "Report Tricologico Righetti" + "Rituale di Cura Domiciliare"
-- ⏸️ Pagine App Cliente `/schede` + `/cura-domiciliare`
+**Da fare:**
+- ⏸️ **Tabella `push_automazioni_config`**: `user_id`, `chiave`, `valore (JSONB)` per on/off di ogni tipo
+- ⏸️ **UI in Impostazioni → Automazioni** con toggle separati:
+  - 🔔 Nuovo appuntamento
+  - ✅ Appuntamento confermato
+  - ❌ Appuntamento cancellato
+  - 📄 Fattura disponibile
+  - 🧾 Scontrino
+  - 📋 Scheda tricologica
+  - 🏠 Cura domiciliare
+  - 📋 Privacy firmata
+  - 📝 Nota studio
+  - 💼 Percorso nuovo
+  - 🎂 Compleanni
+  - ⏰ Promemoria pre-appuntamento
+  - 💤 Riattivazione
+- ⏸️ **Patch trigger SQL** → `crea_notifica_cliente()` controlla toggle prima di creare notifica
 
-### 3. App Cliente — Migliorie
-- ⏸️ Banner "Installa app" in Home (se non installata)
-- ⏸️ Icona PWA dinamica per studio (manifest sottodominio)
-- ⏸️ Test completo su iPhone
+### 2. Cron Aggiuntivi (automazioni temporali)
+- ⏸️ **Cron compleanni** → notifica + push al cliente nel giorno del compleanno
+- ⏸️ **Cron promemoria pre-appuntamento** → 24h (o config) prima
+- ⏸️ **Cron riattivazione** → 90 giorni senza attività → notifica "Ci manchi"
 
-### 4. Filtri prenotazioni (App Cliente)
-- ⏸️ Filtri per cliente: cosa può prenotare online
-- ⏸️ Configurazione in Impostazioni
-
-### 5. Integrazione API reali
-- ⏸️ FPT (fatturazione elettronica)
-- ⏸️ ADE (Agenzia Entrate)
-- ⏸️ RCH, Epson (stampanti fiscali)
+### 3. Integrazione API reali
+- ⏸️ **FPT** (fatturazione elettronica)
+- ⏸️ **ADE** (Agenzia Entrate)
+- ⏸️ **RCH / Epson** (stampanti fiscali)
 
 ---
 
 ## 🟡 TODO — PRIORITÀ MEDIA
 
-### 6. Agenda — Completare
-- ⏸️ Vista Settimanale adattiva
-- ⏸️ Vista Mensile adattiva
-- ✅ Fix React #310
-
-### 7. Cassa Fiscale
-- ⏸️ Chiusura giornaliera con fondo iniziale
-- ⏸️ Export CSV scontrini
-- ⏸️ Tastiera numerica touch-friendly
-
-### 8. Report Analytics
-- ⏸️ Ranking clienti per spesa
-- ⏸️ Export PDF A4
-- ⏸️ Upload PDF commercialista
+### 4. App Cliente — Migliorie
+- ⏸️ **Banner "Installa app"** in Home (se non installata)
+- ⏸️ **Icona PWA dinamica per studio** (manifest sottodominio)
 
 ---
 
 ## 🟢 TODO — PRIORITÀ BASSA
 
-### 9. Sicurezza
-- ⏸️ Conferma cambio regime documenti
-- ⏸️ Log accessi/azioni critiche
-- ⏸️ Timeout sessione inattività
+### 5. Sicurezza — Aggiunte
+- ⏸️ **Conferma cambio regime documenti** (modale di conferma prima di salvare)
+- ⏸️ **Log accessi/azioni critiche**
+- ⏸️ **Timeout sessione inattività**
 
-### 10. Performance
-- ⏸️ Indici SQL su: appuntamenti, clienti, fatture, scontrini, bozze
-- ⏸️ Riduzione Disk I/O e CPU Supabase
+### 6. Performance
+- ⏸️ Indici SQL su: `appuntamenti`, `clienti`, `fatture`, `scontrini`, `bozze`, `notifiche`
 
-### 11. Icona PWA dinamica per studio
-- ⏸️ Manifest dinamico per sottodominio
-- ⏸️ Icona PWA = logo studio
+---
+
+## ✅ STORICO — COMPLETATO
+
+### 09/10/2026 — Sessione MOSTRO (TricoAI → App Cliente + Push)
+
+#### Integrazione TricoAI → Gestionale → App Cliente
+- ✅ **Edge Function `import-tricoai-pdf`** (Deno) → riceve PDF da TricoAI, salva su Storage + DB PROD
+- ✅ **Secret condiviso** `TRICOAI_IMPORT_SECRET` (Supabase + Railway)
+- ✅ **Patch TricoAI backend** → invio automatico PDF Report + Cura
+- ✅ **Fix SICUREZZA** → match cliente via **email univoca** (mai nome)
+- ✅ **Tabelle** `schede_tricologiche` + `cura_domiciliare` + RLS + RPC
+- ✅ **Bucket Storage** `schede-tricologiche` + `cura-domiciliare` (pubblici)
+- ✅ **RPC App Cliente** `get_my_schede()`, `get_my_cura_domiciliare()`
+- ✅ **Pagine App Cliente** `/schede` + `/cura-domiciliare`
+- ✅ **Timestamp univoco** nei nomi file PDF (evita sovrascrittura cache)
+
+#### Sistema Notifiche Push AUTOMATICHE
+- ✅ **8 trigger DB** → creano notifiche in `notifiche`:
+  - `cliente_note` INSERT
+  - `schede_tricologiche` INSERT
+  - `cura_domiciliare` INSERT
+  - `appuntamenti` INSERT
+  - `appuntamenti` UPDATE stato (confermato/cancellato)
+  - `fatture` UPDATE pdf_url
+  - `clienti` UPDATE privacy_pdf_url
+  - `percorsi` INSERT
+- ✅ **Funzione generica** `crea_notifica_cliente()` (con `dedup_key`)
+- ✅ **Cron `pg_cron`** ogni 1 min → `process_pending_notifiche()`
+- ✅ **`pg_net`** chiama Edge Function `send-push`
+- ✅ **Marcatura letta automatica** quando clicchi la notifica (`?notifica_id=xxx`)
+- ✅ **Badge Home aggiornato** in tempo reale (evento `notifiche-lette`)
+- ✅ **Service Worker** aggiornato → aggiunge `notifica_id` all'URL al click
+
+#### Sync clienti bidirezionale Gestionale ⇄ TricoAI
+- ✅ **Fix CRITICO** sync T→G (era invertito, scriveva su TricoAI)
+- ✅ **Rimosso skip** su `matched_t_ids` → anche clienti collegati vengono valutati
+- ✅ **Soft-delete clienti** con motivo + propagazione sync
+- ✅ **Fix form cliente** (bug AAAA BBBB → Pacilio, `useDraft` inappropriato)
+- ✅ **`user_id` popolato** su TricoAI (clienti visibili nel frontend)
+
+#### Email Promemoria
+- ✅ **Bottone WhatsApp stile Apple** nell'email (bianco + bordo verde)
+- ✅ **Footer email** usa sede operativa
+- ✅ **Campo `Nome Studio`** + `WhatsApp` in Impostazioni → Azienda
+- ✅ **`formatDataEstesa`** capitalizza + orario ("Venerdì 9 Ottobre 2026 alle ore 12:45")
+
+#### App Cliente
+- ✅ **DDT senza importo** (importo solo nel PDF, non nell'App)
+
+#### Fix Bug Vari
+- ✅ Typo `righeIntermo` → `righeInterno` in `promemoria.ts`
+- ✅ `aggiornaCliente` aggiorna `updated_at` (per sync)
+
+---
+
+### 08/10/2026 — App Cliente PWA + Notifiche Push (base)
+
+- ✅ **App Cliente PWA** completa (Login, Invite, Callback, Welcome, Home, Documenti, Note, Appuntamenti, Percorsi, Privacy, Profilo, Notifiche, Attiva Notifiche)
+- ✅ **Auth magic link** + sessione in cookie (iOS 17.2+)
+- ✅ **RLS + RPC App Cliente** (`is_client()`, `is_staff()`, `current_client_id()`, ecc.)
+- ✅ **Tab App Cliente** in Impostazioni Gestionale (7 toggle visibilità moduli)
+- ✅ **Note studio → cliente** (badge rosso, modale lettura)
+- ✅ **Sistema notifiche push base** (tabelle + Edge Function `send-push` + VAPID)
+- ✅ **Fix React error #310** (Agenda, Testi Messaggi, FormPercorso, FormOrdine)
+- ✅ **UpdateBanner PWA** (banner "Nuova versione disponibile" → update 1-click)
+- ✅ **Upload PDF automatico** con righe e path corretto su Storage
+
+### 06-07/10/2026 — Pulizia + Fix
+
+- ✅ Fix upload PDF (fatture, scontrini, DDT) — path `<client_id>/<anno>/<nome_file>.pdf`
+- ✅ Fix RLS Storage `fatture-pdf` (INSERT/UPDATE)
+- ✅ Fix RPC `get_my_note` (mancava campo `letta`)
+- ✅ Fix tab Prodotti/Servizi/EXTRA in Storico cliente
+- ✅ Fix `main.tsx` TricoAI (mancavano `<BrowserRouter>` + `<AuthProvider>`)
+
+### Precedenti (completati prima del 06/10)
+
+- ✅ **Agenda**: Vista Settimanale adattiva + Vista Mensile adattiva
+- ✅ **Cassa Fiscale**: Chiusura giornaliera con fondo, Export CSV scontrini, Tastiera numerica touch-friendly
+- ✅ **Report Analytics**: Ranking clienti per spesa, Export PDF A4, Upload PDF commercialista
+- ✅ **Config Fiscale**: ModaleConfigFiscale (`configFiscale.ts`, `ModaleConfigFiscale.tsx`)
+- ✅ **Sicurezza base**: Password gestionale hash SHA-256, SicurezzaTab, reset sicurezza
+- ✅ **Annullo Fatture/DDT**: soft-delete con motivo min 10 caratteri, blocco DDT collegati
 
 ---
 
 ## 📋 NOTE TECNICHE
 
 ### Tabella `bozze` (persistenza multi-device)
-- Chiave: user_id + chiave_draft (UNIQUE)
+- Chiave: `user_id` + `chiave_draft` (UNIQUE)
 - Payload: JSONB
 - Hook: `src/lib/useDraft.ts`
 - **REGOLA**: hook sempre PRIMA di qualsiasi `return` condizionale
@@ -330,40 +205,47 @@ Risolto **upload automatico PDF** con righe e path corretto su Storage.
 ### Storage Buckets (PROD)
 - `azienda` (pubblico) → logo azienda
 - `avatars` (pubblico) → foto profilo
-- `scontrini-pdf` (pubblico) → PDF scontrini
-- `fatture-pdf` (pubblico) → PDF fatture
-- `scarichi-pdf` (pubblico) → PDF DDT
-- `privacy-pdf` (pubblico) → PDF privacy firmata
+- `scontrini-pdf` (pubblico)
+- `fatture-pdf` (pubblico)
+- `scarichi-pdf` (pubblico)
+- `privacy-pdf` (pubblico)
+- **`schede-tricologiche` (pubblico)** — NUOVO
+- **`cura-domiciliare` (pubblico)** — NUOVO
 
 ### App Cliente — Tabelle chiave
 - `client_users`: `auth_user_id uuid` ↔ `client_id bigint`
-- `client_portal_settings`: 7 toggle visibilità (appointments, documents, percorsi, scheda_tricologica, cura_domiciliare, privacy_pdf, note) + is_blocked
-- `client_invites`: token invito + `action_link` (magic link)
+- `client_portal_settings`: 7 toggle visibilità + `is_blocked`
+- `client_invites`: token + `action_link`
 - `cliente_note`: note studio → cliente
-- `clienti.tricoai_id uuid`: collegamento a TricoAI
+- `clienti.tricoai_id uuid`: collegamento TricoAI
 
-### App Cliente — Notifiche Push
-- `push_subscriptions`: subscription Web Push per device
-- `notifiche`: log notifiche + stato lettura + stato push
-- `push_automazioni_config`: config per studio (futuro)
-- Edge Function `send-push` (Deno + web-push)
-- Service Worker custom `src/sw.ts` con handler push
-- VAPID keys in Supabase secrets
+### Notifiche Push — Schema finale
+- **Tabelle**: `push_subscriptions`, `notifiche`, `push_automazioni_config`
+- **Trigger attivi (8)**: vedi STORICO 09/10
+- **Cron `pg_cron`**: `process-notifiche-every-minute` (`* * * * *`)
+- **pg_net** chiama `send-push` con `{ notifica_id, titolo, messaggio, priorita, url }`
+- **Edge Function `send-push`** → Web Push Protocol, payload include `notifica_id`
+- **Service Worker** → apre URL `?notifica_id=xxx`
+- **AppLayout** → legge `?notifica_id`, marca letta, dispatch evento `notifiche-lette`
+- **Home** → ascolta evento + focus + auto-refresh 60s → aggiorna badge
 - ⚠️ iOS 16.4+ richiede PWA installata
 - ⚠️ Prompt autorizzazione solo dopo azione utente
-- ⚠️ **VAPID_PUBLIC_KEY**: attenzione a `=` finale (errore ricorrente)
 
 ### Edge Functions Supabase
-- `generate-invite-link`: magic link diretto (service role)
-- `send-push`: notifiche push (service role o staff)
+- `generate-invite-link` → magic link
+- `send-push` → notifiche push
+- **`import-tricoai-pdf`** → import PDF da TricoAI (NUOVO)
 - Deploy: `supabase functions deploy <nome>`
 - Setup: `supabase login` + `supabase link --project-ref yporpszebtasalwazirz`
 - Secrets: `supabase secrets set CHIAVE="valore"`
 
+### ⚠️ Comandi Terminal
+- Se venv attivo oscura PATH → usa `deactivate` prima di `supabase`
+- `supabase login` → salva token in `~/.supabase/access-token`
+
 ### PWA Auto-Update (UpdateBanner)
 - `registerType: 'prompt'` + `strategies: 'injectManifest'`
 - Service Worker custom `src/sw.ts`
-- Banner "Nuova versione disponibile" → update 1-click
 - Auto-check: 30 min + on `visibilitychange`
 - ⚠️ iOS a volte non rileva update → reinstallo manuale
 
@@ -377,64 +259,20 @@ Risolto **upload automatico PDF** con righe e path corretto su Storage.
   ]
 }
 
-Annullo Fatture/DDT
-Password gestionale: Impostazioni → Sicurezza (hash SHA-256)
-
-Motivo obbligatorio: min 10 caratteri
-
-Soft-delete: annullato_at, annullato_motivo, annullato_da
+Note sparse
+Annullo Fatture/DDT: password in Sicurezza (SHA-256), motivo min 10 caratteri, soft-delete (annullato_at, annullato_motivo, annullato_da)
 
 Blocco DDT collegati: annullare prima i DDT
 
-Email Professionale
-src/lib/emailWrapper.ts → wrapEmailHtml(corpo, azienda)
+Email professionale: src/lib/emailWrapper.ts → wrapEmailHtml(corpo, azienda)
 
-Variabile {data_estesa}: "Lunedì 5 Ottobre 2026"
+Appuntamenti — Stati: prenotato, confermato, pending, completato, cancellato
 
-App Cliente — Magic Link
-Template email Supabase: bottone "Accedi" stile Apple
+Fatture cliente: proforma visibili ma non cliccabili; pagate visibili e cliccabili
 
-Link generato da Edge Function (no magic link standard)
+Upload PDF: sempre al momento della creazione/emissione, mai condizionato al download
 
-Cookie storage per copia sessione iOS 17.2+
-
-Appuntamenti — Stati
-prenotato (default) / confermato / pending / completato / cancellato
-
-App Cliente normalizza: pending → "In attesa di conferma" (ambra), altri → "Prenotato" (blu), completato → "Completato" (grigio), cancellato → "Annullato" (rosso)
-
-Fatture — Visibilità cliente
-Proforma (data_incasso = NULL): visibili ma non cliccabili
-
-Fatture pagate (data_incasso != NULL): visibili e cliccabili
-
-Comportamento coerente con il Gestionale
-
-Upload PDF — Regola
-Sempre al momento della creazione/emissione (fatture, scontrini, DDT, privacy)
-
-Path Storage: <client_id>/<anno>/<nome_file>.pdf
-
-uploadJsPdfToStorage fuori da if (scarica) (upload indipendente dal download)
-
-Righe incluse nel PDF (ricaricare con select *, righe:tabella_righe(*))
-
-🔧 COMANDI UTILI
-Build Gestionale: cd /Users/luca/Desktop/Tricolab/GESTIONALE/app && npm run build
-
-Dev Gestionale: cd /Users/luca/Desktop/Tricolab/GESTIONALE/app && npm run dev
-
-Build App Cliente: cd /Users/luca/Desktop/Tricolab/CLIENTE/app && npm run build
-
-Dev App Cliente: cd /Users/luca/Desktop/Tricolab/CLIENTE/app && npm run dev
-
-Build TricoAI: cd /Users/luca/Desktop/Tricolab_v2 && npm run build
-
-Push PROD: git add -A && git commit -m "..." && git push origin main
-
-Deploy Edge Function: cd /Users/luca/Desktop/Tricolab/GESTIONALE/app && supabase functions deploy <nome>
-
-Secrets: cd /Users/luca/Desktop/Tricolab/GESTIONALE/app && supabase secrets set CHIAVE="valore"
+Righe incluse: ricaricare con select *, righe:tabella_righe(*)
 
 🎯 PRINCIPI DI SVILUPPO
 Nessuna feature senza responsive (desktop/tablet/mobile)
@@ -451,8 +289,6 @@ Realtime quando serve (Agenda, Cassa)
 
 Multi-device quando serve (bozze + realtime)
 
-Lavoriamo direttamente in PROD
-
 Tutti gli hook React prima di qualsiasi return condizionale
 
 In RPC con RETURNS TABLE, qualificare sempre tabella.colonna
@@ -461,93 +297,12 @@ Verifica sempre l'utente loggato (admin vs demo)
 
 Test su PROD dopo ogni push
 
-PWA: forza hard reload dopo deploy (Cmd+Shift+R) o usa UpdateBanner
+PWA: hard reload dopo deploy (Cmd+Shift+R) o usa UpdateBanner
 
 Upload PDF: sempre fuori da if (scarica) — mai condizionato al download
 
-📂 FILE CORRELATI
-TricoAI v2: /Users/luca/Desktop/Tricolab_v2/STATO.md
+MATCH CLIENTE: mai solo per nome, sempre email o email+nome+cellulare
 
-App Cliente: /Users/luca/Desktop/Tricolab/CLIENTE/app/ (repo Gestionale-cliente)
-
-Gestionale: questo file
+PDF Storage: nomi file con timestamp univoco (evita cache)
 
 FINE FILE
-
----
-
-## 🆕 TODO AGGIUNTO 08/10/2026 — Promemoria Appuntamenti (Riscrittura)
-
-### Problema attuale
-- Modale "Promemoria" in Agenda guarda solo **24h dalla data selezionata**
-- Non mostra **stato invio** per riga (email / whatsapp)
-- Non permette **invio multiplo** (bulk)
-
-### Nuovo design (confermato)
-- **Range**: Lunedì → Sabato della settimana visualizzata in Agenda
-- **Modale esistente modificato** (pulsante "Promemoria" già presente in Agenda)
-- **Testo promemoria modificabile inline** (solo per la sessione corrente, non salva su Impostazioni)
-- **Bottoni bulk**: 📧 Email / 💬 WhatsApp / 📧💬 Entrambi
-- **Per ogni riga**:
-  - Cliente (nome, email, cellulare)
-  - Data/ora appuntamento
-  - Operatore + tipo
-  - **Stato invio**: ✅ Inviato / ⏸️ Da inviare / ⚠️ In ritardo / ⚪ Troppo presto
-  - Data/ora ultimo invio email e whatsapp
-- **Filtri**: stato invio + canale mancante
-- **Checkbox** selezione + "Seleziona tutti"
-
-### RPC da creare
-`get_appuntamenti_settimana(lunedi DATE, sabato DATE)`
-```sql
-RETURNS TABLE (
-  id, cliente_id, cliente_nome, cliente_email, cliente_cellulare,
-  data, ora_inizio, durata_minuti, operatore, tipo, titolo,
-  reminder_email_at, reminder_email_inviato,
-  reminder_whatsapp_at, reminder_whatsapp_inviato,
-  ore_anticipo,  -- 24 standard, 72 checkup
-  stato_invio    -- 'inviato' | 'da_inviare' | 'in_ritardo' | 'troppo_presto'
-)
-
-Filtro: data BETWEEN lunedi AND sabato
-
-Solo studio loggato (is_staff)
-
-Esclude cancellato, is_blocco
-
-Logica invio
-Email: inviaEmailConConfig (già esistente) + testo elaborato
-
-Sostituzione variabili: {cliente}, {data}, {ora}, {servizio}
-
-Aggiorna reminder_email_at, reminder_email_inviato = true
-
-WhatsApp: apre wa.me/<cell>?text=<testo> in nuova tab
-
-Modale di conferma "Hai inviato? [Sì] [No]"
-
-Se Sì → aggiorna reminder_whatsapp_at, reminder_whatsapp_inviato = true
-Entrambi: esegue Email + WhatsApp
-
-Config già esistente (Impostazioni → Promemoria)
-oreAnticipo (standard, default 24)
-
-oreAnticipoCheckup (checkup nuovo cliente, default 72)
-
-canale (email / whatsapp / entrambi)
-
-attivo (on/off)
-
-messaggioStandard, messaggioCheckup (testi template)
-
-File da modificare/creare
-Nuovo: src/components/ModalePromemoria.tsx (riscrittura completa)
-
-Modifica: src/pages/Agenda.tsx (pulsante Promemoria → apre nuovo modale)
-
-Riusa: inviaEmailConConfig (api.ts) + inviaEmailPromemoria (lib/promemoria.ts)
-
-Tempo stimato
-2-3 ore (sessione dedicata)
-
-FINE AGGIUNTA
