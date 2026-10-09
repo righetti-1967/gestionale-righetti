@@ -1,5 +1,5 @@
 # STATO GESTIONALE RIGHETTI 1967
-Ultimo aggiornamento: 09/10/2026 (pomeriggio)
+Ultimo aggiornamento: 10/10/2026 (mattina)
 
 ---
 
@@ -45,6 +45,7 @@ Gestionale per Studio Tricologico Righetti (Talamona, SO). PWA installabile su i
 - **Backend Gestionale:** Supabase Edge Functions (Deno)
 - **DB:** Supabase PostgreSQL (RLS abilitato) + `pg_net` + `pg_cron`
 - **Email:** Google Workspace HTTPS Relay (Apps Script)
+- **WhatsApp:** Whatsender API (`api.whatsender.it/api/send`) con `mediaurl` per PDF
 - **Push:** Web Push API + VAPID + Service Worker custom
 - **Deploy:** Vercel (auto su push main)
 
@@ -56,60 +57,100 @@ Gestionale per Studio Tricologico Righetti (Talamona, SO). PWA installabile su i
 
 ## 🔴 TODO — PRIORITÀ ALTA
 
-### 1. Automazioni Notifiche Push (configurabili)
-**Stato**: trigger + cron + send-push **funzionano**. Manca la UI per **configurare** cosa notificare.
+### 1. Simulazioni Integrazioni Esterne (con toggle → reale)
+**Concetto**: ogni integrazione parte in **modalità simulazione a video** (nessun invio reale ai sistemi esterni). Quando testata, un **toggle** passa a comunicazione **REALE**.
 
-**Da fare:**
-- ⏸️ **Tabella `push_automazioni_config`**: `user_id`, `chiave`, `valore (JSONB)` per on/off di ogni tipo
-- ⏸️ **UI in Impostazioni → Automazioni** con toggle separati:
-  - 🔔 Nuovo appuntamento
-  - ✅ Appuntamento confermato
-  - ❌ Appuntamento cancellato
-  - 📄 Fattura disponibile
-  - 🧾 Scontrino
-  - 📋 Scheda tricologica
-  - 🏠 Cura domiciliare
-  - 📋 Privacy firmata
-  - 📝 Nota studio
-  - 💼 Percorso nuovo
-  - 🎂 Compleanni
-  - ⏰ Promemoria pre-appuntamento
-  - 💤 Riattivazione
-- ⏸️ **Patch trigger SQL** → `crea_notifica_cliente()` controlla toggle prima di creare notifica
+- ⏸️ **Stampa Scontrini RCH / Epson** → simulazione a video + toggle modalità reale
+- ⏸️ **Collegamento ADE** (Agenzia Entrate) → fatture + scontrini, simulazione + toggle
+- ⏸️ **Collegamento FPT** (fatturazione elettronica PA) → simulazione + toggle
 
-### 2. Cron Aggiuntivi (automazioni temporali)
-- ⏸️ **Cron compleanni** → notifica + push al cliente nel giorno del compleanno
-- ⏸️ **Cron promemoria pre-appuntamento** → 24h (o config) prima
-- ⏸️ **Cron riattivazione** → 90 giorni senza attività → notifica "Ci manchi"
+### 2. Motore Cron Automazioni (invio reale)
+**Stato**: 5 automazioni funzionanti in **dry-run** (con log + anteprima). Manca il motore cron per la modalità `automatico` (invio reale).
 
-### 3. Integrazione API reali
-- ⏸️ **FPT** (fatturazione elettronica)
-- ⏸️ **ADE** (Agenzia Entrate)
-- ⏸️ **RCH / Epson** (stampanti fiscali)
+- ⏸️ **Cron ogni X min** → chiama `automazioni-runner` per automazioni in modalità `automatico`
+- ⏸️ **Cron giornaliero** → post_seduta, compleanno, riattivazione
+- ⏸️ **Cron orario** → promemoria_appuntamento, promemoria_checkup
+- ⏸️ **Log reali** in `automazioni_log` con `modalita='reale'`
+
+### 3. Cron Notifiche Push Tempo-Reale (già attivo, manca solo toggle UI)
+**Stato**: i 5 trigger notifiche push (nuovo/confermato/cancellato/spostato/pending) sono **già attivi** con dry-run globale ON di default. Funziona ma va **verificato con dati reali** e poi disattivato il dry-run.
+
+- ⏸️ **Test end-to-end** con cliente vero + notifica reale
+- ⏸️ **Disattivare dry-run** quando confermato
+
+### 4. Integrazione API Reali (da simulazioni)
+Riferimento al punto 1.
 
 ---
 
 ## 🟡 TODO — PRIORITÀ MEDIA
 
-### 4. App Cliente — Migliorie
+### 5. App Cliente — Migliorie
 - ⏸️ **Banner "Installa app"** in Home (se non installata)
 - ⏸️ **Icona PWA dinamica per studio** (manifest sottodominio)
+
+### 6. Rifiniture UI Automazioni
+- ⏸️ **Log push con `(nessun cliente)`** → recuperare `client_nome` in `process_pending_notifiche`
 
 ---
 
 ## 🟢 TODO — PRIORITÀ BASSA
 
-### 5. Sicurezza — Aggiunte
+### 7. Sicurezza — Aggiunte
 - ⏸️ **Conferma cambio regime documenti** (modale di conferma prima di salvare)
 - ⏸️ **Log accessi/azioni critiche**
 - ⏸️ **Timeout sessione inattività**
 
-### 6. Performance
+### 8. Performance
 - ⏸️ Indici SQL su: `appuntamenti`, `clienti`, `fatture`, `scontrini`, `bozze`, `notifiche`
 
 ---
 
 ## ✅ STORICO — COMPLETATO
+
+### 10/10/2026 — Notte (Automazioni + WhatsApp + Fix UI)
+
+#### Automazioni Dry-Run — Estensione a 5 automazioni
+- ✅ **Nuove 3 automazioni** in Edge Function `automazioni-runner`:
+  - 📸 **Post-Seduta** → dopo X min/ore/giorni da `appuntamenti.completato_at`
+  - 🎂 **Compleanno** → X giorni prima di `clienti.data_nascita`
+  - 💤 **Riattivazione** → clienti con ultimo appuntamento > N giorni
+- ✅ **Dropdown + pulsanti dry-run** in `AutomazioniTestTab` (5 automazioni)
+- ✅ **Deduplicazione**: post_seduta (per appuntamento_id), compleanno (per cliente+anno), riattivazione (per cliente+intervallo)
+
+#### Template Fattura + DDT
+- ✅ **`email_fattura` + `whatsapp_fattura`** in `testiTemplate.ts`
+- ✅ **`email_ddt` + `whatsapp_ddt`** in `testiTemplate.ts`
+- ✅ **Tab Testi Messaggi**: Email (12) + WhatsApp (8)
+
+#### Invio Documenti via Whatsender (PDF allegato)
+- ✅ **Edge Function `send-whatsapp`** → upload PDF su Storage + chiamata Whatsender API con `mediaurl`
+- ✅ **Fattura**: pulsante 💬 WhatsApp → PDF allegato
+- ✅ **DDT**: pulsante 💬 WhatsApp → PDF allegato
+- ✅ **Scontrino**: pulsante 💬 WhatsApp → PDF allegato
+- ✅ **Utility `inviaWhatsAppSmart`** in `src/lib/whatsapp.ts` → fallback automatico a `wa.me` con link PDF se Whatsender non configurato
+- ✅ **Email**: PDF sempre allegato (invariato)
+
+#### Variabile `{nome_studio}`
+- ✅ Aggiunta in **tutti i template** (`VARIABILI_PER_CHIAVE`)
+- ✅ Passata in tutti i `renderTemplate` (fattura, DDT, scontrino, promemoria, automazioni)
+
+#### Box informativi in Impostazioni → Comunicazioni
+- ✅ **WhatSender**: link a `api.whatsender.it` + istruzioni
+- ✅ **Google Workspace**: link a `workspace.google.fr/business/signup` + istruzioni
+
+#### Fix bug Agenda — Click cella precompila data/ora
+- ✅ Fix A: `key` dinamica su `<FormNuovoAppuntamento>` (force remount)
+- ✅ Fix B: `useEffect` sync per data/ora/operatore
+
+#### Fix bug Sidebar mobile
+- ✅ Scroll funzionante su iPhone (`overflow-y-auto` su `<aside>`)
+- ✅ Logo trasparente su Chrome (fix `translateZ(0)` + `bg-apple-lightgray` sul container)
+
+#### Fix bug notifiche push spostamento appuntamento
+- ✅ `spostaAppuntamento` ora traccia `rebooking_da_id = originale.id`
+- ✅ Trigger INSERT: se `rebooking_da_id` valorizzato → notifica "spostato"
+- ✅ Trigger UPDATE: skip "cancellato" se `motivo_cancellazione='spostamento'`
 
 ### 09/10/2026 — Sessione MOSTRO (TricoAI → App Cliente + Push)
 
@@ -140,6 +181,25 @@ Gestionale per Studio Tricologico Righetti (Talamona, SO). PWA installabile su i
 - ✅ **Marcatura letta automatica** quando clicchi la notifica (`?notifica_id=xxx`)
 - ✅ **Badge Home aggiornato** in tempo reale (evento `notifiche-lette`)
 - ✅ **Service Worker** aggiornato → aggiunge `notifica_id` all'URL al click
+
+#### Toggle Notifiche Push (impostazioni)
+- ✅ **5 toggle**: nuovo, confermato, cancellato, spostato, pending
+- ✅ **Dry-run globale** toggle
+- ✅ **Card in cima a Impostazioni → Automazioni**
+- ✅ **Config salvata in `push_automazioni_config`**
+
+#### Automazioni Dry-Run — Fase 1 (2 automazioni)
+- ✅ **Modalità 🧪 Simulazione** in `ModalitaAutomazione`
+- ✅ **Edge Function `automazioni-runner`** deployata
+- ✅ **2 automazioni**: Promemoria Appuntamento + Promemoria Check-Up (`servizio_id=2`)
+- ✅ **Tabella `automazioni_log`** + policy RLS + RPC
+- ✅ **UI `AutomazioniTestTab`**: filtri + anteprima + 🗑️ riga + 🧹 pulisci
+- ✅ **Template `whatsapp_promemoria_checkup`** in Testi Messaggi
+
+#### Cestino Notifiche Push (App Cliente)
+- ✅ **Soft-delete notifiche** (`eliminata_at`, `eliminata_da`, `eliminata_motivo`)
+- ✅ **RPC `admin_elimina_notifica`** + patch `admin_list_notifiche_cliente` (filtra cancellate)
+- ✅ **UI 🗑️** in App Cliente → Gestisci
 
 #### Sync clienti bidirezionale Gestionale ⇄ TricoAI
 - ✅ **Fix CRITICO** sync T→G (era invertito, scriveva su TricoAI)
@@ -209,8 +269,8 @@ Gestionale per Studio Tricologico Righetti (Talamona, SO). PWA installabile su i
 - `fatture-pdf` (pubblico)
 - `scarichi-pdf` (pubblico)
 - `privacy-pdf` (pubblico)
-- **`schede-tricologiche` (pubblico)** — NUOVO
-- **`cura-domiciliare` (pubblico)** — NUOVO
+- `schede-tricologiche` (pubblico)
+- `cura-domiciliare` (pubblico)
 
 ### App Cliente — Tabelle chiave
 - `client_users`: `auth_user_id uuid` ↔ `client_id bigint`
@@ -228,16 +288,32 @@ Gestionale per Studio Tricologico Righetti (Talamona, SO). PWA installabile su i
 - **Service Worker** → apre URL `?notifica_id=xxx`
 - **AppLayout** → legge `?notifica_id`, marca letta, dispatch evento `notifiche-lette`
 - **Home** → ascolta evento + focus + auto-refresh 60s → aggiorna badge
+- **Notifiche tempo-reale**: 5 toggle in `push_automazioni_config` (dry_run globale default ON)
 - ⚠️ iOS 16.4+ richiede PWA installata
 - ⚠️ Prompt autorizzazione solo dopo azione utente
+
+### Automazioni Dry-Run — Schema
+- **Tabella `automazioni`** (5 righe per utente):
+  - `tipo`: `promemoria_appuntamento` | `promemoria_checkup` | `post_seduta` | `compleanno` | `riattivazione`
+  - `attivo` (bool), `modalita` ('manuale' | 'simulazione' | 'automatico'), `parametri` (JSONB)
+- **Tabella `automazioni_log`**: chiave, modalita, esito, client_*, canale, oggetto, corpo_html/testo, metadata
+- **Edge Function `automazioni-runner`** (5 chiavi supportate)
+- **RPC `admin_list_automazioni_log`**, `admin_elimina_automazione_log`, `admin_pulisci_automazioni_log`
 
 ### Edge Functions Supabase
 - `generate-invite-link` → magic link
 - `send-push` → notifiche push
-- **`import-tricoai-pdf`** → import PDF da TricoAI (NUOVO)
+- `import-tricoai-pdf` → import PDF da TricoAI
+- **`send-whatsapp`** → invio WhatsApp con PDF allegato (Whatsender API)
+- **`automazioni-runner`** → esecuzione automazioni (dry-run + reale)
 - Deploy: `supabase functions deploy <nome>`
 - Setup: `supabase login` + `supabase link --project-ref yporpszebtasalwazirz`
 - Secrets: `supabase secrets set CHIAVE="valore"`
+
+### Integrazioni Esterne (attive)
+- **Whatsender**: `https://api.whatsender.it/api/send` (POST body: receiver, msgtext, token, mediaurl)
+- **Google Workspace**: Webhook Relay Apps Script
+- **Config salvata in**: `impostazioni.config_whatsapp` (`{ token, phone }`) e `impostazioni.config_email`
 
 ### ⚠️ Comandi Terminal
 - Se venv attivo oscura PATH → usa `deactivate` prima di `supabase`
@@ -258,7 +334,6 @@ Gestionale per Studio Tricologico Righetti (Talamona, SO). PWA installabile su i
     { "source": "/manifest.webmanifest", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] }
   ]
 }
-
 Note sparse
 Annullo Fatture/DDT: password in Sicurezza (SHA-256), motivo min 10 caratteri, soft-delete (annullato_at, annullato_motivo, annullato_da)
 
@@ -304,5 +379,7 @@ Upload PDF: sempre fuori da if (scarica) — mai condizionato al download
 MATCH CLIENTE: mai solo per nome, sempre email o email+nome+cellulare
 
 PDF Storage: nomi file con timestamp univoco (evita cache)
+
+WhatsApp invio: sempre via inviaWhatsAppSmart (fallback automatico se Whatsender non configurato)
 
 FINE FILE
