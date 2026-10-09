@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { caricaDatiAziendali } from '../lib/datiAziendali';
 import type { DatiAziendali } from '../lib/studio';
-import { getLogoUrl } from '../lib/logo';
+import { getLogoUrl, initLogoPath } from '../lib/logo';
 import { getDemoStatus } from '../lib/demo';
 
 interface SidebarProps {
@@ -44,24 +44,26 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
   const demoStatus = getDemoStatus(user);
 
   useEffect(() => {
+    // Inizializza il path del logo (Righetti vs demo)
+    initLogoPath().then(() => {
+      setLogoUrl(getLogoUrl(true, user?.email));
+    });
+
     caricaDatiAziendali()
       .then((d) => {
-        setLogoUrl(d.logo_url ?? '');
         setDatiAziendali(d);
       })
       .catch(console.error);
 
-    // 🔔 Ascolta cambi dati aziendali (es. cambio regime documenti)
-    const handler = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      if (customEvent.detail) {
-        setDatiAziendali(customEvent.detail);
-        setLogoUrl(customEvent.detail.logo_url ?? '');
-      }
+    // 🔔 Ascolta cambi logo + dati aziendali
+    const handler = () => {
+      // Ricalcola sempre l'URL del logo da getLogoUrl() (fonte di verità)
+      setLogoUrl(getLogoUrl(true, user?.email));
+      caricaDatiAziendali().then((d) => setDatiAziendali(d)).catch(console.error);
     };
     window.addEventListener('datiAziendali-aggiornati', handler);
     return () => window.removeEventListener('datiAziendali-aggiornati', handler);
-  }, []);
+  }, [user?.email]);
 
   const currentPageId = currentPage;
   const isUserDemo = getDemoStatus(user).isDemo;
@@ -106,13 +108,13 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
         <div className="px-3 lg:px-2 py-3 sm:py-6 border-b border-gray-200/60 flex items-center">
           <div className="flex items-center gap-3 w-full">
             <div className="w-14 h-14 shrink-0 flex items-center justify-center relative bg-apple-lightgray" style={{ transform: 'translateZ(0)' }}>
-              {isUserDemo && !logoUrl ? (
+              {!logoUrl ? (
                 <div className="w-14 h-14 rounded-apple bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold shadow-sm">
                   🏢
                 </div>
               ) : (
                 <img
-                  src={logoUrl || '/logo.png'}
+                  src={logoUrl}
                   alt={isUserDemo ? 'Studio' : 'Gestionale'}
                   className="w-14 h-14 object-contain mix-blend-multiply"
                   onError={(e) => {
@@ -128,7 +130,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
             </div>
             <div className="min-w-0 overflow-hidden lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
               <h1 className="text-base font-semibold text-apple-darkgray whitespace-nowrap">
-                {isUserDemo && !logoUrl ? 'Studio' : 'Gestionale Studio'}
+                {!logoUrl ? 'Gestionale Studio' : 'Gestionale Studio'}
               </h1>
             </div>
           </div>
