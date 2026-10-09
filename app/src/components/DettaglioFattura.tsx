@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { generaPdfFattura } from '../lib/pdfFattura';
 import { getTestoTemplate, renderTemplate } from '../lib/testiTemplate';
 import { caricaDatiAziendali } from '../lib/datiAziendali';
+import { inviaWhatsAppSmart } from '../lib/whatsapp';
 import { supabase } from '../lib/supabase';
 import { FirmaFatturaQR } from './FirmaFatturaQR';
 import {
@@ -190,38 +191,36 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
         });
 
         // Chiama Edge Function
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) {
-          setToastInvia('❌ Sessione scaduta');
-          setTimeout(() => setToastInvia(null), 4000);
-          return;
+        const risultato = await inviaWhatsAppSmart({
+          cellulare: numeroFinale,
+          messaggio: testo,
+          pdf_base64: pdfB64,
+          pdf_filename: nomeFile,
+          getPdfUrlPerFallback: async () => {
+            // Carica PDF su Storage e ritorna URL pubblico
+            try {
+              const doc = await generaPdfFattura(fattura, false);
+              // generaPdfFattura già uploada su Storage → attendiamo l'URL
+              // (il caricamento avviene in background, quindi proviamo a leggerlo da DB)
+              await new Promise((r) => setTimeout(r, 800));
+              const { data } = await supabase
+                .from('fatture')
+                .select('pdf_url')
+                .eq('id', fattura.id)
+                .maybeSingle();
+              return (data as any)?.pdf_url || '';
+            } catch (e) {
+              console.warn('Fallback PDF URL non disponibile:', e);
+              return '';
+            }
+          },
+        });
+
+        if (risultato.metodo === 'whatsender') {
+          setToastInvia(`✅ Fattura ${numDoc} inviata via WhatsApp a ${nomeCliente}!`);
+        } else {
+          setToastInvia(`💬 Chat WhatsApp aperta con link al PDF per ${nomeCliente}`);
         }
-
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              receiver: numeroFinale,
-              message: testo,
-              pdf_base64: pdfB64,
-              pdf_filename: nomeFile,
-            }),
-          }
-        );
-
-        const json = await res.json();
-        if (!res.ok || !json.success) {
-          setToastInvia(`❌ ${json.error || 'Errore invio WhatsApp'}`);
-          setTimeout(() => setToastInvia(null), 6000);
-          return;
-        }
-
-        setToastInvia(`✅ Fattura ${numDoc} inviata via WhatsApp a ${nomeCliente}!`);
         setTimeout(() => setToastInvia(null), 5000);
       } catch (err: any) {
         setToastInvia(`❌ ${err.message || 'Errore sconosciuto'}`);

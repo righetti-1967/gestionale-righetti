@@ -9,6 +9,7 @@ import { generaPdfReportDdtCommercialista } from '../lib/pdfReportDdtCommerciali
 import { getTestoTemplate, renderTemplate } from '../lib/testiTemplate';
 import { caricaDatiAziendali } from '../lib/datiAziendali';
 import { supabase } from '../lib/supabase';
+import { inviaWhatsAppSmart } from '../lib/whatsapp';
 import { formatEuro } from '../lib/percorsi-helper';
 import { Toast, type ToastTipo } from '../components/Toast';
 import { FirmaDdtQR } from '../components/FirmaDdtQR';
@@ -116,36 +117,34 @@ export function DDT() {
           link: '',
         });
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) {
-          setToast({ message: '❌ Sessione scaduta', tipo: 'error' });
-          return;
+        const risultato = await inviaWhatsAppSmart({
+          cellulare: numeroFinale,
+          messaggio: testo,
+          pdf_base64: pdfB64,
+          pdf_filename: nomeFile,
+          getPdfUrlPerFallback: async () => {
+            // Fallback: salva PDF su Storage (bucket scarichi-pdf) e ritorna URL
+            try {
+              const doc = await generaPdfDdtCliente(scarico, null as any, cl as any, false);
+              await new Promise((r) => setTimeout(r, 800));
+              const { data } = await supabase
+                .from('scarichi_seduta')
+                .select('pdf_url')
+                .eq('id', scarico.id)
+                .maybeSingle();
+              return (data as any)?.pdf_url || '';
+            } catch (e) {
+              console.warn('Fallback PDF URL non disponibile:', e);
+              return '';
+            }
+          },
+        });
+
+        if (risultato.metodo === 'whatsender') {
+          setToast({ message: `✅ ${numDdt} inviato via WhatsApp a ${nomeCompleto}!`, tipo: 'success' });
+        } else {
+          setToast({ message: `💬 Chat WhatsApp aperta con link al PDF per ${nomeCompleto}`, tipo: 'success' });
         }
-
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              receiver: numeroFinale,
-              message: testo,
-              pdf_base64: pdfB64,
-              pdf_filename: nomeFile,
-            }),
-          }
-        );
-
-        const json = await res.json();
-        if (!res.ok || !json.success) {
-          setToast({ message: `❌ ${json.error || 'Errore invio WhatsApp'}`, tipo: 'error' });
-          return;
-        }
-
-        setToast({ message: `✅ ${numDdt} inviato via WhatsApp a ${nomeCompleto}!`, tipo: 'success' });
       } catch (err: any) {
         setToast({ message: `❌ ${err.message || 'Errore sconosciuto'}`, tipo: 'error' });
       }
