@@ -8,6 +8,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SUPABASE_ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -54,9 +55,12 @@ Deno.serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     if (!token) return json({ success: false, error: 'no token' }, 401);
 
-    const supa = createClient(SUPABASE_URL, SERVICE_ROLE, {
+    // Client "utente" per letture con RLS
+    const supa = createClient(SUPABASE_URL, SUPABASE_ANON, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
+    // Client "admin" per INSERT log (bypassa RLS)
+    const supaAdmin = createClient(SUPABASE_URL, SERVICE_ROLE);
     const { data: userData, error: userErr } = await supa.auth.getUser(token);
     if (userErr || !userData.user) return json({ success: false, error: 'utente non valido' }, 401);
     const userId = userData.user.id;
@@ -80,23 +84,28 @@ Deno.serve(async (req) => {
 
     // Esegui in base al tipo
     let logCreati = 0;
+    let errori: string[] = [];
     if (chiave === 'promemoria_appuntamento') {
-      logCreati = await eseguiPromemoria({
-        supa, userId, autom: a,
+      const r = await eseguiPromemoria({
+        supa, supaAdmin, userId, autom: a,
         modalitaEffettiva,
         isCheckup: false,
       });
+      logCreati = r.logCreati;
+      errori = r.errori;
     } else if (chiave === 'promemoria_checkup') {
-      logCreati = await eseguiPromemoria({
-        supa, userId, autom: a,
+      const r = await eseguiPromemoria({
+        supa, supaAdmin, userId, autom: a,
         modalitaEffettiva,
         isCheckup: true,
       });
+      logCreati = r.logCreati;
+      errori = r.errori;
     } else {
       return json({ success: false, error: `chiave ${chiave} non supportata in questa versione` }, 400);
     }
 
-    return json({ success: true, log_creati: logCreati, modalita: modalitaEffettiva });
+    return json({ success: true, log_creati: logCreati, modalita: modalitaEffettiva, errori });
   } catch (e: any) {
     return json({ success: false, error: e.message || String(e) }, 500);
   }
@@ -110,14 +119,16 @@ function json(body: any, status = 200) {
 }
 
 async function eseguiPromemoria({
-  supa, userId, autom, modalitaEffettiva, isCheckup,
+  supa, supaAdmin, userId, autom, modalitaEffettiva, isCheckup,
 }: {
   supa: any;
+  supaAdmin: any;
   userId: string;
   autom: AutomazioneRow;
   modalitaEffettiva: string;
   isCheckup: boolean;
-}): Promise<number> {
+}): Promise<{ logCreati: number; errori: string[] }> {
+  const errori: string[] = [];
   const oreAnticipo = Number(autom.parametri?.ore_anticipo ?? (isCheckup ? 72 : 24));
   const canale = autom.parametri?.canale ?? 'whatsapp';
 
@@ -217,7 +228,7 @@ async function eseguiPromemoria({
     // Log per canale email
     if ((canale === 'email' || canale === 'entrambi')) {
       const esito = c?.email ? 'ok' : 'skip';
-      await supa.from('automazioni_log').insert({
+      const { error: errInsEmail } = await supaAdmin.from('automazioni_log').insert({
         user_id: userId,
         chiave: isCheckup ? 'promemoria_checkup' : 'promemoria_appuntamento',
         modalita: modalitaEffettiva === 'automatico' ? 'reale' : 'simulazione',
@@ -231,14 +242,18 @@ async function eseguiPromemoria({
         motivo_skip: esito === 'skip' ? 'Email cliente mancante' : null,
         metadata: { appuntamento_id: app.id, data: app.data, ora: oraStr },
       });
-      logCreati++;
+      if (errInsEmail) {
+        errori.push(`INSERT email app ${app.id}: ${errInsEmail.message}`);
+      } else {
+        logCreati++;
+      }
     }
 
     // Log per canale whatsapp
     if ((canale === 'whatsapp' || canale === 'entrambi')) {
       const cellNorm = (c?.cellulare || '').replace(/\D/g, '');
       const esito = cellNorm ? 'ok' : 'skip';
-      await supa.from('automazioni_log').insert({
+      const { error: errInsWA } = await supaAdmin.from('automazioni_log').insert({
         user_id: userId,
         chiave: isCheckup ? 'promemoria_checkup' : 'promemoria_appuntamento',
         modalita: modalitaEffettiva === 'automatico' ? 'reale' : 'simulazione',
@@ -251,11 +266,15 @@ async function eseguiPromemoria({
         motivo_skip: esito === 'skip' ? 'Cellulare cliente mancante' : null,
         metadata: { appuntamento_id: app.id, data: app.data, ora: oraStr },
       });
-      logCreati++;
+      if (errInsWA) {
+        errori.push(`INSERT WhatsApp app ${app.id}: ${errInsWA.message}`);
+      } else {
+        logCreati++;
+      }
     }
   }
 
-  return logCreati;
+  return { logCreati, errori };
 }
 
 function renderVars(testo: string, vars: Record<string, string>): string {
