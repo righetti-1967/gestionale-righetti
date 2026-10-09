@@ -101,6 +101,18 @@ Deno.serve(async (req) => {
       });
       logCreati = r.logCreati;
       errori = r.errori;
+    } else if (chiave === 'post_seduta') {
+      const r = await eseguiPostSeduta({ supa, supaAdmin, userId, autom: a, modalitaEffettiva });
+      logCreati = r.logCreati;
+      errori = r.errori;
+    } else if (chiave === 'compleanno') {
+      const r = await eseguiCompleanno({ supa, supaAdmin, userId, autom: a, modalitaEffettiva });
+      logCreati = r.logCreati;
+      errori = r.errori;
+    } else if (chiave === 'riattivazione') {
+      const r = await eseguiRiattivazione({ supa, supaAdmin, userId, autom: a, modalitaEffettiva });
+      logCreati = r.logCreati;
+      errori = r.errori;
     } else {
       return json({ success: false, error: `chiave ${chiave} non supportata in questa versione` }, 400);
     }
@@ -272,6 +284,414 @@ async function eseguiPromemoria({
       } else {
         logCreati++;
       }
+    }
+  }
+
+  return { logCreati, errori };
+}
+
+
+
+// ============================================================
+// POST-SEDUTA
+// ============================================================
+async function eseguiPostSeduta({
+  supa, supaAdmin, userId, autom, modalitaEffettiva,
+}: {
+  supa: any;
+  supaAdmin: any;
+  userId: string;
+  autom: AutomazioneRow;
+  modalitaEffettiva: string;
+}): Promise<{ logCreati: number; errori: string[] }> {
+  const errori: string[] = [];
+  let logCreati = 0;
+
+  const q = Number(autom.parametri?.quantita ?? 2);
+  const u = autom.parametri?.unita ?? 'ore';
+  const canale = autom.parametri?.canale ?? 'whatsapp';
+  const intervallo = `${q} ${u}`;
+
+  // Query: appuntamenti completati da X tempo (finestra di 15 min per non perdere nessuno)
+  const { data: appuntamenti, error: appErr } = await supa
+    .from('appuntamenti')
+    .select('id, cliente_id, data, ora_inizio, stato, completato_at, user_id')
+    .eq('user_id', userId)
+    .eq('stato', 'completato')
+    .not('completato_at', 'is', null)
+    .lte('completato_at', `now() - interval '${intervallo}'`)
+    .gte('completato_at', `now() - interval '${intervallo}' - interval '15 minutes'`);
+
+  if (appErr) return { logCreati: 0, errori: [`Query appuntamenti: ${appErr.message}`] };
+
+  const lista = appuntamenti ?? [];
+
+  // Carica azienda + template
+  const { data: azData } = await supa
+    .from('impostazioni')
+    .select('valore')
+    .eq('user_id', userId)
+    .eq('chiave', 'dati_aziendali')
+    .maybeSingle();
+  const nomeAzienda = (azData?.valore as any)?.ragione_sociale || '';
+  const nomeStudio = (azData?.valore as any)?.nomeStudio || nomeAzienda;
+  const whatsappStudio = ((azData?.valore as any)?.whatsapp || '').replace(/\D/g, '');
+
+  const { data: tEmail } = await supa
+    .from('testi_template')
+    .select('oggetto, corpo')
+    .eq('user_id', userId)
+    .eq('chiave', 'email_post_seduta')
+    .maybeSingle();
+
+  const { data: tWA } = await supa
+    .from('testi_template')
+    .select('corpo')
+    .eq('user_id', userId)
+    .eq('chiave', 'whatsapp_post_seduta')
+    .maybeSingle();
+
+  const tplEmailOgg = tEmail?.oggetto || 'Come stai dopo la seduta?';
+  const tplEmailCorpo = tEmail?.corpo || `Ciao {nome},\n\ncome stai dopo la seduta di {data_estesa}?\n\nA presto,\n{azienda}`;
+  const tplWA = tWA?.corpo || `Ciao {nome}, come stai dopo la seduta di {data_estesa}?\n\nA presto!\n{nome_studio}`;
+
+  // Dedup: carica già-inviati per post_seduta
+  const { data: giàLoggati } = await supaAdmin
+    .from('automazioni_log')
+    .select('metadata')
+    .eq('user_id', userId)
+    .eq('chiave', 'post_seduta');
+  const inviati = new Set((giàLoggati ?? []).map((l: any) => l.metadata?.appuntamento_id).filter(Boolean));
+
+  for (const app of lista) {
+    if (inviati.has(app.id)) continue;
+
+    const { data: cli } = await supa
+      .from('clienti')
+      .select('id, nome_cognome, email, cellulare')
+      .eq('id', app.cliente_id)
+      .maybeSingle();
+    if (!cli) continue;
+
+    const nome = (cli.nome_cognome || '').trim().split(/\s+/)[0] || 'Cliente';
+    const cognome = (cli.nome_cognome || '').trim().split(/\s+/).slice(1).join(' ') || '';
+    const dataEstesa = formatDataEstesa(app.data);
+    const dataBR = formatDataBreve(app.data);
+
+    const vars = { nome, cognome, azienda: nomeAzienda, nome_studio: nomeStudio, data: dataBR, data_estesa: dataEstesa };
+
+    // Log email
+    if (canale === 'email' || canale === 'entrambi') {
+      const esito = cli.email ? 'ok' : 'skip';
+      const { error: errIns } = await supaAdmin.from('automazioni_log').insert({
+        user_id: userId,
+        chiave: 'post_seduta',
+        modalita: modalitaEffettiva === 'automatico' ? 'reale' : 'simulazione',
+        esito,
+        client_id: cli.id,
+        client_nome: cli.nome_cognome,
+        client_email: cli.email,
+        canale: 'email',
+        oggetto: renderVars(tplEmailOgg, vars),
+        corpo_html: renderVars(tplEmailCorpo, vars),
+        motivo_skip: esito === 'skip' ? 'Email mancante' : null,
+        metadata: { appuntamento_id: app.id, data: app.data },
+      });
+      if (errIns) errori.push(`INSERT email post_seduta app ${app.id}: ${errIns.message}`);
+      else logCreati++;
+    }
+
+    // Log whatsapp
+    if (canale === 'whatsapp' || canale === 'entrambi') {
+      const cellNorm = (cli.cellulare || '').replace(/\D/g, '');
+      const esito = cellNorm ? 'ok' : 'skip';
+      const { error: errIns } = await supaAdmin.from('automazioni_log').insert({
+        user_id: userId,
+        chiave: 'post_seduta',
+        modalita: modalitaEffettiva === 'automatico' ? 'reale' : 'simulazione',
+        esito,
+        client_id: cli.id,
+        client_nome: cli.nome_cognome,
+        client_cell: cellNorm || null,
+        canale: 'whatsapp',
+        corpo_testo: renderVars(tplWA, vars),
+        motivo_skip: esito === 'skip' ? 'Cellulare mancante' : null,
+        metadata: { appuntamento_id: app.id, data: app.data },
+      });
+      if (errIns) errori.push(`INSERT WhatsApp post_seduta app ${app.id}: ${errIns.message}`);
+      else logCreati++;
+    }
+  }
+
+  return { logCreati, errori };
+}
+
+// ============================================================
+// COMPLEANNO
+// ============================================================
+async function eseguiCompleanno({
+  supa, supaAdmin, userId, autom, modalitaEffettiva,
+}: {
+  supa: any;
+  supaAdmin: any;
+  userId: string;
+  autom: AutomazioneRow;
+  modalitaEffettiva: string;
+}): Promise<{ logCreati: number; errori: string[] }> {
+  const errori: string[] = [];
+  let logCreati = 0;
+
+  const giorniPrima = Number(autom.parametri?.giorni_prima ?? 0);
+  const canale = autom.parametri?.canale ?? 'whatsapp';
+
+  // Query: clienti con compleanno tra X giorni
+  // Uso SQL raw via RPC non disponibile, quindi filtro in JS dopo aver caricato i clienti dell'utente
+  const { data: clienti, error: cliErr } = await supa
+    .from('clienti')
+    .select('id, nome_cognome, email, cellulare, data_nascita')
+    .eq('user_id', userId)
+    .not('data_nascita', 'is', null);
+
+  if (cliErr) return { logCreati: 0, errori: [`Query clienti: ${cliErr.message}`] };
+
+  // Calcola data target
+  const oggi = new Date();
+  const target = new Date(oggi);
+  target.setDate(target.getDate() + giorniPrima);
+  const targetMMDD = `${String(target.getMonth() + 1).padStart(2, '0')}-${String(target.getDate()).padStart(2, '0')}`;
+
+  const clientiTarget = (clienti ?? []).filter((c: any) => {
+    if (!c.data_nascita) return false;
+    const d = new Date(c.data_nascita);
+    const mmdd = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return mmdd === targetMMDD;
+  });
+
+  // Azienda + template
+  const { data: azData } = await supa
+    .from('impostazioni')
+    .select('valore')
+    .eq('user_id', userId)
+    .eq('chiave', 'dati_aziendali')
+    .maybeSingle();
+  const nomeAzienda = (azData?.valore as any)?.ragione_sociale || '';
+  const nomeStudio = (azData?.valore as any)?.nomeStudio || nomeAzienda;
+
+  const { data: tEmail } = await supa
+    .from('testi_template')
+    .select('oggetto, corpo')
+    .eq('user_id', userId)
+    .eq('chiave', 'email_compleanno')
+    .maybeSingle();
+  const { data: tWA } = await supa
+    .from('testi_template')
+    .select('corpo')
+    .eq('user_id', userId)
+    .eq('chiave', 'whatsapp_compleanno')
+    .maybeSingle();
+
+  const tplEmailOgg = tEmail?.oggetto || 'Tanti auguri {nome}!';
+  const tplEmailCorpo = tEmail?.corpo || `Tanti auguri {nome}!\n\nChe sia un anno speciale.\n\n{azienda}`;
+  const tplWA = tWA?.corpo || `Tanti auguri {nome}!\n\n{nome_studio}`;
+
+  // Dedup: già loggati per compleanno nell'anno corrente
+  const anno = oggi.getFullYear();
+  const { data: giàLoggati } = await supaAdmin
+    .from('automazioni_log')
+    .select('metadata')
+    .eq('user_id', userId)
+    .eq('chiave', 'compleanno');
+  const inviati = new Set((giàLoggati ?? []).map((l: any) => `${l.metadata?.client_id}_${l.metadata?.anno}`).filter(Boolean));
+
+  for (const cli of clientiTarget) {
+    if (inviati.has(`${cli.id}_${anno}`)) continue;
+
+    const nome = (cli.nome_cognome || '').trim().split(/\s+/)[0] || 'Cliente';
+    const cognome = (cli.nome_cognome || '').trim().split(/\s+/).slice(1).join(' ') || '';
+    const vars = { nome, cognome, azienda: nomeAzienda, nome_studio: nomeStudio };
+
+    if (canale === 'email' || canale === 'entrambi') {
+      const esito = cli.email ? 'ok' : 'skip';
+      const { error: errIns } = await supaAdmin.from('automazioni_log').insert({
+        user_id: userId,
+        chiave: 'compleanno',
+        modalita: modalitaEffettiva === 'automatico' ? 'reale' : 'simulazione',
+        esito,
+        client_id: cli.id,
+        client_nome: cli.nome_cognome,
+        client_email: cli.email,
+        canale: 'email',
+        oggetto: renderVars(tplEmailOgg, vars),
+        corpo_html: renderVars(tplEmailCorpo, vars),
+        motivo_skip: esito === 'skip' ? 'Email mancante' : null,
+        metadata: { client_id: cli.id, anno, data_nascita: cli.data_nascita },
+      });
+      if (errIns) errori.push(`INSERT email compleanno ${cli.id}: ${errIns.message}`);
+      else logCreati++;
+    }
+
+    if (canale === 'whatsapp' || canale === 'entrambi') {
+      const cellNorm = (cli.cellulare || '').replace(/\D/g, '');
+      const esito = cellNorm ? 'ok' : 'skip';
+      const { error: errIns } = await supaAdmin.from('automazioni_log').insert({
+        user_id: userId,
+        chiave: 'compleanno',
+        modalita: modalitaEffettiva === 'automatico' ? 'reale' : 'simulazione',
+        esito,
+        client_id: cli.id,
+        client_nome: cli.nome_cognome,
+        client_cell: cellNorm || null,
+        canale: 'whatsapp',
+        corpo_testo: renderVars(tplWA, vars),
+        motivo_skip: esito === 'skip' ? 'Cellulare mancante' : null,
+        metadata: { client_id: cli.id, anno, data_nascita: cli.data_nascita },
+      });
+      if (errIns) errori.push(`INSERT WhatsApp compleanno ${cli.id}: ${errIns.message}`);
+      else logCreati++;
+    }
+  }
+
+  return { logCreati, errori };
+}
+
+// ============================================================
+// RIATTIVAZIONE
+// ============================================================
+async function eseguiRiattivazione({
+  supa, supaAdmin, userId, autom, modalitaEffettiva,
+}: {
+  supa: any;
+  supaAdmin: any;
+  userId: string;
+  autom: AutomazioneRow;
+  modalitaEffettiva: string;
+}): Promise<{ logCreati: number; errori: string[] }> {
+  const errori: string[] = [];
+  let logCreati = 0;
+
+  const giorniInattivita = Number(autom.parametri?.giorni_inattivita ?? 90);
+  const canale = autom.parametri?.canale ?? 'whatsapp';
+
+  const soglia = new Date();
+  soglia.setDate(soglia.getDate() - giorniInattivita);
+  const sogliaISO = soglia.toISOString().slice(0, 10);
+
+  // Trova l'ultimo appuntamento per ogni cliente
+  const { data: ultimi, error: appErr } = await supa
+    .from('appuntamenti')
+    .select('cliente_id, data')
+    .eq('user_id', userId)
+    .in('stato', ['completato', 'confermato'])
+    .order('data', { ascending: false });
+
+  if (appErr) return { logCreati: 0, errori: [`Query appuntamenti: ${appErr.message}`] };
+
+  // Map cliente_id → ultima data
+  const ultimaDataPerCliente: Record<number, string> = {};
+  for (const a of ultimi ?? []) {
+    if (!ultimaDataPerCliente[a.cliente_id]) {
+      ultimaDataPerCliente[a.cliente_id] = a.data;
+    }
+  }
+
+  // Clienti con ultima data < soglia
+  const clientiDaRiattivare = Object.entries(ultimaDataPerCliente)
+    .filter(([, data]) => data < sogliaISO)
+    .map(([id]) => Number(id));
+
+  if (clientiDaRiattivare.length === 0) {
+    return { logCreati: 0, errori: [] };
+  }
+
+  const { data: clienti } = await supa
+    .from('clienti')
+    .select('id, nome_cognome, email, cellulare')
+    .eq('user_id', userId)
+    .in('id', clientiDaRiattivare);
+
+  // Azienda + template
+  const { data: azData } = await supa
+    .from('impostazioni')
+    .select('valore')
+    .eq('user_id', userId)
+    .eq('chiave', 'dati_aziendali')
+    .maybeSingle();
+  const nomeAzienda = (azData?.valore as any)?.ragione_sociale || '';
+  const nomeStudio = (azData?.valore as any)?.nomeStudio || nomeAzienda;
+
+  const { data: tEmail } = await supa
+    .from('testi_template')
+    .select('oggetto, corpo')
+    .eq('user_id', userId)
+    .eq('chiave', 'email_riattivazione')
+    .maybeSingle();
+  const { data: tWA } = await supa
+    .from('testi_template')
+    .select('corpo')
+    .eq('user_id', userId)
+    .eq('chiave', 'whatsapp_riattivazione')
+    .maybeSingle();
+
+  const tplEmailOgg = tEmail?.oggetto || 'È da un po\' che non ti vediamo';
+  const tplEmailCorpo = tEmail?.corpo || `Ciao {nome},\n\nè da un po' che non ti vediamo!\n\nA presto,\n{azienda}`;
+  const tplWA = tWA?.corpo || `Ciao {nome}, è da un po' che non ti vediamo!\n\nA presto!\n{nome_studio}`;
+
+  // Dedup: già riattivati negli ultimi giorniInattivita giorni
+  const sogliaDedup = new Date();
+  sogliaDedup.setDate(sogliaDedup.getDate() - giorniInattivita);
+  const { data: giàLoggati } = await supaAdmin
+    .from('automazioni_log')
+    .select('metadata, created_at')
+    .eq('user_id', userId)
+    .eq('chiave', 'riattivazione')
+    .gte('created_at', sogliaDedup.toISOString());
+  const inviati = new Set((giàLoggati ?? []).map((l: any) => l.metadata?.client_id).filter(Boolean));
+
+  for (const cli of clienti ?? []) {
+    if (inviati.has(cli.id)) continue;
+
+    const nome = (cli.nome_cognome || '').trim().split(/\s+/)[0] || 'Cliente';
+    const cognome = (cli.nome_cognome || '').trim().split(/\s+/).slice(1).join(' ') || '';
+    const vars = { nome, cognome, azienda: nomeAzienda, nome_studio: nomeStudio };
+
+    if (canale === 'email' || canale === 'entrambi') {
+      const esito = cli.email ? 'ok' : 'skip';
+      const { error: errIns } = await supaAdmin.from('automazioni_log').insert({
+        user_id: userId,
+        chiave: 'riattivazione',
+        modalita: modalitaEffettiva === 'automatico' ? 'reale' : 'simulazione',
+        esito,
+        client_id: cli.id,
+        client_nome: cli.nome_cognome,
+        client_email: cli.email,
+        canale: 'email',
+        oggetto: renderVars(tplEmailOgg, vars),
+        corpo_html: renderVars(tplEmailCorpo, vars),
+        motivo_skip: esito === 'skip' ? 'Email mancante' : null,
+        metadata: { client_id: cli.id, ultimo_appuntamento: ultimaDataPerCliente[cli.id] },
+      });
+      if (errIns) errori.push(`INSERT email riattivazione ${cli.id}: ${errIns.message}`);
+      else logCreati++;
+    }
+
+    if (canale === 'whatsapp' || canale === 'entrambi') {
+      const cellNorm = (cli.cellulare || '').replace(/\D/g, '');
+      const esito = cellNorm ? 'ok' : 'skip';
+      const { error: errIns } = await supaAdmin.from('automazioni_log').insert({
+        user_id: userId,
+        chiave: 'riattivazione',
+        modalita: modalitaEffettiva === 'automatico' ? 'reale' : 'simulazione',
+        esito,
+        client_id: cli.id,
+        client_nome: cli.nome_cognome,
+        client_cell: cellNorm || null,
+        canale: 'whatsapp',
+        corpo_testo: renderVars(tplWA, vars),
+        motivo_skip: esito === 'skip' ? 'Cellulare mancante' : null,
+        metadata: { client_id: cli.id, ultimo_appuntamento: ultimaDataPerCliente[cli.id] },
+      });
+      if (errIns) errori.push(`INSERT WhatsApp riattivazione ${cli.id}: ${errIns.message}`);
+      else logCreati++;
     }
   }
 
