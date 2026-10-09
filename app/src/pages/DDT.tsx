@@ -6,6 +6,9 @@ import { getTuttiScarichi, type ScaricoConCliente, segnaReportCommercialistaInvi
 import type { Percorso } from '../lib/percorsi';
 import { generaPdfDdtCliente, generaPdfDdtCommercialista } from '../lib/pdfDdt';
 import { generaPdfReportDdtCommercialista } from '../lib/pdfReportDdtCommercialista';
+import { getTestoTemplate, renderTemplate } from '../lib/testiTemplate';
+import { caricaDatiAziendali } from '../lib/datiAziendali';
+import { supabase } from '../lib/supabase';
 import { formatEuro } from '../lib/percorsi-helper';
 import { Toast, type ToastTipo } from '../components/Toast';
 import { FirmaDdtQR } from '../components/FirmaDdtQR';
@@ -66,16 +69,139 @@ export function DDT() {
 
   async function handleInviaDdt(scarico: ScaricoConCliente, canale: 'email' | 'whatsapp') {
     const cl = await getCliente(scarico.cliente_id);
-    const nomeC = cl?.nome_cognome || scarico.cliente?.nome_cognome || 'Cliente';
+    const nomeCompleto = cl?.nome_cognome || scarico.cliente?.nome_cognome || 'Cliente';
+    const nome = nomeCompleto.split(/\s+/)[0] || nomeCompleto;
+    const cognome = nomeCompleto.split(/\s+/).slice(1).join(' ') || '';
+    const emailDest = cl?.email?.trim();
+    const telDest = cl?.cellulare || '';
     const numDdt = formatNumeroDdt(scarico.numero_ddt, scarico.data_seduta);
-    if (canale === 'whatsapp') { window.open(`https://wa.me/${(cl?.cellulare || '').replace(/\D/g, '')}?text=${encodeURIComponent('Gentile ' + nomeC + ', le inviamo il ' + numDdt)}`, '_blank'); return; }
-    if (!cl?.email) { setToast({ message: 'Email mancante', tipo: 'error' }); return; }
-    setToast({ message: 'Invio email...', tipo: 'info' });
+    const dataSeduta = new Date(scarico.data_seduta).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const datiAz = await caricaDatiAziendali();
+    const aziendaNome = datiAz.ragioneSociale || 'Studio';
+    const nomeStudio = datiAz.nomeStudio || aziendaNome;
+
+    // === WHATSAPP ===
+    if (canale === 'whatsapp') {
+      const numPulito = telDest.replace(/\D/g, '');
+      const numeroFinale = numPulito
+        ? (numPulito.startsWith('39') ? numPulito : '39' + numPulito)
+        : '';
+
+      if (!numeroFinale) {
+        setToast({ message: `⚠️ Nessun cellulare per ${nomeCompleto}`, tipo: 'error' });
+        return;
+      }
+
+      setToast({ message: `📄 Generazione PDF e invio WhatsApp a ${nomeCompleto}...`, tipo: 'info' });
+
+      try {
+        let pdfB64: string | undefined;
+        let nomeFile = `${numDdt}.pdf`;
+        try {
+          const doc = await generaPdfDdtCliente(scarico, null as any, cl as any, false);
+          const raw = doc.output('datauristring');
+          pdfB64 = raw.split(',')[1];
+        } catch (errPdf) {
+          console.warn('Errore estrazione PDF DDT:', errPdf);
+        }
+
+        const tpl = await getTestoTemplate('whatsapp_ddt');
+        const testo = renderTemplate(tpl.corpo, {
+          nome,
+          cognome,
+          azienda: aziendaNome,
+          nome_studio: nomeStudio,
+          numero_documento: numDdt,
+          data: dataSeduta,
+          link: '',
+        });
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          setToast({ message: '❌ Sessione scaduta', tipo: 'error' });
+          return;
+        }
+
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              receiver: numeroFinale,
+              message: testo,
+              pdf_base64: pdfB64,
+              pdf_filename: nomeFile,
+            }),
+          }
+        );
+
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          setToast({ message: `❌ ${json.error || 'Errore invio WhatsApp'}`, tipo: 'error' });
+          return;
+        }
+
+        setToast({ message: `✅ ${numDdt} inviato via WhatsApp a ${nomeCompleto}!`, tipo: 'success' });
+      } catch (err: any) {
+        setToast({ message: `❌ ${err.message || 'Errore sconosciuto'}`, tipo: 'error' });
+      }
+      return;
+    }
+
+    // === EMAIL ===
+    if (!emailDest) {
+      setToast({ message: `⚠️ Nessuna email per ${nomeCompleto}`, tipo: 'error' });
+      return;
+    }
+
+    setToast({ message: `📄 Generazione PDF e invio email a ${emailDest}...`, tipo: 'info' });
+
     try {
-      const doc = await generaPdfDdtCliente(scarico, null, cl as any, false);
-      await inviaEmailConConfig({ destinatario: cl.email, oggetto: numDdt, corpo_html: `<p>Gentile <strong>${nomeC}</strong>, in allegato il <strong>${numDdt}</strong>.</p>`, from_name: 'Studio Righetti', allegato_base64: doc.output('datauristring').split(',')[1], allegato_nome: numDdt + '.pdf' });
-      setToast({ message: '✅ Inviato!', tipo: 'success' });
-    } catch (err: any) { setToast({ message: 'Errore', tipo: 'error' }); }
+      let pdfB64: string | undefined;
+      const nomeFile = `${numDdt}.pdf`;
+      try {
+        const doc = await generaPdfDdtCliente(scarico, null as any, cl as any, false);
+        const raw = doc.output('datauristring');
+        pdfB64 = raw.split(',')[1];
+      } catch (errPdf) {
+        console.warn('Errore estrazione PDF DDT:', errPdf);
+      }
+
+      const tpl = await getTestoTemplate('email_ddt');
+      const oggetto = renderTemplate(tpl.oggetto || numDdt, {
+        nome,
+        cognome,
+        azienda: aziendaNome,
+        nome_studio: nomeStudio,
+        numero_documento: numDdt,
+        data: dataSeduta,
+      });
+      const corpoHtml = renderTemplate(tpl.corpo, {
+        nome,
+        cognome,
+        azienda: aziendaNome,
+        nome_studio: nomeStudio,
+        numero_documento: numDdt,
+        data: dataSeduta,
+      });
+
+      await inviaEmailConConfig({
+        destinatario: emailDest,
+        oggetto: oggetto || numDdt,
+        corpo_html: corpoHtml,
+        from_name: `Studio - ${nomeCompleto}`,
+        allegato_base64: pdfB64,
+        allegato_nome: pdfB64 ? nomeFile : undefined,
+      });
+
+      setToast({ message: `✅ ${numDdt} inviato con PDF allegato a ${emailDest}!`, tipo: 'success' });
+    } catch (err: any) {
+      setToast({ message: `❌ ${err.message || 'Errore sconosciuto'}`, tipo: 'error' });
+    }
   }
 
   async function handleInviaEmailReport() {
