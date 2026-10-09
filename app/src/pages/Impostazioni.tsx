@@ -621,6 +621,27 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
           </span>
         </div>
 
+        {/* Box informativo WhatSender */}
+        <div className="mt-3 mb-4 bg-blue-50 border border-blue-100 rounded-apple p-3 text-xs">
+          <p className="font-semibold text-blue-900 mb-1.5">🔗 Come attivare WhatSender</p>
+          <ol className="list-decimal list-inside space-y-0.5 text-blue-800">
+            <li>
+              Registrati su{' '}
+              <a
+                href="https://api.whatsender.it"
+                target="_blank"
+                rel="noreferrer"
+                className="underline font-medium hover:text-blue-900"
+              >
+                api.whatsender.it
+              </a>
+            </li>
+            <li>Vai in <strong>Profilo → API Token</strong> e copia il token</li>
+            <li>Incolla il token nel campo qui sotto</li>
+            <li>Il numero mittente va inserito <strong>senza + e senza spazi</strong> (es. 393201955546)</li>
+          </ol>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
           <div>
             <label className="block text-xs font-medium text-apple-gray mb-1.5">
@@ -667,6 +688,27 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
           }`}>
             {(emailConfig.googleScriptUrl || emailConfig.host) ? '● Connesso' : '○ Non configurato'}
           </span>
+        </div>
+
+        {/* Box informativo Google Workspace */}
+        <div className="mt-3 mb-4 bg-blue-50 border border-blue-100 rounded-apple p-3 text-xs">
+          <p className="font-semibold text-blue-900 mb-1.5">🔗 Come attivare Google Workspace</p>
+          <ol className="list-decimal list-inside space-y-0.5 text-blue-800">
+            <li>
+              Prova gratuita su{' '}
+              <a
+                href="https://workspace.google.fr/business/signup"
+                target="_blank"
+                rel="noreferrer"
+                className="underline font-medium hover:text-blue-900"
+              >
+                workspace.google.fr/business/signup
+              </a>
+            </li>
+            <li>Registrati con Gmail o dominio aziendale (fino a 10 utenti gratis)</li>
+            <li>Configura il <strong>Webhook Relay URL</strong> tramite Apps Script</li>
+            <li>Incolla il Webhook URL nel campo qui sotto</li>
+          </ol>
         </div>
 
         <div className="mt-4 p-4 rounded-apple bg-blue-50/40 border border-blue-100">
