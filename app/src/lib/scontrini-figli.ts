@@ -353,10 +353,11 @@ export async function inviaScontrinoWhatsApp(
     throw new Error('Cellulare cliente non disponibile');
   }
 
-  const { url } = await caricaPdfScontrinoStorage(scontrino);
+  // 1) Genera PDF in base64
+  const { base64, nomeFile } = await generaPdfScontrinoBase64(scontrino);
   const azienda = await caricaDatiAziendali();
 
-  // Leggi template personalizzato
+  // 2) Leggi template personalizzato
   const template = await getTestoTemplate('whatsapp_scontrino');
 
   const nome = estraiNome(scontrino.cliente?.nome_cognome);
@@ -367,21 +368,49 @@ export async function inviaScontrinoWhatsApp(
     nome,
     cognome,
     azienda: azienda.ragioneSociale || '',
+    nome_studio: azienda.nomeStudio || azienda.ragioneSociale || '',
     numero_documento: scontrino.numero_scontrino,
-    link: url,
+    link: '',  // non serve più: il PDF è allegato direttamente
     importo: formatEuroIt(scontrino.totale_lordo),
   };
 
   const testo = renderTemplate(template.corpo, variabili);
 
-  // Normalizza numero (aggiunge 39 se manca)
+  // 3) Normalizza numero (aggiunge 39 se manca)
   const numPulito = cellulare.replace(/\D/g, '');
-  const prefisso = numPulito.startsWith('39') ? '' : '39';
-  const numeroFinale = numPulito ? `${prefisso}${numPulito}` : '';
+  const numeroFinale = numPulito
+    ? (numPulito.startsWith('39') ? numPulito : '39' + numPulito)
+    : '';
 
-  const waUrl = numeroFinale
-    ? `https://wa.me/${numeroFinale}?text=${encodeURIComponent(testo)}`
-    : `https://wa.me/?text=${encodeURIComponent(testo)}`;
+  if (!numeroFinale) {
+    throw new Error('Cellulare non valido');
+  }
 
-  window.open(waUrl, '_blank');
+  // 4) Chiama Edge Function send-whatsapp
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('Sessione scaduta');
+  }
+
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        receiver: numeroFinale,
+        message: testo,
+        pdf_base64: base64,
+        pdf_filename: nomeFile,
+      }),
+    }
+  );
+
+  const json = await res.json();
+  if (!res.ok || !json.success) {
+    throw new Error(json.error || 'Errore invio WhatsApp');
+  }
 }
