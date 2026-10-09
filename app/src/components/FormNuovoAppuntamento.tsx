@@ -695,7 +695,16 @@ export function FormNuovoAppuntamento({
   const draftCaricatoRef = useRef(false);
   useEffect(() => {
     if (draftCaricatoRef.current || appDraftLoading) return;
-    if (!appuntamentoIniziale && (appDraft.clienteId || appDraft.titolo || appDraft.note)) {
+
+    // 🚨 NON caricare il draft se stiamo aprendo il form da un click su cella
+    // (dataIniziale e/o oraIniziale presenti = l'utente ha cliccato uno slot specifico)
+    const daClickSuCella = !!dataIniziale || !!oraIniziale;
+
+    if (
+      !appuntamentoIniziale &&
+      !daClickSuCella &&
+      (appDraft.clienteId || appDraft.titolo || appDraft.note)
+    ) {
       setClienteId(appDraft.clienteId);
       setOperatore(appDraft.operatore);
       setData(appDraft.data);
