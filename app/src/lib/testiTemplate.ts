@@ -31,12 +31,14 @@ export type ChiaveTesto =
   | 'email_reset_password'
   | 'email_report_commercialista'
   | 'email_firma_documento'
+  | 'email_fattura'
   | 'email_promemoria'
   | 'email_promemoria_checkup'
   | 'email_post_seduta'
   | 'email_compleanno'
   | 'email_riattivazione'
   | 'whatsapp_scontrino'
+  | 'whatsapp_fattura'
   | 'whatsapp_promemoria'
   | 'whatsapp_promemoria_checkup'
   | 'whatsapp_post_seduta'
@@ -202,6 +204,29 @@ Grazie,
 {azienda}`,
   },
 
+  email_fattura: {
+    chiave: 'email_fattura',
+    oggetto: 'Fattura {numero_documento} — {azienda}',
+    corpo: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5ea;">
+  <div style="text-align: center; margin-bottom: 20px;">
+    <p style="color: #8e8e93; font-size: 12px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+      Documento Contabile
+    </p>
+  </div>
+  <div style="background: #f2f2f7; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+    <p style="margin: 0; color: #1c1c1e; font-size: 14px; font-weight: 600;">
+      Gentile {nome},
+    </p>
+    <p style="margin: 8px 0 0 0; color: #3a3a3c; font-size: 13px; line-height: 1.5;">
+      in allegato le trasmettiamo il documento contabile <strong>{numero_documento}</strong> del {data}.
+    </p>
+  </div>
+  <div style="border-top: 1px solid #e5e5ea; padding-top: 12px; margin-top: 20px; font-size: 11px; color: #8e8e93; text-align: center;">
+    Documento generato automaticamente da {azienda}.
+  </div>
+</div>`,
+  },
+
   email_promemoria: {
     chiave: 'email_promemoria',
     oggetto: 'Promemoria appuntamento — {data} ore {ora}',
@@ -281,6 +306,16 @@ A presto,
 {azienda}`,
   },
 
+  whatsapp_fattura: {
+    chiave: 'whatsapp_fattura',
+    oggetto: null,
+    corpo: `Gentile {nome}, le trasmettiamo il documento {numero_documento} del {data}.
+
+{link}
+
+{azienda}`,
+  },
+
   whatsapp_promemoria: {
     chiave: 'whatsapp_promemoria',
     oggetto: null,
@@ -345,12 +380,14 @@ export const VARIABILI_PER_CHIAVE: Record<ChiaveTesto, string[]> = {
   email_reset_password: ['email', 'codice', 'azienda'],
   email_report_commercialista: ['commercialista', 'azienda', 'data_inizio', 'data_fine', 'totale', 'iva'],
   email_firma_documento: ['nome', 'cognome', 'azienda', 'tipo_documento', 'numero_documento', 'link'],
+  email_fattura: ['nome', 'cognome', 'azienda', 'numero_documento', 'data'],
   email_promemoria: ['nome', 'cognome', 'azienda', 'data', 'ora', 'servizio'],
   email_promemoria_checkup: ['nome', 'cognome', 'azienda', 'data', 'ora'],
   email_post_seduta: ['nome', 'cognome', 'azienda', 'data', 'servizio'],
   email_compleanno: ['nome', 'cognome', 'azienda'],
   email_riattivazione: ['nome', 'cognome', 'azienda'],
   whatsapp_scontrino: ['nome', 'cognome', 'azienda', 'numero_documento', 'link', 'importo'],
+  whatsapp_fattura: ['nome', 'cognome', 'azienda', 'numero_documento', 'data', 'link'],
   whatsapp_promemoria: ['nome', 'cognome', 'azienda', 'data', 'ora', 'servizio'],
   whatsapp_promemoria_checkup: ['nome', 'cognome', 'azienda', 'data', 'ora'],
   whatsapp_post_seduta: ['nome', 'cognome', 'azienda', 'data', 'servizio'],
@@ -368,12 +405,14 @@ export const ETICHETTE_CHIAVI: Record<ChiaveTesto, { label: string; gruppo: 'ema
   email_reset_password: { label: 'Reset Password Gestionale', gruppo: 'email', icona: '🔐' },
   email_report_commercialista: { label: 'Report Commercialista', gruppo: 'email', icona: '📊' },
   email_firma_documento: { label: 'Link Firma Documento', gruppo: 'email', icona: '✍️' },
+  email_fattura: { label: 'Invio Fattura', gruppo: 'email', icona: '📄' },
   email_promemoria: { label: 'Promemoria Appuntamento', gruppo: 'email', icona: '⏰' },
   email_promemoria_checkup: { label: 'Promemoria Check-Up', gruppo: 'email', icona: '🆕' },
   email_post_seduta: { label: 'Post-Seduta', gruppo: 'email', icona: '📸' },
   email_compleanno: { label: 'Auguri Compleanno', gruppo: 'email', icona: '🎂' },
   email_riattivazione: { label: 'Riattivazione Cliente', gruppo: 'email', icona: '💤' },
   whatsapp_scontrino: { label: 'Invio Scontrino', gruppo: 'whatsapp', icona: '💬' },
+  whatsapp_fattura: { label: 'Invio Fattura', gruppo: 'whatsapp', icona: '📄' },
   whatsapp_promemoria: { label: 'Promemoria Appuntamento', gruppo: 'whatsapp', icona: '💬' },
   whatsapp_promemoria_checkup: { label: 'Promemoria Check-Up', gruppo: 'whatsapp', icona: '🆕' },
   whatsapp_post_seduta: { label: 'Post-Seduta', gruppo: 'whatsapp', icona: '📸' },
