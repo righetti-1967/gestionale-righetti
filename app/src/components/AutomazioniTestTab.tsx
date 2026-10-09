@@ -5,6 +5,9 @@ import { LABEL_AUTOMAZIONE, type TipoAutomazione } from '../lib/automazioni';
 const CHIAVI_DISPONIBILI: { chiave: TipoAutomazione; label: string }[] = [
   { chiave: 'promemoria_appuntamento', label: LABEL_AUTOMAZIONE.promemoria_appuntamento.label },
   { chiave: 'promemoria_checkup', label: LABEL_AUTOMAZIONE.promemoria_checkup.label },
+  { chiave: 'post_seduta', label: LABEL_AUTOMAZIONE.post_seduta.label },
+  { chiave: 'compleanno', label: LABEL_AUTOMAZIONE.compleanno.label },
+  { chiave: 'riattivazione', label: LABEL_AUTOMAZIONE.riattivazione.label },
 ];
 
 export function AutomazioniTestTab() {
