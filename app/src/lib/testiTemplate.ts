@@ -38,6 +38,7 @@ export type ChiaveTesto =
   | 'email_riattivazione'
   | 'whatsapp_scontrino'
   | 'whatsapp_promemoria'
+  | 'whatsapp_promemoria_checkup'
   | 'whatsapp_post_seduta'
   | 'whatsapp_compleanno'
   | 'whatsapp_riattivazione';
@@ -289,6 +290,17 @@ Grazie e a presto!
 {azienda}`,
   },
 
+  whatsapp_promemoria_checkup: {
+    chiave: 'whatsapp_promemoria_checkup',
+    oggetto: null,
+    corpo: `Ciao {nome}, ti ricordiamo la tua prima visita presso il nostro Studio per il tuo "Check-Up Gratuito" di {data_estesa} alle ore {ora}.
+
+Per qualsiasi necessità contattaci.
+
+Ti aspettiamo!
+{azienda}`,
+  },
+
   whatsapp_post_seduta: {
     chiave: 'whatsapp_post_seduta',
     oggetto: null,
@@ -340,6 +352,7 @@ export const VARIABILI_PER_CHIAVE: Record<ChiaveTesto, string[]> = {
   email_riattivazione: ['nome', 'cognome', 'azienda'],
   whatsapp_scontrino: ['nome', 'cognome', 'azienda', 'numero_documento', 'link', 'importo'],
   whatsapp_promemoria: ['nome', 'cognome', 'azienda', 'data', 'ora', 'servizio'],
+  whatsapp_promemoria_checkup: ['nome', 'cognome', 'azienda', 'data', 'ora'],
   whatsapp_post_seduta: ['nome', 'cognome', 'azienda', 'data', 'servizio'],
   whatsapp_compleanno: ['nome', 'cognome', 'azienda'],
   whatsapp_riattivazione: ['nome', 'cognome', 'azienda'],
@@ -362,6 +375,7 @@ export const ETICHETTE_CHIAVI: Record<ChiaveTesto, { label: string; gruppo: 'ema
   email_riattivazione: { label: 'Riattivazione Cliente', gruppo: 'email', icona: '💤' },
   whatsapp_scontrino: { label: 'Invio Scontrino', gruppo: 'whatsapp', icona: '💬' },
   whatsapp_promemoria: { label: 'Promemoria Appuntamento', gruppo: 'whatsapp', icona: '💬' },
+  whatsapp_promemoria_checkup: { label: 'Promemoria Check-Up', gruppo: 'whatsapp', icona: '🆕' },
   whatsapp_post_seduta: { label: 'Post-Seduta', gruppo: 'whatsapp', icona: '📸' },
   whatsapp_compleanno: { label: 'Auguri Compleanno', gruppo: 'whatsapp', icona: '🎂' },
   whatsapp_riattivazione: { label: 'Riattivazione Cliente', gruppo: 'whatsapp', icona: '💤' },

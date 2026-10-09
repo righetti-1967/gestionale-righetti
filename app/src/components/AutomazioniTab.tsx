@@ -13,6 +13,7 @@ import {
   salvaAutomazione,
 } from '../lib/automazioni';
 import { Toast, type ToastTipo } from './Toast';
+import { AutomazioniTestTab } from './AutomazioniTestTab';
 
 export function AutomazioniTab() {
   const [automazioni, setAutomazioni] = useState<Record<TipoAutomazione, Automazione> | null>(null);
@@ -132,6 +133,11 @@ export function AutomazioniTab() {
         onUpdate={(patch) => aggiornaAutomazione('riattivazione', patch)}
       />
 
+      {/* Log Simulazione */}
+      <div className="mt-8 pt-6 border-t border-gray-100">
+        <AutomazioniTestTab />
+      </div>
+
       {toast && (
         <Toast
           message={toast.message}
@@ -208,18 +214,7 @@ function CardAutomazione({
             <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2">
               Modalità
             </label>
-            <div className="inline-flex bg-gray-100 rounded-apple p-1">
-              <button
-                type="button"
-                onClick={() => onUpdate({ modalita: 'automatico' })}
-                className={`px-4 py-2 rounded-apple text-xs font-semibold transition-all ${
-                  automazione.modalita === 'automatico'
-                    ? 'bg-white text-apple-darkgray shadow-apple'
-                    : 'text-apple-gray hover:text-apple-darkgray'
-                }`}
-              >
-                🤖 Automatico
-              </button>
+            <div className="inline-flex bg-gray-100 rounded-apple p-1 flex-wrap gap-1">
               <button
                 type="button"
                 onClick={() => onUpdate({ modalita: 'manuale' })}
@@ -231,10 +226,42 @@ function CardAutomazione({
               >
                 👆 Manuale
               </button>
+              <button
+                type="button"
+                onClick={() => onUpdate({ modalita: 'simulazione' })}
+                className={`px-4 py-2 rounded-apple text-xs font-semibold transition-all ${
+                  automazione.modalita === 'simulazione'
+                    ? 'bg-white text-apple-darkgray shadow-apple'
+                    : 'text-apple-gray hover:text-apple-darkgray'
+                }`}
+              >
+                🧪 Simulazione
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdate({ modalita: 'automatico' })}
+                className={`px-4 py-2 rounded-apple text-xs font-semibold transition-all ${
+                  automazione.modalita === 'automatico'
+                    ? 'bg-white text-apple-darkgray shadow-apple'
+                    : 'text-apple-gray hover:text-apple-darkgray'
+                }`}
+              >
+                🤖 Automatico
+              </button>
             </div>
+            {automazione.modalita === 'manuale' && (
+              <p className="text-[11px] text-gray-500 mt-2 font-medium">
+                👆 Nessun invio automatico. Puoi inviare manualmente dalla modale promemoria in Agenda.
+              </p>
+            )}
+            {automazione.modalita === 'simulazione' && (
+              <p className="text-[11px] text-purple-600 mt-2 font-medium">
+                🧪 Nessun invio reale. Verranno solo registrati i log di anteprima (sezione "Log simulazione" in fondo).
+              </p>
+            )}
             {automazione.modalita === 'automatico' && (
               <p className="text-[11px] text-amber-600 mt-2 font-medium">
-                ⚠️ Il motore automatico verrà attivato prossimamente.
+                ⚠️ Invia DAVVERO ai clienti reali. Verifica prima in modalità Simulazione.
               </p>
             )}
           </div>

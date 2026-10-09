@@ -14,7 +14,7 @@ import { supabase } from './supabase';
 
 export type TipoAutomazione = 'post_seduta' | 'compleanno' | 'riattivazione' | 'promemoria_appuntamento' | 'promemoria_checkup';
 
-export type ModalitaAutomazione = 'automatico' | 'manuale';
+export type ModalitaAutomazione = 'automatico' | 'manuale' | 'simulazione';
 
 export type CanaleAutomazione = 'whatsapp' | 'email' | 'entrambi';
 
@@ -40,11 +40,6 @@ export interface ParametriRiattivazione {
 export interface ParametriPromemoria {
   ore_anticipo: number; // 12, 24, 48, 72, 96, 120, 168
   ora_invio: string; // es. '09:00'
-  canale: CanaleAutomazione;
-}
-
-export interface ParametriPromemoria {
-  ore_anticipo: number; // 12, 24, 48, 72, 96, 120, 168
   canale: CanaleAutomazione;
 }
 
