@@ -5,6 +5,7 @@ import { inviaEmailConConfig } from '../lib/api';
 import { getCliente } from '../lib/clienti';
 import { useState } from 'react';
 import { generaPdfFattura } from '../lib/pdfFattura';
+import { getTestoTemplate, renderTemplate } from '../lib/testiTemplate';
 import { FirmaFatturaQR } from './FirmaFatturaQR';
 import {
   AnteprimaPdf,
@@ -136,30 +137,102 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
     const emailDest = cl?.email?.trim();
     const telDest = cl?.cellulare || '';
     const numDoc = fattura.numero_fattura;
+    const nome = nomeCliente.split(/\s+/)[0] || nomeCliente;
+    const cognome = nomeCliente.split(/\s+/).slice(1).join(' ') || '';
+    const brand = getBrandInfo(null);
+    const aziendaNome = brand.nomeBrand || 'Studio';
+    const dataDoc = fattura.data_inizio
+      ? new Date(fattura.data_inizio + 'T00:00:00').toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      : '';
     const totaleDoc = Number(fattura.lordo_ivato || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 });
 
+    // === WhatsApp ===
     if (canale === 'whatsapp') {
       const numPulito = telDest.replace(/\D/g, '');
-      const prefisso = numPulito.startsWith('39') ? '' : '39';
-      const numeroFinale = numPulito ? `${prefisso}${numPulito}` : '';
-      const brand = getBrandInfo(null);
-      const testo = `Gentile ${nomeCliente}, le trasmettiamo il documento ${numDoc} di importo pari a € ${totaleDoc} emesso da ${brand.nomeBrand}. Cordiali saluti!`;
-      const waUrl = numeroFinale
-        ? `https://wa.me/${numeroFinale}?text=${encodeURIComponent(testo)}`
-        : `https://wa.me/?text=${encodeURIComponent(testo)}`;
-      window.open(waUrl, '_blank');
-      setToastInvia(`Chat WhatsApp aperta per ${nomeCliente}`);
-      setTimeout(() => setToastInvia(null), 4000);
+      const numeroFinale = numPulito
+        ? (numPulito.startsWith('39') ? numPulito : '39' + numPulito)
+        : '';
+
+      if (!numeroFinale) {
+        setToastInvia(`⚠️ Nessun cellulare per ${nomeCliente}`);
+        setTimeout(() => setToastInvia(null), 4000);
+        return;
+      }
+
+      setToastInvia(`📄 Generazione PDF e invio WhatsApp a ${nomeCliente}...`);
+
+      try {
+        // Genera PDF in base64 (no download)
+        let pdfB64: string | undefined;
+        let nomeFile = `Fattura_${numDoc.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+        try {
+          const doc = await generaPdfFattura(fattura, false);
+          const raw = doc.output('datauristring');
+          pdfB64 = raw.split(',')[1];
+        } catch (errPdf) {
+          console.warn('Errore estrazione PDF:', errPdf);
+        }
+
+        // Renderizza template WhatsApp da DB (o default)
+        const tpl = await getTestoTemplate('whatsapp_fattura');
+        const testo = renderTemplate(tpl.corpo, {
+          nome,
+          cognome,
+          azienda: aziendaNome,
+          numero_documento: numDoc,
+          data: dataDoc,
+          link: '',
+        });
+
+        // Chiama Edge Function
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          setToastInvia('❌ Sessione scaduta');
+          setTimeout(() => setToastInvia(null), 4000);
+          return;
+        }
+
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              receiver: numeroFinale,
+              message: testo,
+              pdf_base64: pdfB64,
+              pdf_filename: nomeFile,
+            }),
+          }
+        );
+
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          setToastInvia(`❌ ${json.error || 'Errore invio WhatsApp'}`);
+          setTimeout(() => setToastInvia(null), 6000);
+          return;
+        }
+
+        setToastInvia(`✅ Fattura ${numDoc} inviata via WhatsApp a ${nomeCliente}!`);
+        setTimeout(() => setToastInvia(null), 5000);
+      } catch (err: any) {
+        setToastInvia(`❌ ${err.message || 'Errore sconosciuto'}`);
+        setTimeout(() => setToastInvia(null), 5000);
+      }
       return;
     }
 
+    // === Email ===
     if (!emailDest) {
-      setToastInvia(`Nessuna email registrata per ${nomeCliente}`);
+      setToastInvia(`⚠️ Nessuna email per ${nomeCliente}`);
       setTimeout(() => setToastInvia(null), 4000);
       return;
     }
 
-    setToastInvia(`Generazione PDF e invio email a ${emailDest}...`);
+    setToastInvia(`📄 Generazione PDF e invio email a ${emailDest}...`);
     try {
       let pdfB64: string | undefined = undefined;
       const nomeFile = `Fattura_${numDoc.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
@@ -171,26 +244,28 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
         console.warn('Errore estrazione PDF fattura:', errPdf);
       }
 
-      const corpoHtml = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5ea;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <img src="https://yporpszebtasalwazirz.supabase.co/storage/v1/object/public/azienda/logo.png" alt="Logo" style="height: 48px; max-width: 200px; object-fit: contain; margin-bottom: 8px;" />
-        </div>
-        <p style="font-size: 14px; color: #1c1c1e;">Gentile <strong>${nomeCliente}</strong>,</p>
-        <p style="font-size: 13px; color: #3a3a3c; line-height: 1.5;">
-          in allegato le trasmettiamo il documento contabile <strong>${numDoc}</strong> per un importo totale di <strong>€ ${totaleDoc}</strong>.
-        </p>
-        <p style="font-size: 11px; color: #8e8e93; border-top: 1px solid #e5e5ea; padding-top: 12px; margin-top: 20px;">
-          Documento generato automaticamente dal Gestionale Righetti.
-        </p>
-      </div>
-      `;
+      // Renderizza template email da DB
+      const tpl = await getTestoTemplate('email_fattura');
+      const oggetto = renderTemplate(tpl.oggetto || '', {
+        nome,
+        cognome,
+        azienda: aziendaNome,
+        numero_documento: numDoc,
+        data: dataDoc,
+      });
+      const corpoHtml = renderTemplate(tpl.corpo, {
+        nome,
+        cognome,
+        azienda: aziendaNome,
+        numero_documento: numDoc,
+        data: dataDoc,
+      });
 
       await inviaEmailConConfig({
         destinatario: emailDest,
-        oggetto: `Documento Contabile ${numDoc}`,
+        oggetto: oggetto || `Documento Contabile ${numDoc}`,
         corpo_html: corpoHtml,
-        from_name: nomeCliente ? `Studio - ${nomeCliente}` : 'Studio',
+        from_name: `Studio - ${nomeCliente}`,
         allegato_base64: pdfB64,
         allegato_nome: pdfB64 ? nomeFile : undefined,
       });
