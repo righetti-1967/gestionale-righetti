@@ -13,6 +13,7 @@ import {
   salvaAutomazione,
 } from '../lib/automazioni';
 import { Toast, type ToastTipo } from './Toast';
+import { NotifichePushAppuntamenti } from './NotifichePushAppuntamenti';
 import { AutomazioniTestTab } from './AutomazioniTestTab';
 
 export function AutomazioniTab() {
@@ -76,6 +77,9 @@ export function AutomazioniTab() {
 
   return (
     <div className="space-y-4">
+      {/* Notifiche Push Appuntamenti */}
+      <NotifichePushAppuntamenti />
+
       {/* Card intro */}
       <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-apple p-4 shadow-apple">
         <div className="flex items-start gap-3">
