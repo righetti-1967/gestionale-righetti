@@ -6,6 +6,7 @@ import { getCliente } from '../lib/clienti';
 import { useState } from 'react';
 import { generaPdfFattura } from '../lib/pdfFattura';
 import { getTestoTemplate, renderTemplate } from '../lib/testiTemplate';
+import { supabase } from '../lib/supabase';
 import { FirmaFatturaQR } from './FirmaFatturaQR';
 import {
   AnteprimaPdf,
