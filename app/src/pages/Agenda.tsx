@@ -834,6 +834,11 @@ export function Agenda({
 
       {showForm && (
         <FormNuovoAppuntamento
+          key={
+            formPrecompilato.appuntamento?.id
+              ? `mod-${formPrecompilato.appuntamento.id}`
+              : `new-${formPrecompilato.data || ''}-${formPrecompilato.ora || ''}-${formPrecompilato.operatore || ''}`
+          }
           appuntamentoIniziale={formPrecompilato.appuntamento || null}
           dataIniziale={formPrecompilato.data}
           operatoreIniziale={formPrecompilato.operatore}

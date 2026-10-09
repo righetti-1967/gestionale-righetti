@@ -76,6 +76,33 @@ export function FormNuovoAppuntamento({
   const [oraInizio, setOraInizio] = useState(
     appuntamentoIniziale?.ora_inizio.slice(0, 5) || oraIniziale || '09:00'
   );
+
+  // 🔄 Sync valori quando cambiano le props (evita stale state in remount)
+  useEffect(() => {
+    if (appuntamentoIniziale?.data) {
+      setData(appuntamentoIniziale.data);
+    } else if (dataIniziale) {
+      setData(dataIniziale);
+    }
+
+    if (appuntamentoIniziale?.ora_inizio) {
+      setOraInizio(String(appuntamentoIniziale.ora_inizio).slice(0, 5));
+    } else if (oraIniziale) {
+      setOraInizio(oraIniziale);
+    }
+
+    if (appuntamentoIniziale?.operatore) {
+      setOperatore(appuntamentoIniziale.operatore);
+    } else if (operatoreIniziale) {
+      setOperatore(operatoreIniziale);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dataIniziale,
+    oraIniziale,
+    operatoreIniziale,
+    appuntamentoIniziale?.id,
+  ]);
   // Calcolo iniziale arco reale della seduta per voci accavallate o sequenziali
   const calcolaArcoIniziale = () => {
     const voci = appuntamentoIniziale?.voci_selezionate || [];
