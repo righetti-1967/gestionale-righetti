@@ -113,6 +113,7 @@ export function Agenda({
 
   const [showForm, setShowForm] = useState(false);
   const [showFormBlocco, setShowFormBlocco] = useState(false);
+  const [formCounter, setFormCounter] = useState(0);
   const [formPrecompilato, setFormPrecompilato] = useState<{
     data?: string;
     operatore?: Operatore;
@@ -301,6 +302,7 @@ export function Agenda({
 
   function apriNuovoGenerico() {
     setFormPrecompilato({});
+    setFormCounter((c) => c + 1);
     setShowForm(true);
   }
 
@@ -313,6 +315,7 @@ export function Agenda({
 
   function clickSlotGiornaliera(operatore: Operatore, ora: string) {
     setFormPrecompilato({ data: dataCorrente, operatore, ora });
+    setFormCounter((c) => c + 1);
     setShowForm(true);
   }
 
@@ -341,6 +344,7 @@ export function Agenda({
 
   function clickSlotSettimanale(data: string, operatore: Operatore, ora: string) {
     setFormPrecompilato({ data, operatore, ora });
+    setFormCounter((c) => c + 1);
     setShowForm(true);
   }
 
@@ -834,15 +838,11 @@ export function Agenda({
 
       {showForm && (
         <FormNuovoAppuntamento
-          key={
-            formPrecompilato.appuntamento?.id
-              ? `mod-${formPrecompilato.appuntamento.id}`
-              : `new-${formPrecompilato.data || ''}-${formPrecompilato.ora || ''}-${formPrecompilato.operatore || ''}`
-          }
+          key={`form-${formCounter}`}
           appuntamentoIniziale={formPrecompilato.appuntamento || null}
           dataIniziale={formPrecompilato.data}
           operatoreIniziale={formPrecompilato.operatore}
-          oraIniziale={formPrecompilato.operatore ? formPrecompilato.ora : undefined}
+          oraIniziale={formPrecompilato.ora}
           onClose={() => {
             setShowForm(false);
             setFormPrecompilato({});
