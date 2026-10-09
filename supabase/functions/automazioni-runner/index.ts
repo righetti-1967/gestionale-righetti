@@ -165,7 +165,8 @@ async function eseguiPromemoria({
     .eq('user_id', userId)
     .eq('chiave', 'dati_aziendali')
     .maybeSingle();
-  const nomeAzienda = (azData?.valore as any)?.nome_studio || (azData?.valore as any)?.ragione_sociale || '';
+  const nomeAzienda = (azData?.valore as any)?.ragione_sociale || '';
+  const nomeStudio = (azData?.valore as any)?.nomeStudio || (azData?.valore as any)?.nome_studio || nomeAzienda;
   const whatsappStudio = ((azData?.valore as any)?.whatsapp || '').replace(/\D/g, '');
 
   // Carica template
@@ -216,14 +217,14 @@ async function eseguiPromemoria({
     const oraStr = (app.ora_inizio || '').slice(0, 5);
 
     // Render email
-    const oggettoEmail = renderVars(tplEmailOgg, { nome, cognome, azienda: nomeAzienda, data: dataBR, ora: oraStr });
-    let corpoEmail = renderVars(tplEmailCorpo, { nome, cognome, azienda: nomeAzienda, data: dataBR, ora: oraStr, data_estesa: dataIt });
+    const oggettoEmail = renderVars(tplEmailOgg, { nome, cognome, azienda: nomeAzienda, nome_studio: nomeStudio, data: dataBR, ora: oraStr });
+    let corpoEmail = renderVars(tplEmailCorpo, { nome, cognome, azienda: nomeAzienda, nome_studio: nomeStudio, data: dataBR, ora: oraStr, data_estesa: dataIt });
     corpoEmail = corpoEmail
       .replace(/\[\[BOX\]\]/g, `<div style="background:#f5f5f7;border-radius:12px;padding:18px 20px;margin:20px 0;"><p style="margin:0 0 4px 0;font-size:16px;font-weight:600;color:#1c1c1e;">${dataIt}</p><p style="margin:0;font-size:15px;color:#1c1c1e;">alle ore <strong>${oraStr}</strong></p></div>`)
       .replace(/\[\[WHATSAPP\]\]/g, whatsappStudio ? `<p style="margin:16px 0;"><a href="https://wa.me/${whatsappStudio}" style="color:#34C759;font-weight:600;">Scrivici su WhatsApp</a></p>` : '');
 
     // Render WhatsApp
-    const testoWA = renderVars(tplWA, { nome, cognome, azienda: nomeAzienda, data: dataBR, ora: oraStr, data_estesa: dataIt });
+    const testoWA = renderVars(tplWA, { nome, cognome, azienda: nomeAzienda, nome_studio: nomeStudio, data: dataBR, ora: oraStr, data_estesa: dataIt });
 
     // Log per canale email
     if ((canale === 'email' || canale === 'entrambi')) {

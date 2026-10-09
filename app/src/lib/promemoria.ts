@@ -2,6 +2,7 @@
  * Motore Promemoria (invio manuale + batch)
  */
 import { supabase } from './supabase';
+import { caricaDatiAziendali } from './datiAziendali';
 import { inviaEmailConConfig } from './api';
 import { getLogoUrl } from './logo';
 import type { Appuntamento, AppuntamentoConCliente } from './appuntamenti';
@@ -128,7 +129,8 @@ export function generaTestoPromemoria(
     .replace(/\{data\}/g, dataIt)
     .replace(/\{ora\}/g, ora)
     .replace(/\{servizio\}/g, nomeServizio)
-    .replace(/\{azienda\}/g, azienda);
+    .replace(/\{azienda\}/g, azienda)
+    .replace(/\{nome_studio\}/g, azienda);  // fallback: usa azienda se non passato
 
   // Converte \n letterali in newline reali
   testo = testo.replace(/\\n/g, '\n');
@@ -224,6 +226,13 @@ export async function inviaEmailPromemoria(
   const nomeAziendaFinale = nomeAzienda || '';
   const dataBR = formatDataBreve(app.data);
 
+  // Leggi nome studio dai dati aziendali
+  let nomeStudioFinale = nomeAziendaFinale;
+  try {
+    const datiAz = await caricaDatiAziendali();
+    if (datiAz.nomeStudio) nomeStudioFinale = datiAz.nomeStudio;
+  } catch { /* fallback */ }
+
   // Determina se checkup
   const isCheckup =
     app.tipo === 'checkup_nuovo' ||
@@ -312,7 +321,8 @@ A presto!`;
     .replace(/\{data\}/g, dataBR)
     .replace(/\{data_estesa\}/g, dataEstesa)
     .replace(/\{ora\}/g, ora)
-    .replace(/\{servizio\}/g, '');
+    .replace(/\{servizio\}/g, '')
+    .replace(/\{nome_studio\}/g, nomeStudioFinale);
 
   // Sostituisci placeholder BOX e WHATSAPP
   corpoElaborato = corpoElaborato
@@ -363,7 +373,8 @@ A presto!`;
   const oggetto = templateOggetto
     .replace(/\{nome\}/g, nome)
     .replace(/\{data\}/g, dataBR)
-    .replace(/\{ora\}/g, ora);
+    .replace(/\{ora\}/g, ora)
+    .replace(/\{nome_studio\}/g, nomeStudioFinale);
 
   await inviaEmailConConfig({
     destinatario: email.trim(),

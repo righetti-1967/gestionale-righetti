@@ -6,6 +6,7 @@ import { getCliente } from '../lib/clienti';
 import { useState } from 'react';
 import { generaPdfFattura } from '../lib/pdfFattura';
 import { getTestoTemplate, renderTemplate } from '../lib/testiTemplate';
+import { caricaDatiAziendali } from '../lib/datiAziendali';
 import { supabase } from '../lib/supabase';
 import { FirmaFatturaQR } from './FirmaFatturaQR';
 import {
@@ -142,6 +143,8 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
     const cognome = nomeCliente.split(/\s+/).slice(1).join(' ') || '';
     const brand = getBrandInfo(null);
     const aziendaNome = brand.nomeBrand || 'Studio';
+    const datiAz = await caricaDatiAziendali();
+    const nomeStudio = datiAz.nomeStudio || aziendaNome;
     const dataDoc = fattura.data_inizio
       ? new Date(fattura.data_inizio + 'T00:00:00').toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
       : '';
@@ -180,6 +183,7 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
           nome,
           cognome,
           azienda: aziendaNome,
+          nome_studio: nomeStudio,
           numero_documento: numDoc,
           data: dataDoc,
           link: '',
@@ -251,6 +255,7 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
         nome,
         cognome,
         azienda: aziendaNome,
+        nome_studio: nomeStudio,
         numero_documento: numDoc,
         data: dataDoc,
       });
@@ -258,6 +263,7 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
         nome,
         cognome,
         azienda: aziendaNome,
+        nome_studio: nomeStudio,
         numero_documento: numDoc,
         data: dataDoc,
       });
