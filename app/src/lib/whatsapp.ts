@@ -73,6 +73,13 @@ export async function inviaWhatsAppSmart(
       throw new Error('Sessione scaduta');
     }
 
+    // Rimuovi il placeholder {link} (il PDF è allegato, non serve link)
+    // e normalizza eventuali righe vuote consecutive lasciate dalla rimozione
+    const messaggioPulito = params.messaggio
+      .replace(/\{link\}/g, '')
+      .replace(/\n\s*\n\s*\n/g, '\n\n')
+      .trim();
+
     const res = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
       {
@@ -83,7 +90,7 @@ export async function inviaWhatsAppSmart(
         },
         body: JSON.stringify({
           receiver: numeroFinale,
-          message: params.messaggio,
+          message: messaggioPulito,
           pdf_base64: params.pdf_base64,
           pdf_filename: params.pdf_filename,
         }),

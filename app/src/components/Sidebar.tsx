@@ -100,7 +100,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
       )}
 
       <aside
-        className={`fixed lg:static top-0 left-0 h-screen h-[100dvh] z-50 overflow-y-auto overflow-x-hidden overscroll-contain bg-apple-lightgray border-r border-gray-200/60 flex flex-col group transition-all duration-300 ease-out w-64 lg:w-16 lg:hover:w-64 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        className={`fixed lg:static top-0 left-0 h-screen h-[100dvh] z-50 overflow-hidden bg-apple-lightgray border-r border-gray-200/60 flex flex-col group transition-all duration-300 ease-out w-64 lg:w-16 lg:hover:w-64 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         <div className="px-3 lg:px-2 py-6 border-b border-gray-200/60 h-[100px] flex items-center shrink-0">
@@ -134,7 +134,7 @@ export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: 
           </div>
         </div>
 
-        <nav className="px-2 py-4 space-y-1 shrink-0">
+        <nav className="px-2 py-4 space-y-1 flex-1 overflow-y-auto overscroll-contain">
           {menuFiltrato.map((item) => (
             <button key={item.id} onClick={() => handleNavigate(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-apple text-sm font-medium transition-all ${currentPageId === item.id ? 'bg-apple-blue text-white shadow-apple' : 'text-apple-darkgray hover:bg-white/60'}`}>
               <span className="text-lg w-6 flex items-center justify-center">{item.icon}</span>
