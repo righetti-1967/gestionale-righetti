@@ -1321,6 +1321,12 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
   const [showModaleConfig, setShowModaleConfig] = useState(false);
   const [regimeModale, setRegimeModale] = useState<RegimeFiscale>('fatture');
 
+  // Modale conferma cambio regime
+  const [showConfermaRegime, setShowConfermaRegime] = useState<null | {
+    nuovoRegime: 'fatture' | 'scontrini';
+    regimeModale: RegimeFiscale;
+  }>(null);
+
   useEffect(() => {
     async function carica() {
       try {
@@ -1414,9 +1420,15 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
           <button
             type="button"
             onClick={() => {
-              setRegimeDocumenti('fatture');
-              setRegimeModale('fatture');
-              setShowModaleConfig(true);
+              if (regimeDocumenti !== 'fatture') {
+                setShowConfermaRegime({
+                  nuovoRegime: 'fatture',
+                  regimeModale: 'fatture',
+                });
+              } else {
+                setRegimeModale('fatture');
+                setShowModaleConfig(true);
+              }
             }}
             className={`w-full text-left px-4 py-3 rounded-apple border-2 transition-all ${
               regimeDocumenti === 'fatture'
@@ -1442,9 +1454,15 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
           <button
             type="button"
             onClick={() => {
-              setRegimeDocumenti('scontrini');
-              setRegimeModale('scontrini_digitale');
-              setShowModaleConfig(true);
+              if (regimeDocumenti !== 'scontrini') {
+                setShowConfermaRegime({
+                  nuovoRegime: 'scontrini',
+                  regimeModale: 'scontrini_digitale',
+                });
+              } else {
+                setRegimeModale('scontrini_digitale');
+                setShowModaleConfig(true);
+              }
             }}
             className={`w-full text-left px-4 py-3 rounded-apple border-2 transition-all ${
               regimeDocumenti === 'scontrini'
@@ -1733,6 +1751,62 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
       >
         <IntegrazioniLogTab />
       </Card>
+
+      {/* Modale Conferma Cambio Regime */}
+      {showConfermaRegime && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[85] overflow-y-auto"
+          onClick={() => setShowConfermaRegime(null)}
+        >
+          <div
+            className="bg-white rounded-apple shadow-apple-lg max-w-md w-full p-6 my-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-amber-100 flex items-center justify-center text-2xl">
+                ⚠️
+              </div>
+              <h2 className="text-lg font-bold text-apple-darkgray mb-2">
+                Cambiare regime documenti?
+              </h2>
+              <p className="text-xs text-apple-gray leading-relaxed">
+                Stai per passare da{' '}
+                <strong>
+                  {regimeDocumenti === 'fatture' ? 'Fatture' : 'Scontrini'}
+                </strong>{' '}
+                a{' '}
+                <strong>
+                  {showConfermaRegime.nuovoRegime === 'fatture' ? 'Fatture' : 'Scontrini'}
+                </strong>.
+                <br />
+                <br />
+                La <strong>Sidebar</strong> e il menu <strong>Cassa</strong> si aggiorneranno.
+                I documenti già emessi resteranno visibili nei rispettivi archivi.
+              </p>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => setShowConfermaRegime(null)}
+                className="flex-1 px-4 py-2.5 bg-gray-100 text-apple-darkgray rounded-apple font-medium text-sm hover:bg-gray-200 transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={() => {
+                  setRegimeDocumenti(showConfermaRegime.nuovoRegime);
+                  setRegimeModale(showConfermaRegime.regimeModale);
+                  setShowConfermaRegime(null);
+                  setShowModaleConfig(true);
+                }}
+                className="flex-1 px-4 py-2.5 bg-amber-500 text-white rounded-apple font-semibold text-sm hover:bg-amber-600 transition-colors"
+              >
+                Sì, cambia regime
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modale Config Fiscale */}
       {showModaleConfig && (
