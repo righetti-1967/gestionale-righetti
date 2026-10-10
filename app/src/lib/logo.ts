@@ -2,7 +2,7 @@
  * Gestione del logo aziendale su Supabase Storage.
  * - Bucket: "azienda"
  * - Path: "logo.png"
- * - Fallback: /logo.png (pubblico)
+ * - Fallback: /favicon.svg (neutro 'GS' blu, mai Righetti per altri utenti)
  *
  * La funzione `uploadLogo` rimuove automaticamente lo sfondo bianco
  * dal PNG prima di caricarlo su Supabase.
@@ -10,7 +10,7 @@
 import { supabase } from './supabase';
 
 const BUCKET = 'azienda';
-const LOGO_DEFAULT = '/logo.png';
+const LOGO_DEFAULT = '/favicon.svg';  // neutro 'GS' blu (no Righetti)
 const RIGHETTI_EMAIL = 'righetti@righetti.club';
 
 // Path del logo corrente (cache).
@@ -80,8 +80,13 @@ export function getLogoUrl(cacheBuster = true, userEmail?: string | null): strin
     }
   }
 
-  // Se non e' Righetti e non ha caricato un logo: stringa vuota per non mostrare mai il logo Righetti
-  return "";
+  // Se non e' Righetti e non ha caricato un logo: icona neutra 'GS' (MAI Righetti)
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl('favicon.svg');
+  if (data?.publicUrl) {
+    return `${data.publicUrl}?v=${_cacheBuster}`;
+  }
+  // Fallback estremo: file statico pubblico
+  return LOGO_DEFAULT;
 }
 
 /**
@@ -260,13 +265,9 @@ export async function caricaLogoBase64(): Promise<string | null> {
     // ignora, passa al fallback
   }
 
-  // 2. Fallback /logo.png SOLO per Righetti
+  // 2. Fallback neutro per tutti: /favicon.svg (icona "GS" blu)
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    const isRighetti = user?.email?.toLowerCase().trim() === RIGHETTI_EMAIL;
-    if (!isRighetti) return null;
-
-    const res = await fetch(LOGO_DEFAULT);
+    const res = await fetch('/favicon.svg');
     if (!res.ok) return null;
     const blob = await res.blob();
     return await blobToBase64(blob);
