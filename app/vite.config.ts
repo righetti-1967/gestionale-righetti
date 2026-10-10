@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'logo.png'],
+      includeAssets: ['favicon.svg'],
       manifest: {
         name: 'Gestionale Righetti 1967',
         short_name: 'Gestionale',
