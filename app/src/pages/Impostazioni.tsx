@@ -34,6 +34,7 @@ import { caricaPrivacy, salvaPrivacy, invalidaCachePrivacy, PRIVACY_DEFAULT, INF
 import { caricaAspetto, salvaAspetto, invalidaCacheAspetto, ASPETTO_DEFAULT, type ConfigAspetto } from '../lib/aspetto';
 import { SicurezzaTab } from '../components/SicurezzaTab';
 import { ModaleConfigFiscale } from '../components/ModaleConfigFiscale';
+import { IntegrazioniLogTab } from '../components/IntegrazioniLogTab';
 import { TestiTemplateTab } from '../components/TestiTemplateTab';
 import { AutomazioniTab } from '../components/AutomazioniTab';
 import { AppClienteTab } from '../components/AppClienteTab';
@@ -1724,6 +1725,14 @@ function TabFatturazione({ registraSalva }: { registraSalva?: (fn: () => void, s
           {salvando ? 'Salvataggio…' : 'Salva modifiche'}
         </button>
       </div>
+
+      {/* 🔌 Log Integrazioni Esterne */}
+      <Card
+        title="🔌 Log Integrazioni"
+        subtitle="Storico delle chiamate a stampanti RT, FPT e ADE/SDI — simulazione e reale."
+      >
+        <IntegrazioniLogTab />
+      </Card>
 
       {/* Modale Config Fiscale */}
       {showModaleConfig && (
