@@ -161,8 +161,9 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
   const [filtroClienti, setFiltroClienti] = useState<'pending' | 'rebooking' | null>(null);
   const [clientiIdsFiltrati, setClientiIdsFiltrati] = useState<Set<number> | null>(null);
   const [appuntamentiPendingByCliente, setAppuntamentiPendingByCliente] = useState<
-    Map<number, import('../lib/appuntamenti').Appuntamento>
+    Map<number, import('../lib/appuntamenti').Appuntamento[]>
   >(new Map());
+  const [clientiEspansi, setClientiEspansi] = useState<Set<number>>(new Set());
   const [scaricoDaApp, setScaricoDaApp] = useState<{
     percorso: Percorso;
     cliente: Cliente;
@@ -216,7 +217,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
         const ids = new Set<number>();
         const mappaAppuntamenti = new Map<
           number,
-          import('../lib/appuntamenti').Appuntamento
+          import('../lib/appuntamenti').Appuntamento[]
         >();
 
         for (const a of appuntamenti) {
@@ -224,9 +225,9 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
           if (filtroClienti === 'pending') {
             if (a.stato === 'pending' && a.data >= oggi) {
               ids.add(a.cliente_id);
-              if (!mappaAppuntamenti.has(a.cliente_id)) {
-                mappaAppuntamenti.set(a.cliente_id, a);
-              }
+              const lista = mappaAppuntamenti.get(a.cliente_id) || [];
+              lista.push(a);
+              mappaAppuntamenti.set(a.cliente_id, lista);
             }
           } else if (filtroClienti === 'rebooking') {
             if (
@@ -238,6 +239,14 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
             }
           }
         }
+
+        // Ordina appuntamenti per data+ora dentro ogni cliente
+        mappaAppuntamenti.forEach((lista) => {
+          lista.sort((a, b) => {
+            if (a.data !== b.data) return a.data.localeCompare(b.data);
+            return a.ora_inizio.localeCompare(b.ora_inizio);
+          });
+        });
 
         setClientiIdsFiltrati(ids);
         setAppuntamentiPendingByCliente(mappaAppuntamenti);
@@ -822,108 +831,109 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
           {clientiVisualizzati
             .filter((c) => appuntamentiPendingByCliente.has(c.id))
             .map((cliente) => {
-              const app = appuntamentiPendingByCliente.get(cliente.id)!;
+              const appuntamentiCliente = appuntamentiPendingByCliente.get(cliente.id) || [];
+              const numApp = appuntamentiCliente.length;
+              const isEspanso = clientiEspansi.has(cliente.id);
+
+              function toggleEspansione() {
+                setClientiEspansi((prev) => {
+                  const nuovo = new Set(prev);
+                  if (nuovo.has(cliente.id)) {
+                    nuovo.delete(cliente.id);
+                  } else {
+                    nuovo.add(cliente.id);
+                  }
+                  return nuovo;
+                });
+              }
+
               return (
-                <button
+                <div
                   key={cliente.id}
-                  onClick={() => {
-                    localStorage.setItem('agenda_data_iniziale', app.data);
-                    setClienteSelezionato(null);
-                    onNavigate?.('agenda');
-                  }}
-                  className="w-full text-left bg-red-50 border border-red-200 rounded-apple p-4 hover:bg-red-100 transition-colors"
+                  className="bg-red-50 border border-red-200 rounded-apple overflow-hidden"
                 >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-apple-blue to-blue-600 flex items-center justify-center text-white font-semibold text-xs shrink-0">
-                        {cliente.nome_cognome
-                          .split(' ')
-                          .map((n) => n[0])
-                          .slice(0, 2)
-                          .join('')
-                          .toUpperCase()}
+                  {/* Riga cliente (click = espandi) */}
+                  <button
+                    onClick={toggleEspansione}
+                    className="w-full text-left p-4 hover:bg-red-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-apple-blue to-blue-600 flex items-center justify-center text-white font-semibold text-xs shrink-0">
+                          {cliente.nome_cognome
+                            .split(' ')
+                            .map((n: string) => n[0])
+                            .slice(0, 2)
+                            .join('')
+                            .toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-red-800 truncate">
+                            {cliente.nome_cognome}
+                          </p>
+                          <p className="text-xs text-red-700">
+                            {numApp === 1
+                              ? '1 appuntamento in attesa'
+                              : `${numApp} appuntamenti in attesa`}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-red-800 truncate">
-                          {cliente.nome_cognome}
-                        </p>
-                        <p className="text-xs text-red-700">
-                          📅{' '}
-                          {new Date(app.data + 'T00:00:00').toLocaleDateString('it-IT', {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long',
-                          })}
-                          {' • '}
-                          {app.ora_inizio.slice(0, 5)}
-                          {(() => {
-                            const [h, m] = app.ora_inizio.slice(0, 5).split(':').map(Number);
-                            const totale = h * 60 + m + app.durata_minuti;
-                            const hF = Math.floor(totale / 60);
-                            const mF = totale % 60;
-                            return `–${String(hF).padStart(2, '0')}:${String(mF).padStart(2, '0')}`;
-                          })()}
-                          {' • '}
-                          {OPERATORI[app.operatore]?.label || app.operatore}
-                        </p>
-                      </div>
+                      <span className={`text-red-700 text-lg transition-transform ${
+                        isEspanso ? 'rotate-180' : ''
+                      }`}>
+                        ▼
+                      </span>
                     </div>
-                    <span className="text-xs text-red-600 font-medium shrink-0">
-                      Apri Agenda →
-                    </span>
-                  </div>
-                </button>
+                  </button>
+
+                  {/* Lista appuntamenti (se espanso) */}
+                  {isEspanso && (
+                    <div className="border-t border-red-200 bg-white divide-y divide-red-100">
+                      {appuntamentiCliente.map((app) => (
+                        <button
+                          key={app.id}
+                          onClick={() => {
+                            localStorage.setItem('agenda_data_iniziale', app.data);
+                            setClienteSelezionato(null);
+                            onNavigate?.('agenda');
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-red-50 transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-xs text-red-800 font-medium">
+                                📅{' '}
+                                {new Date(app.data + 'T00:00:00').toLocaleDateString('it-IT', {
+                                  weekday: 'long',
+                                  day: 'numeric',
+                                  month: 'long',
+                                })}
+                                {' • '}
+                                {app.ora_inizio.slice(0, 5)}
+                                {(() => {
+                                  const [h, m] = app.ora_inizio.slice(0, 5).split(':').map(Number);
+                                  const totale = h * 60 + m + app.durata_minuti;
+                                  const hF = Math.floor(totale / 60);
+                                  const mF = totale % 60;
+                                  return `–${String(hF).padStart(2, '0')}:${String(mF).padStart(2, '0')}`;
+                                })()}
+                              </p>
+                              <p className="text-[11px] text-red-600 mt-0.5">
+                                👤 {OPERATORI[app.operatore]?.label || app.operatore}
+                              </p>
+                            </div>
+                            <span className="text-red-500 text-sm shrink-0">→</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               );
             })}
         </div>
       )}
 
-      {!loading && !errore && filtroClienti === 'rebooking' && (
-        <div className="hidden md:block mt-4 space-y-2">
-          <div className="bg-orange-50 border border-orange-200 rounded-apple p-4">
-            <p className="text-sm font-semibold text-orange-800">
-              🔄 Clienti da riprogrammare
-            </p>
-            <p className="text-xs text-orange-700 mt-1">
-              Clicca "📅 Fissa appuntamento" per aprire la form di creazione con il
-              cliente già selezionato.
-            </p>
-          </div>
-          {clientiVisualizzati.map((cliente) => (
-            <div
-              key={cliente.id}
-              className="w-full bg-orange-50 border border-orange-200 rounded-apple p-4 flex items-center justify-between gap-4"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-semibold text-xs shrink-0">
-                  {cliente.nome_cognome
-                    .split(' ')
-                    .map((n) => n[0])
-                    .slice(0, 2)
-                    .join('')
-                    .toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-orange-900 truncate">
-                    {cliente.nome_cognome}
-                  </p>
-                  {cliente.cellulare && (
-                    <p className="text-xs text-orange-700 truncate">
-                      {cliente.cellulare}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => apriFissaAppuntamento(cliente)}
-                className="px-4 py-2 bg-orange-500 text-white rounded-apple font-medium text-xs hover:bg-orange-600 transition-colors shrink-0 shadow-sm"
-              >
-                📅 Fissa appuntamento
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
 
       {!loading && !errore && clientiVisualizzati.length > 0 && (
         <div className="md:hidden space-y-3">
