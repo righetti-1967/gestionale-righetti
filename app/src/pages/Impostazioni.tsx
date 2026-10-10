@@ -2550,6 +2550,12 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
   const [fasceModale, setFasceModale] = useState<Fascia[]>([]);
   const [apertoModale, setApertoModale] = useState(false);
 
+  // NEW — Orari per operatore
+  const [operatoreOrariAperto, setOperatoreOrariAperto] = useState<string | null>(null);
+  const [giornoOpModale, setGiornoOpModale] = useState<{ opId: string; giorno: number } | null>(null);
+  const [fasceOpModale, setFasceOpModale] = useState<Fascia[]>([]);
+  const [apertoOpModale, setApertoOpModale] = useState(false);
+
   useEffect(() => {
     async function carica() {
       try {
@@ -2762,6 +2768,110 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
       return { ...c, orariGiorni: nuovi, giorniLavorativi: giorni };
     });
     chiudiModaleGiorno();
+  }
+
+  // === Orari per operatore ===
+  function toggleUsaOrariGlobali(opId: string) {
+    setConfig((c) => ({
+      ...c,
+      operatori: c.operatori.map((o) =>
+        o.id === opId
+          ? { ...o, usaOrariGlobali: o.usaOrariGlobali === false ? true : false }
+          : o
+      ),
+    }));
+  }
+
+  function getFasceOperatoreGiorno(opId: string, giorno: number): Fascia[] {
+    const op = config.operatori.find((o) => o.id === opId);
+    if (!op || op.usaOrariGlobali !== false) {
+      // fallback globali
+      const orari = config.orariGiorni?.[giorno];
+      if (orari) return orari.fasce;
+      if (config.giorniLavorativi.includes(giorno)) {
+        return [{ inizio: config.oraApertura, fine: config.oraChiusura }];
+      }
+      return [];
+    }
+    const orariOp = op.orariGiorni?.[giorno];
+    return orariOp?.fasce || [];
+  }
+
+  function isGiornoOperatoreAperto(opId: string, giorno: number): boolean {
+    const op = config.operatori.find((o) => o.id === opId);
+    if (!op || op.usaOrariGlobali !== false) {
+      const orari = config.orariGiorni?.[giorno];
+      if (orari) return orari.aperto;
+      return config.giorniLavorativi.includes(giorno);
+    }
+    const orariOp = op.orariGiorni?.[giorno];
+    return orariOp?.aperto || false;
+  }
+
+  function apriModaleGiornoOperatore(opId: string, giorno: number) {
+    const op = config.operatori.find((o) => o.id === opId);
+    if (!op) return;
+    const orariOp = op.orariGiorni?.[giorno];
+    const aperto = orariOp?.aperto ?? false;
+    const fasce = orariOp?.fasce && orariOp.fasce.length > 0
+      ? orariOp.fasce
+      : aperto
+        ? [{ inizio: config.oraApertura, fine: config.oraChiusura }]
+        : [];
+    setFasceOpModale(fasce);
+    setApertoOpModale(aperto);
+    setGiornoOpModale({ opId, giorno });
+  }
+
+  function chiudiModaleGiornoOperatore() {
+    setGiornoOpModale(null);
+    setFasceOpModale([]);
+    setApertoOpModale(false);
+  }
+
+  function salvaModaleGiornoOperatore() {
+    if (!giornoOpModale) return;
+    if (apertoOpModale && fasceOpModale.length === 0) {
+      alert('Aggiungi almeno una fascia oraria per aprire il giorno.');
+      return;
+    }
+    for (const f of fasceOpModale) {
+      if (f.inizio >= f.fine) {
+        alert(`Fascia non valida: ${f.inizio} → ${f.fine}. L'orario di fine deve essere dopo quello di inizio.`);
+        return;
+      }
+    }
+    setConfig((c) => ({
+      ...c,
+      operatori: c.operatori.map((o) => {
+        if (o.id !== giornoOpModale.opId) return o;
+        const orari = { ...(o.orariGiorni || {}) };
+        orari[giornoOpModale.giorno] = {
+          aperto: apertoOpModale,
+          fasce: apertoOpModale ? fasceOpModale : [],
+        };
+        return { ...o, orariGiorni: orari, usaOrariGlobali: false };
+      }),
+    }));
+    chiudiModaleGiornoOperatore();
+  }
+
+  function aggiungiFasciaOpModale() {
+    const ultima = fasceOpModale[fasceOpModale.length - 1];
+    const nuova = ultima
+      ? { inizio: ultima.fine, fine: ultima.fine }
+      : { inizio: config.oraApertura, fine: config.oraChiusura };
+    setFasceOpModale((f) => [...f, nuova]);
+  }
+
+  function rimuoviFasciaOpModale(indice: number) {
+    setFasceOpModale((f) => f.filter((_, i) => i !== indice));
+  }
+
+  function cambiaFasciaOpModale(indice: number, campo: 'inizio' | 'fine', valore: string) {
+    setFasceOpModale((f) =>
+      f.map((fascia, i) => (i === indice ? { ...fascia, [campo]: valore } : fascia))
+    );
   }
 
   function aggiungiFasciaModale() {
@@ -3111,6 +3221,240 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
         </div>
       )}
 
+      {/* Modale orari giorno OPERATORE */}
+      {giornoOpModale !== null && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[90]"
+          onClick={chiudiModaleGiornoOperatore}
+        >
+          <div
+            className="bg-white rounded-apple shadow-apple-lg max-w-sm w-full p-5 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-apple-darkgray">
+                {GIORNI_SETTIMANA.find((g) => g.value === giornoOpModale.giorno)?.label}
+              </h3>
+              <button
+                type="button"
+                onClick={chiudiModaleGiornoOperatore}
+                className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-apple-gray text-xs flex items-center justify-center transition-colors"
+                aria-label="Chiudi"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Toggle aperto */}
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-apple mb-4">
+              <button
+                type="button"
+                onClick={() => setApertoOpModale((a) => !a)}
+                className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0 ${
+                  apertoOpModale
+                    ? 'bg-apple-blue border-apple-blue text-white'
+                    : 'bg-white border-gray-300'
+                }`}
+                aria-label={apertoOpModale ? 'Chiudi giorno' : 'Apri giorno'}
+              >
+                {apertoOpModale && <span className="text-[10px] font-bold">✓</span>}
+              </button>
+              <button
+                type="button"
+                onClick={() => setApertoOpModale((a) => !a)}
+                className="flex-1 text-left"
+              >
+                <p className="text-sm font-semibold text-apple-darkgray">
+                  {apertoOpModale ? 'Aperto' : 'Chiuso'}
+                </p>
+              </button>
+            </div>
+
+            {/* Fasce */}
+            {apertoOpModale && (
+              <div className="space-y-3 mb-4">
+                <p className="text-xs font-semibold text-apple-gray uppercase tracking-wide">
+                  Fasce orarie
+                </p>
+                {fasceOpModale.length === 0 && (
+                  <p className="text-xs text-apple-gray italic text-center py-3">
+                    Nessuna fascia. Aggiungine una qui sotto.
+                  </p>
+                )}
+                {fasceOpModale.map((f, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={f.inizio}
+                      onChange={(e) => cambiaFasciaOpModale(i, 'inizio', e.target.value)}
+                      className="flex-1 min-w-0 px-2.5 py-2 rounded-apple bg-gray-50 border border-gray-200 text-xs text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                    />
+                    <span className="text-apple-gray text-xs shrink-0">→</span>
+                    <input
+                      type="time"
+                      value={f.fine}
+                      onChange={(e) => cambiaFasciaOpModale(i, 'fine', e.target.value)}
+                      className="flex-1 min-w-0 px-2.5 py-2 rounded-apple bg-gray-50 border border-gray-200 text-xs text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => rimuoviFasciaOpModale(i)}
+                      className="shrink-0 w-7 h-7 rounded-apple flex items-center justify-center text-apple-gray hover:text-red-500 hover:bg-red-50 transition-colors text-xs"
+                      title="Rimuovi fascia"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={aggiungiFasciaOpModale}
+                  className="w-full px-3 py-2 rounded-apple bg-blue-50 hover:bg-blue-100 text-apple-blue text-xs font-semibold transition-colors"
+                >
+                  + Aggiungi fascia
+                </button>
+              </div>
+            )}
+
+            {/* Azioni */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={chiudiModaleGiornoOperatore}
+                className="flex-1 px-4 py-2.5 rounded-apple bg-gray-100 text-apple-darkgray text-sm font-medium hover:bg-gray-200 transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={salvaModaleGiornoOperatore}
+                className="flex-1 px-4 py-2.5 rounded-apple bg-apple-blue text-white text-sm font-semibold hover:bg-blue-600 transition-colors shadow-apple"
+              >
+                Salva
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modale orari giorno OPERATORE */}
+      {giornoOpModale !== null && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[90]"
+          onClick={chiudiModaleGiornoOperatore}
+        >
+          <div
+            className="bg-white rounded-apple shadow-apple-lg max-w-sm w-full p-5 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-apple-darkgray">
+                {GIORNI_SETTIMANA.find((g) => g.value === giornoOpModale.giorno)?.label}
+              </h3>
+              <button
+                type="button"
+                onClick={chiudiModaleGiornoOperatore}
+                className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-apple-gray text-xs flex items-center justify-center transition-colors"
+                aria-label="Chiudi"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Toggle aperto */}
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-apple mb-4">
+              <button
+                type="button"
+                onClick={() => setApertoOpModale((a) => !a)}
+                className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0 ${
+                  apertoOpModale
+                    ? 'bg-apple-blue border-apple-blue text-white'
+                    : 'bg-white border-gray-300'
+                }`}
+                aria-label={apertoOpModale ? 'Chiudi giorno' : 'Apri giorno'}
+              >
+                {apertoOpModale && <span className="text-[10px] font-bold">✓</span>}
+              </button>
+              <button
+                type="button"
+                onClick={() => setApertoOpModale((a) => !a)}
+                className="flex-1 text-left"
+              >
+                <p className="text-sm font-semibold text-apple-darkgray">
+                  {apertoOpModale ? 'Aperto' : 'Chiuso'}
+                </p>
+              </button>
+            </div>
+
+            {/* Fasce */}
+            {apertoOpModale && (
+              <div className="space-y-3 mb-4">
+                <p className="text-xs font-semibold text-apple-gray uppercase tracking-wide">
+                  Fasce orarie
+                </p>
+                {fasceOpModale.length === 0 && (
+                  <p className="text-xs text-apple-gray italic text-center py-3">
+                    Nessuna fascia. Aggiungine una qui sotto.
+                  </p>
+                )}
+                {fasceOpModale.map((f, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={f.inizio}
+                      onChange={(e) => cambiaFasciaOpModale(i, 'inizio', e.target.value)}
+                      className="flex-1 min-w-0 px-2.5 py-2 rounded-apple bg-gray-50 border border-gray-200 text-xs text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                    />
+                    <span className="text-apple-gray text-xs shrink-0">→</span>
+                    <input
+                      type="time"
+                      value={f.fine}
+                      onChange={(e) => cambiaFasciaOpModale(i, 'fine', e.target.value)}
+                      className="flex-1 min-w-0 px-2.5 py-2 rounded-apple bg-gray-50 border border-gray-200 text-xs text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => rimuoviFasciaOpModale(i)}
+                      className="shrink-0 w-7 h-7 rounded-apple flex items-center justify-center text-apple-gray hover:text-red-500 hover:bg-red-50 transition-colors text-xs"
+                      title="Rimuovi fascia"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={aggiungiFasciaOpModale}
+                  className="w-full px-3 py-2 rounded-apple bg-blue-50 hover:bg-blue-100 text-apple-blue text-xs font-semibold transition-colors"
+                >
+                  + Aggiungi fascia
+                </button>
+              </div>
+            )}
+
+            {/* Azioni */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={chiudiModaleGiornoOperatore}
+                className="flex-1 px-4 py-2.5 rounded-apple bg-gray-100 text-apple-darkgray text-sm font-medium hover:bg-gray-200 transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={salvaModaleGiornoOperatore}
+                className="flex-1 px-4 py-2.5 rounded-apple bg-apple-blue text-white text-sm font-semibold hover:bg-blue-600 transition-colors shadow-apple"
+              >
+                Salva
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Card title="Granularità griglia" subtitle="Dimensione degli slot orari in agenda.">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {([10, 15, 20, 30] as const).map((m) => {
@@ -3185,67 +3529,135 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
           <div className="space-y-2">
             {operatoriList.map((op) => {
               const visibile = config.operatoriVisibili.includes(op.id);
+              const usaGlobali = op.usaOrariGlobali !== false;
+              const isOrariAperto = operatoreOrariAperto === op.id;
               return (
                 <div
                   key={op.id}
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-apple border transition-all gap-3 ${
+                  className={`rounded-apple border transition-all ${
                     visibile ? 'bg-white border-gray-200' : 'bg-gray-50/70 border-gray-200 opacity-60'
                   }`}
                 >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="flex gap-1">
-                      {COLORI_DISPONIBILI.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => cambiaColoreOperatore(op.id, c.id)}
-                          className={`w-5 h-5 rounded-full ${c.bg} ${
-                            op.colore === c.id ? 'ring-2 ring-offset-2 ring-apple-darkgray' : ''
-                          }`}
-                          title={c.label}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="flex gap-1">
+                        {COLORI_DISPONIBILI.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => cambiaColoreOperatore(op.id, c.id)}
+                            className={`w-5 h-5 rounded-full ${c.bg} ${
+                              op.colore === c.id ? 'ring-2 ring-offset-2 ring-apple-darkgray' : ''
+                            }`}
+                            title={c.label}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={op.label}
+                          onChange={(e) => cambiaLabelOperatore(op.id, e.target.value)}
+                          className="bg-transparent text-sm font-semibold text-apple-darkgray border-b border-transparent hover:border-gray-300 focus:border-apple-blue focus:outline-none"
                         />
-                      ))}
+                        <input
+                          type="text"
+                          value={op.ruolo}
+                          onChange={(e) => cambiaRuoloOperatore(op.id, e.target.value)}
+                          placeholder="Ruolo"
+                          className="bg-transparent text-xs text-apple-gray border-b border-transparent hover:border-gray-300 focus:border-apple-blue focus:outline-none"
+                        />
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <input
-                        type="text"
-                        value={op.label}
-                        onChange={(e) => cambiaLabelOperatore(op.id, e.target.value)}
-                        className="bg-transparent text-sm font-semibold text-apple-darkgray border-b border-transparent hover:border-gray-300 focus:border-apple-blue focus:outline-none"
-                      />
-                      <input
-                        type="text"
-                        value={op.ruolo}
-                        onChange={(e) => cambiaRuoloOperatore(op.id, e.target.value)}
-                        placeholder="Ruolo"
-                        className="bg-transparent text-xs text-apple-gray border-b border-transparent hover:border-gray-300 focus:border-apple-blue focus:outline-none"
-                      />
+
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto flex-wrap">
+                      {/* Pulsante Orari */}
+                      <button
+                        type="button"
+                        onClick={() => setOperatoreOrariAperto(isOrariAperto ? null : op.id)}
+                        className={`px-3 py-1 rounded-apple text-xs font-medium transition-colors ${
+                          !usaGlobali
+                            ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                            : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                        }`}
+                        title="Orari personalizzati operatore"
+                      >
+                        🕐 Orari {!usaGlobali && '●'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleOperatore(op.id)}
+                        className={`px-3 py-1 rounded-apple text-xs font-medium transition-colors ${
+                          visibile
+                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        }`}
+                      >
+                        {visibile ? '👁️ Visibile' : '🙈 Nascosto'}
+                      </button>
+                      {operatoriList.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => rimuoviOperatore(op.id)}
+                          className="w-7 h-7 rounded-apple flex items-center justify-center text-apple-gray hover:text-red-500 hover:bg-red-50 transition-colors"
+                          title="Elimina operatore"
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-                    <button
-                      type="button"
-                      onClick={() => toggleOperatore(op.id)}
-                      className={`px-3 py-1 rounded-apple text-xs font-medium transition-colors ${
-                        visibile
-                          ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                      }`}
-                    >
-                      {visibile ? '👁️ Visibile' : '🙈 Nascosto'}
-                    </button>
-                    {operatoriList.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => rimuoviOperatore(op.id)}
-                        className="w-7 h-7 rounded-apple flex items-center justify-center text-apple-gray hover:text-red-500 hover:bg-red-50 transition-colors"
-                        title="Elimina operatore"
-                      >
-                        🗑️
-                      </button>
-                    )}
-                  </div>
+                  {/* Card espandibile Orari */}
+                  {isOrariAperto && (
+                    <div className="border-t border-gray-100 p-3 sm:p-4 bg-gray-50/50 space-y-3">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={usaGlobali}
+                          onChange={() => toggleUsaOrariGlobali(op.id)}
+                          className="w-4 h-4 accent-apple-blue"
+                        />
+                        <span className="text-xs font-medium text-apple-darkgray">
+                          Usa orari globali della sede
+                        </span>
+                        <span className="text-[10px] text-apple-gray">
+                          (disattiva per personalizzare gli orari di {op.label})
+                        </span>
+                      </label>
+
+                      {!usaGlobali && (
+                        <div className="space-y-1.5">
+                          {GIORNI_SETTIMANA.map((g) => {
+                            const aperto = isGiornoOperatoreAperto(op.id, g.value);
+                            const fasce = getFasceOperatoreGiorno(op.id, g.value);
+                            return (
+                              <button
+                                key={g.value}
+                                type="button"
+                                onClick={() => apriModaleGiornoOperatore(op.id, g.value)}
+                                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-apple border text-xs transition-colors ${
+                                  aperto
+                                    ? 'bg-white border-gray-200 hover:border-apple-blue'
+                                    : 'bg-gray-100/60 border-gray-200 opacity-70 hover:opacity-90'
+                                }`}
+                              >
+                                <span className="font-semibold text-apple-darkgray w-8 text-left">
+                                  {g.breve}
+                                </span>
+                                <span className="flex-1 text-left text-apple-gray truncate">
+                                  {aperto && fasce.length > 0
+                                    ? fasce.map((f) => `${f.inizio}–${f.fine}`).join(' · ')
+                                    : 'Chiuso'}
+                                </span>
+                                <span className="text-apple-gray">✏️</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

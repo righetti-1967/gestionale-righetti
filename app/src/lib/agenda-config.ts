@@ -15,6 +15,12 @@ export interface OperatoreConfig {
   label: string;     // "Luca Righetti"
   ruolo: string;     // "Consulente Tricologo"
   colore: string;    // "blue", "green", ecc.
+
+  // NEW — Orari personalizzati per operatore (opzionale).
+  // Se usaOrariGlobali !== false → usa gli orari globali della sede.
+  // Se usaOrariGlobali === false → usa orariGiorni qui sotto.
+  orariGiorni?: Record<number, OrarioGiorno>;  // 0=Dom, 1=Lun, ..., 6=Sab
+  usaOrariGlobali?: boolean;                   // default true (o undefined = true)
 }
 
 export interface Fascia {
@@ -91,6 +97,63 @@ export const AGENDA_DEFAULT: ConfigAgenda = {
     generico: 'gray',
   },
 };
+
+/**
+ * Ritorna gli orari del giorno per un operatore specifico.
+ * Se l'operatore usa orari globali (o non ha custom), ritorna `config.orariGiorni[giorno]`.
+ * Se l'operatore ha orari custom, ritorna `operatore.orariGiorni[giorno]`.
+ */
+export function getOrariOperatoreGiorno(
+  config: ConfigAgenda,
+  operatoreId: string,
+  giornoSettimana: number
+): OrarioGiorno {
+  const op = config.operatori.find((o) => o.id === operatoreId);
+  const fallbackGlobali: OrarioGiorno =
+    config.orariGiorni?.[giornoSettimana] ||
+    {
+      aperto: false,
+      fasce: [],
+    };
+
+  if (!op || op.usaOrariGlobali !== false) {
+    return fallbackGlobali;
+  }
+
+  return op.orariGiorni?.[giornoSettimana] || fallbackGlobali;
+}
+
+/**
+ * Ritorna true se l'operatore è disponibile all'orario specificato.
+ * Utile per validazione drag&drop e slot disabilitati.
+ */
+export function isOperatoreDisponibile(
+  config: ConfigAgenda,
+  operatoreId: string,
+  dataISO: string,   // "2026-10-15"
+  oraHHMM: string    // "15:30"
+): boolean {
+  try {
+    const giornoSettimana = new Date(dataISO + 'T00:00:00').getDay();
+    const orario = getOrariOperatoreGiorno(config, operatoreId, giornoSettimana);
+
+    if (!orario.aperto || orario.fasce.length === 0) return false;
+
+    const [h, m] = oraHHMM.split(':').map(Number);
+    const minuti = h * 60 + m;
+
+    return orario.fasce.some((f) => {
+      const [hi, mi] = f.inizio.split(':').map(Number);
+      const [hf, mf] = f.fine.split(':').map(Number);
+      const inizio = hi * 60 + mi;
+      const fine = hf * 60 + mf;
+      return minuti >= inizio && minuti < fine;
+    });
+  } catch (err) {
+    console.warn('Errore isOperatoreDisponibile:', err);
+    return true; // fail-safe: se errore, considera disponibile
+  }
+}
 
 let cache: ConfigAgenda | null = null;
 let promessaInCorso: Promise<ConfigAgenda> | null = null;
