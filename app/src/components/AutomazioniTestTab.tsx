@@ -16,6 +16,8 @@ export function AutomazioniTestTab() {
   const [errore, setErrore] = useState<string | null>(null);
   const [filtroChiave, setFiltroChiave] = useState<string>('');
   const [filtroModalita, setFiltroModalita] = useState<string>('');
+  const [filtroEsito, setFiltroEsito] = useState<string>('');
+  const [filtroGiorni, setFiltroGiorni] = useState<number>(7);
   const [eseguendo, setEseguendo] = useState<string | null>(null);
   const [expandId, setExpandId] = useState<string | null>(null);
   const [eliminandoLogId, setEliminandoLogId] = useState<string | null>(null);
@@ -28,9 +30,18 @@ export function AutomazioniTestTab() {
       const data = await listAutomazioniLog(
         filtroChiave || null,
         filtroModalita || null,
-        100
+        200
       );
-      setLogs(data);
+      // Filtraggio client-side per esito e giorni (la lib non li supporta)
+      let filtrati = data;
+      if (filtroEsito) {
+        filtrati = filtrati.filter((l) => l.esito === filtroEsito);
+      }
+      if (filtroGiorni > 0) {
+        const da = Date.now() - filtroGiorni * 24 * 60 * 60 * 1000;
+        filtrati = filtrati.filter((l) => new Date(l.created_at).getTime() >= da);
+      }
+      setLogs(filtrati);
     } catch (e: any) {
       setErrore(e.message || 'Errore caricamento log');
     } finally {
@@ -41,7 +52,7 @@ export function AutomazioniTestTab() {
   useEffect(() => {
     carica();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtroChiave, filtroModalita]);
+  }, [filtroChiave, filtroModalita, filtroEsito, filtroGiorni]);
 
   async function handleEliminaLog(logId: string, titolo: string) {
     if (!confirm(`Eliminare questo log?\n\n"${titolo}"`)) return;
@@ -84,11 +95,20 @@ export function AutomazioniTestTab() {
     }
   }
 
+  // Contatori per chiave
+  const contatori = logs.reduce<Record<string, number>>((acc, l) => {
+    acc[l.chiave] = (acc[l.chiave] || 0) + 1;
+    return acc;
+  }, {});
+
   return (
     <div className="space-y-3">
+      {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="text-sm font-bold text-apple-darkgray">🧪 Log Simulazione Automazioni</h3>
+          <h3 className="text-sm font-bold text-apple-darkgray">
+            🧪 Log Simulazione Automazioni
+          </h3>
           <p className="text-xs text-apple-gray mt-0.5">
             Anteprime delle automazioni in modalità simulazione (nessun invio reale).
           </p>
@@ -125,8 +145,22 @@ export function AutomazioniTestTab() {
         ))}
       </div>
 
+      {/* Contatori per chiave */}
+      {logs.length > 0 && (
+        <div className="flex flex-wrap gap-2 text-[10px]">
+          {Object.entries(contatori).map(([chiave, n]) => (
+            <span
+              key={chiave}
+              className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-semibold"
+            >
+              {LABEL_AUTOMAZIONE[chiave as TipoAutomazione]?.label || chiave}: {n}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Filtri */}
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <select
           value={filtroChiave}
           onChange={(e) => setFiltroChiave(e.target.value)}
@@ -137,14 +171,37 @@ export function AutomazioniTestTab() {
             <option key={chiave} value={chiave}>{label}</option>
           ))}
         </select>
+
         <select
           value={filtroModalita}
           onChange={(e) => setFiltroModalita(e.target.value)}
           className="px-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-apple"
         >
           <option value="">Tutte le modalità</option>
-          <option value="simulazione">Simulazione</option>
-          <option value="reale">Reale</option>
+          <option value="simulazione">🧪 Simulazione</option>
+          <option value="reale">🔴 Reale</option>
+        </select>
+
+        <select
+          value={filtroEsito}
+          onChange={(e) => setFiltroEsito(e.target.value)}
+          className="px-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-apple"
+        >
+          <option value="">Tutti gli esiti</option>
+          <option value="ok">OK</option>
+          <option value="skip">Skip</option>
+          <option value="errore">Errore</option>
+        </select>
+
+        <select
+          value={filtroGiorni}
+          onChange={(e) => setFiltroGiorni(parseInt(e.target.value) || 0)}
+          className="px-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-apple"
+        >
+          <option value={1}>Ultime 24h</option>
+          <option value={7}>Ultimi 7 giorni</option>
+          <option value={30}>Ultimi 30 giorni</option>
+          <option value={0}>Tutto</option>
         </select>
       </div>
 
@@ -169,6 +226,7 @@ export function AutomazioniTestTab() {
               log.esito === 'ok' ? 'green' :
               log.esito === 'skip' ? 'amber' :
               'red';
+            const labelAuto = LABEL_AUTOMAZIONE[log.chiave as TipoAutomazione]?.label || log.chiave;
             return (
               <div
                 key={log.id}
@@ -181,13 +239,13 @@ export function AutomazioniTestTab() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-apple-darkgray">{log.chiave}</span>
+                      <span className="font-semibold text-apple-darkgray">{labelAuto}</span>
                       <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
                         log.modalita === 'simulazione'
-                          ? 'bg-purple-100 text-purple-700'
-                          : 'bg-blue-100 text-blue-700'
+                          ? 'bg-amber-50 text-amber-700'
+                          : 'bg-red-100 text-red-700'
                       }`}>
-                        {log.modalita}
+                        {log.modalita === 'simulazione' ? '🧪 simulazione' : '🔴 reale'}
                       </span>
                       <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
                         esitoColor === 'green' ? 'bg-green-100 text-green-700' :
@@ -203,7 +261,9 @@ export function AutomazioniTestTab() {
                       )}
                     </div>
                     <div className="text-apple-gray mt-1">
-                      {log.client_nome || '(nessun cliente)'} {log.client_email ? `· ${log.client_email}` : ''} {log.client_cell ? `· ${log.client_cell}` : ''}
+                      {log.client_nome || '(nessun cliente)'}
+                      {log.client_email ? ` · ${log.client_email}` : ''}
+                      {log.client_cell ? ` · ${log.client_cell}` : ''}
                     </div>
                     {log.motivo_skip && (
                       <div className="text-amber-600 mt-1">⚠️ {log.motivo_skip}</div>
@@ -242,7 +302,7 @@ export function AutomazioniTestTab() {
                     {log.corpo_testo && (
                       <div>
                         <div className="text-[10px] font-semibold text-apple-gray uppercase">Testo</div>
-                        <pre className="whitespace-pre-wrap text-[11px] text-apple-darkgray bg-gray-50 p-2 rounded">{log.corpo_testo}</pre>
+                        <pre className="whitespace-pre-wrap text-[11px] text-apple-darkgray bg-gray-50 p-2 rounded overflow-x-auto">{log.corpo_testo}</pre>
                       </div>
                     )}
                     {log.corpo_html && (
