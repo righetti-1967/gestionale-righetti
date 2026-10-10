@@ -36,7 +36,6 @@ import { SicurezzaTab } from '../components/SicurezzaTab';
 import { ModaleConfigFiscale } from '../components/ModaleConfigFiscale';
 import { IntegrazioniLogTab } from '../components/IntegrazioniLogTab';
 import { TestiTemplateTab } from '../components/TestiTemplateTab';
-import { AutomazioniTestTab } from '../components/AutomazioniTestTab';
 import { AutomazioniTab } from '../components/AutomazioniTab';
 import { AppClienteTab } from '../components/AppClienteTab';
 import type { RegimeFiscale } from '../lib/configFiscale';
@@ -117,7 +116,7 @@ function normalizzaDati(raw: unknown): DatiAziendali {
   };
 }
 
-type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'comunicazioni' | 'testi_template' | 'automazioni' | 'test_automazioni' | 'sicurezza' | 'licenze' | 'app_cliente';
+type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'comunicazioni' | 'testi_template' | 'automazioni' | 'sicurezza' | 'licenze' | 'app_cliente';
 
 const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'profilo', label: 'Profilo', icon: '👤' },
@@ -130,7 +129,6 @@ const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'comunicazioni', label: 'Comunicazioni', icon: '💬' },
   { id: 'testi_template', label: 'Testi Messaggi', icon: '📝' },
   { id: 'automazioni', label: 'Automazioni', icon: '🔔' },
-  { id: 'test_automazioni', label: 'Test Automazioni', icon: '🧪' },
   { id: 'sicurezza', label: 'Sicurezza', icon: '🔐' },
   { id: 'app_cliente', label: 'App Cliente', icon: '📱' },
 ];
@@ -1094,14 +1092,6 @@ export function Impostazioni() {
         {tabAttiva === 'comunicazioni' && <TabComunicazioni registraSalva={registraSalva} />}
         {tabAttiva === 'testi_template' && <TestiTemplateTab />}
         {tabAttiva === 'automazioni' && <AutomazioniTab />}
-        {tabAttiva === 'test_automazioni' && (
-          <Card
-            title="🧪 Log Simulazione Automazioni"
-            subtitle="Anteprime delle automazioni in modalità simulazione (nessun invio reale)."
-          >
-            <AutomazioniTestTab />
-          </Card>
-        )}
         {tabAttiva === 'sicurezza' && <SicurezzaTab />}
         {tabAttiva === 'app_cliente' && <AppClienteTab />}
         {tabAttiva === 'licenze' && isAdmin && <TabLicenze adminEmail={user?.email || ''} />}

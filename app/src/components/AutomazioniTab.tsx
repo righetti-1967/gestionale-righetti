@@ -14,6 +14,7 @@ import {
 } from '../lib/automazioni';
 import { Toast, type ToastTipo } from './Toast';
 import { NotifichePushAppuntamenti } from './NotifichePushAppuntamenti';
+import { AutomazioniTestTab } from './AutomazioniTestTab';
 
 export function AutomazioniTab() {
   const [automazioni, setAutomazioni] = useState<Record<TipoAutomazione, Automazione> | null>(null);
@@ -135,6 +136,19 @@ export function AutomazioniTab() {
         salvando={salvando === 'riattivazione'}
         onUpdate={(patch) => aggiornaAutomazione('riattivazione', patch)}
       />
+
+      {/* Log Simulazione — stile Card (come Impostazioni > Fatturazione) */}
+      <div className="bg-white rounded-apple shadow-apple p-4 sm:p-5 lg:p-6 border border-gray-100">
+        <div className="mb-4">
+          <h2 className="text-base sm:text-lg font-bold text-apple-darkgray">
+            🧪 Log Simulazione Automazioni
+          </h2>
+          <p className="text-xs sm:text-sm text-apple-gray mt-1">
+            Anteprime delle automazioni in modalità simulazione (nessun invio reale).
+          </p>
+        </div>
+        <AutomazioniTestTab />
+      </div>
 
       {toast && (
         <Toast
