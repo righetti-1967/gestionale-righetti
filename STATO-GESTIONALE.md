@@ -1,5 +1,5 @@
 # STATO GESTIONALE RIGHETTI 1967
-Ultimo aggiornamento: 10/10/2026 (mattina)
+Ultimo aggiornamento: 10/10/2026 (pomeriggio)
 
 ---
 
@@ -108,6 +108,46 @@ Riferimento al punto 1.
 
 ## ✅ STORICO — COMPLETATO
 
+### 10/10/2026 — Pomeriggio (Logo neutro multi-tenant)
+
+#### Asset neutri per utenti non-Righetti
+**Concetto**: Righetti (`righetti@righetti.club`) vede sempre il suo logo ovunque. Tutti gli altri utenti (demo + reali) non devono **mai** vedere il logo Righetti: se non caricano un loro logo, vedono icone neutre brand-agnostiche.
+
+- ✅ **Gestionale**: icone neutre **"GS" bianco su blu** (`#007AFF`) → `favicon.svg`, `icon-192.png`, `icon-512.png` in `public/`
+- ✅ **TricoAI**: icone neutre **"TG" blu su bianco** (`#007AFF`) → `favicon.svg`, `icon-192.png`, `icon-512.png` in `public/`
+- ✅ **App Cliente**: icone neutre **arancione + chiave** (già esistenti) → `favicon-32.png`, `apple-touch-icon.png`, `pwa-192x192.png`, `pwa-512x512.png`
+- ✅ **Rimosso** `public/logo.png` (vecchio logo Righetti statico) da Gestionale
+- ✅ **Rimosso** `public/logo.png` + `public/logo-tricoai.png` da TricoAI
+- ✅ **Rimosso** `public/icons.svg` da Gestionale
+
+#### Fallback neutro nel codice
+- ✅ **Gestionale `logo.ts`**: `LOGO_DEFAULT = '/favicon.svg'` (neutro) invece di `/logo.png` (Righetti)
+- ✅ **`getLogoUrl()`**: utente non-Righetti senza logo → ritorna `/favicon.svg` (neutro)
+- ✅ **`caricaLogoBase64()`**: fallback neutro anche per PDF di utenti non-Righetti (mai logo Righetti)
+- ✅ **TricoAI**: 6 file patchati (`Sidebar.tsx`, `Login.tsx`, `Registrati.tsx`, `ResetPassword.tsx`, `EmailConfermata.tsx`, `ForgotPassword.tsx`) → `setLogoUrl(d.logo_url || '/favicon.svg')`
+
+#### Favicon dinamica (tab browser)
+- ✅ **Gestionale**: nuovo componente `DynamicFavicon.tsx` montato in `App.tsx`
+  - Al login legge `getLogoUrl()` e aggiorna la favicon
+  - Ascolta evento `datiAziendali-aggiornati` → aggiorna in tempo reale
+- ✅ **App Cliente**: già esistente (`DynamicFavicon.tsx`) usa `getStudioLogo()` da RPC
+
+#### Fix backend Licenze (FastAPI Railway)
+- ✅ **`licenze.py`**: la tab Licenze mostrava anche i **clienti App Cliente** (es. `lostilerhs@gmail.com`) come "utenti demo"
+- ✅ Aggiunta funzione `_get_clienti_app_cliente_uuid(supabase)` → legge `client_users.auth_user_id`
+- ✅ Patch `lista_utenti()` → **salta** gli auth_user_id presenti in `client_users`
+- ✅ Deploy su Railway → ora la tab Licenze mostra **solo staff + demo**
+
+#### Fix backend mancante (in sospeso?)
+- ⚠️ Da verificare se il fix Railway è già deployato in PROD (patch file pronta, ma serve conferma)
+
+#### Icone PWA — limitazione residua
+- ℹ️ L'icona PWA **installata** (Dock Mac, Home iPhone) è **statica** → uguale per tutti (Gestionale: "GS" blu; TricoAI: "TG"; App Cliente: arancione+chiave)
+- ℹ️ Se Righetti vuole vedere il **suo** logo sull'icona PWA installata → serve Livello 3 (canvas + manifest dinamico, complesso)
+- ℹ️ Attualmente: Righetti vede il suo logo **dentro** l'app (sidebar, PDF, email, favicon tab) ✅, ma sull'**icona PWA installata** vede l'icona neutra
+
+---
+
 ### 10/10/2026 — Notte (Automazioni + WhatsApp + Fix UI)
 
 #### Automazioni Dry-Run — Estensione a 5 automazioni
@@ -142,15 +182,19 @@ Riferimento al punto 1.
 #### Fix bug Agenda — Click cella precompila data/ora
 - ✅ Fix A: `key` dinamica su `<FormNuovoAppuntamento>` (force remount)
 - ✅ Fix B: `useEffect` sync per data/ora/operatore
+- ✅ Fix C: `useDraft` non sovrascrive più data/ora quando apri da click su cella (`!dataIniziale && !oraIniziale`)
 
 #### Fix bug Sidebar mobile
 - ✅ Scroll funzionante su iPhone (`overflow-y-auto` su `<aside>`)
 - ✅ Logo trasparente su Chrome (fix `translateZ(0)` + `bg-apple-lightgray` sul container)
+- ✅ Logo dinamico nella sidebar (`getLogoUrl()` invece di `d.logo_url`)
 
 #### Fix bug notifiche push spostamento appuntamento
 - ✅ `spostaAppuntamento` ora traccia `rebooking_da_id = originale.id`
 - ✅ Trigger INSERT: se `rebooking_da_id` valorizzato → notifica "spostato"
 - ✅ Trigger UPDATE: skip "cancellato" se `motivo_cancellazione='spostamento'`
+
+---
 
 ### 09/10/2026 — Sessione MOSTRO (TricoAI → App Cliente + Push)
 
@@ -300,6 +344,29 @@ Riferimento al punto 1.
 - **Edge Function `automazioni-runner`** (5 chiavi supportate)
 - **RPC `admin_list_automazioni_log`**, `admin_elimina_automazione_log`, `admin_pulisci_automazioni_log`
 
+### Loghi e Asset Neutri (multi-tenant)
+**Obiettivo**: `righetti@righetti.club` vede sempre il suo logo. Tutti gli altri utenti (demo + reali) vedono:
+- **Il loro logo** se caricato in Impostazioni → Azienda
+- **Icona neutra brand-agnostica** se non hanno caricato nulla (mai Righetti)
+
+| Progetto | Asset neutro | Dove sta | Fallback codice |
+|---|---|---|---|
+| **Gestionale** | "GS" bianco su blu `#007AFF` | `public/favicon.svg` + `icon-192.png` + `icon-512.png` | `logo.ts → LOGO_DEFAULT = '/favicon.svg'` |
+| **TricoAI** | "TG" blu `#007AFF` su bianco | `public/favicon.svg` + `icon-192.png` + `icon-512.png` | 6 file `.tsx` → `setLogoUrl(d.logo_url \|\| '/favicon.svg')` |
+| **App Cliente** | Arancione `#FF9500` + chiave 🔑 | `public/favicon-32.png` + `apple-touch-icon.png` + `pwa-192x192.png` + `pwa-512x512.png` | `DynamicFavicon.tsx → DEFAULT_ICON = '/favicon-32.png'` |
+
+**Favicon dinamica tab browser**:
+- Gestionale: `src/components/DynamicFavicon.tsx` (montato in `App.tsx`)
+- TricoAI: n/a per ora
+- App Cliente: `src/components/DynamicFavicon.tsx` (già esistente)
+
+**Logica RPC/Storage del logo**:
+- Gestionale/TricoAI: Supabase Storage bucket `azienda` + path `{user_id}/logo.png` (o `logo.png` per Righetti)
+- App Cliente: RPC `get_my_studio_logo()` → ritorna URL pubblico del logo dello studio
+
+**Limite residuo**:
+- L'**icona PWA installata** (Dock Mac, Home iPhone) è **statica** → vedi "GS" o "TG" o "arancione+chiave" anche se loggato come Righetti. Non si può rendere dinamica senza Livello 3 (canvas + manifest blob, complesso e instabile su iOS).
+
 ### Edge Functions Supabase
 - `generate-invite-link` → magic link
 - `send-push` → notifiche push
@@ -310,6 +377,13 @@ Riferimento al punto 1.
 - Setup: `supabase login` + `supabase link --project-ref yporpszebtasalwazirz`
 - Secrets: `supabase secrets set CHIAVE="valore"`
 
+### Backend FastAPI (Railway) — Gestionale
+- Path locale: `/Users/luca/Desktop/Tricolab/GESTIONALE/backend/`
+- File chiave: `app/routers/licenze.py` (gestione licenze demo/reali)
+- Endpoint: `GET /api/licenze/utenti`, `POST /api/licenze/proroga`, `POST /api/licenze/sblocca-reale`, `POST /api/licenze/popola-demo`
+- **IMPORTANTE**: `lista_utenti()` esclude gli auth_user_id presenti in `client_users` (clienti App Cliente) → NON devono apparire nella tab Licenze
+- Deploy: Railway (auto su push GitHub)
+
 ### Integrazioni Esterne (attive)
 - **Whatsender**: `https://api.whatsender.it/api/send` (POST body: receiver, msgtext, token, mediaurl)
 - **Google Workspace**: Webhook Relay Apps Script
@@ -318,6 +392,7 @@ Riferimento al punto 1.
 ### ⚠️ Comandi Terminal
 - Se venv attivo oscura PATH → usa `deactivate` prima di `supabase`
 - `supabase login` → salva token in `~/.supabase/access-token`
+- Su zsh: usare apici singoli per path con caratteri speciali (`'path con (parentesi)'`)
 
 ### PWA Auto-Update (UpdateBanner)
 - `registerType: 'prompt'` + `strategies: 'injectManifest'`
@@ -381,5 +456,7 @@ MATCH CLIENTE: mai solo per nome, sempre email o email+nome+cellulare
 PDF Storage: nomi file con timestamp univoco (evita cache)
 
 WhatsApp invio: sempre via inviaWhatsAppSmart (fallback automatico se Whatsender non configurato)
+
+Logo utente: mai mostrare logo Righetti ad altri utenti. Usa sempre getLogoUrl() per Gestionale/TricoAI o getStudioLogo() per App Cliente. Fallback neutro obbligatorio.
 
 FINE FILE
