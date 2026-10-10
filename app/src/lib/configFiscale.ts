@@ -57,6 +57,8 @@ export interface ConfigFPT {
   api_key?: string;
   password?: string;
   ambiente?: 'test' | 'produzione';
+  modalita?: ModalitaIntegrazione;   // NEW — default 'simulazione'
+  ultima_attivazione_reale?: string; // NEW — ISO date
 }
 
 /** ADE Diretto — SDI fatture */
@@ -64,6 +66,8 @@ export interface ConfigAdeDiretto {
   codice_sdi?: string;       // es. '0000000' o 'M5UXCR1'
   pec?: string;              // in alternativa a codice_sdi
   regime_fiscale?: 'ordinario' | 'forfettario';
+  modalita?: ModalitaIntegrazione;   // NEW — default 'simulazione'
+  ultima_attivazione_reale?: string; // NEW — ISO date
 }
 
 /** Registratore RCH */
@@ -101,12 +105,14 @@ export function configVuota(provider: ProviderFiscale): Record<string, any> {
         api_key: '',
         password: '',
         ambiente: 'test',
+        modalita: 'simulazione',
       } as ConfigFPT;
     case 'ade_diretto':
       return {
         codice_sdi: '',
         pec: '',
         regime_fiscale: 'ordinario',
+        modalita: 'simulazione',
       } as ConfigAdeDiretto;
     case 'rch':
       return {
@@ -249,10 +255,12 @@ export async function verificaConfigProvider(params: {
         messaggio: 'Compila tutti i campi obbligatori (ragione sociale, P.IVA, API key, password)',
       };
     }
-    // MOCK: simula verifica riuscita
+    const realeF = c.modalita === 'reale';
     return {
       ok: true,
-      messaggio: '✅ Verifica FPT completata (mock — nessuna chiamata reale)',
+      messaggio: realeF
+        ? '✅ Configurazione FPT valida — modalità REALE attiva (driver non ancora collegato)'
+        : '✅ Configurazione FPT valida — modalità SIMULAZIONE (nessun invio reale)',
     };
   }
 
@@ -264,9 +272,12 @@ export async function verificaConfigProvider(params: {
         messaggio: 'Inserisci almeno Codice SDI o PEC',
       };
     }
+    const realeA = c.modalita === 'reale';
     return {
       ok: true,
-      messaggio: '✅ Codice SDI/PEC valido (mock — nessuna chiamata reale)',
+      messaggio: realeA
+        ? '✅ Codice SDI/PEC valido — modalità REALE attiva (driver SDI non ancora collegato)'
+        : '✅ Codice SDI/PEC valido — modalità SIMULAZIONE (nessun invio reale)',
     };
   }
 

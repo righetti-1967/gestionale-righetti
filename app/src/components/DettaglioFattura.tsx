@@ -3,13 +3,15 @@ import { useAuth } from '../lib/auth';
 import { verificaPassword } from '../lib/sicurezza';
 import { inviaEmailConConfig } from '../lib/api';
 import { getCliente } from '../lib/clienti';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { generaPdfFattura } from '../lib/pdfFattura';
 import { getTestoTemplate, renderTemplate } from '../lib/testiTemplate';
 import { caricaDatiAziendali } from '../lib/datiAziendali';
 import { inviaWhatsAppSmart } from '../lib/whatsapp';
 import { supabase } from '../lib/supabase';
 import { FirmaFatturaQR } from './FirmaFatturaQR';
+import { getConfigFiscale, isModalitaReale, type ProviderFiscale } from '../lib/configFiscale';
+import { inviaFatturaAlProvider } from '../lib/fatturazioneElettronica';
 import {
   AnteprimaPdf,
   IntestazionePdf,
@@ -63,6 +65,60 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
   const [showAvvisoIncasso, setShowAvvisoIncasso] = useState(false);
   const [showAnteprima, setShowAnteprima] = useState(false);
   const [toastInvia, setToastInvia] = useState<string | null>(null);
+
+  // Stato integrazione fiscale (FPT/ADE)
+  const [providerFiscale, setProviderFiscale] = useState<ProviderFiscale | null>(null);
+  const [modalitaReale, setModalitaReale] = useState(false);
+  const [inviandoProvider, setInviandoProvider] = useState(false);
+
+  useEffect(() => {
+    let annullato = false;
+    async function carica() {
+      try {
+        const cfg = await getConfigFiscale('fatture');
+        if (!annullato && cfg) {
+          setProviderFiscale(cfg.provider);
+          setModalitaReale(isModalitaReale(cfg.config));
+        }
+      } catch (err) {
+        console.warn('Errore lettura config fiscale:', err);
+      }
+    }
+    carica();
+    return () => {
+      annullato = true;
+    };
+  }, []);
+
+  async function handleInviaAlProvider() {
+    if (!providerFiscale) {
+      setToastInvia('❌ Configura prima il provider fiscale in Impostazioni');
+      setTimeout(() => setToastInvia(null), 4000);
+      return;
+    }
+    if (providerFiscale !== 'fpt' && providerFiscale !== 'ade_diretto') {
+      setToastInvia('❌ Provider fiscale non valido per fatture');
+      setTimeout(() => setToastInvia(null), 4000);
+      return;
+    }
+
+    try {
+      setInviandoProvider(true);
+      const cfg = await getConfigFiscale('fatture');
+      const res = await inviaFatturaAlProvider({
+        fattura,
+        provider: providerFiscale,
+        config: cfg?.config || { modalita: 'simulazione' },
+      });
+      setToastInvia(res.messaggio);
+      setTimeout(() => setToastInvia(null), 5000);
+    } catch (err: any) {
+      setToastInvia('❌ ' + (err?.message || 'Errore invio provider'));
+      setTimeout(() => setToastInvia(null), 5000);
+    } finally {
+      setInviandoProvider(false);
+    }
+  }
 
   async function handleRegistraIncasso() {
     if (!metodoPagamento) {
@@ -374,6 +430,15 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
                 {fattura.annullato && (
                   <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold uppercase">
                     ❌ Annullata
+                  </span>
+                )}
+                {(providerFiscale === 'fpt' || providerFiscale === 'ade_diretto') && !fattura.annullato && (
+                  <span className={`ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                    modalitaReale
+                      ? 'bg-red-100 text-red-800 border-red-300'
+                      : 'bg-amber-50 text-amber-700 border-amber-300'
+                  }`}>
+                    {modalitaReale ? '🔴 REALE' : '🧪 SIMULAZIONE'}
                   </span>
                 )}
               </h2>
@@ -880,6 +945,27 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
               className="flex-1 min-w-[120px] px-4 py-2.5 bg-apple-blue text-white rounded-apple font-medium text-sm hover:bg-blue-600 transition-colors"
             >
               ✏️ Modifica note
+            </button>
+          )}
+
+          {(providerFiscale === 'fpt' || providerFiscale === 'ade_diretto') && !fattura.annullato && (
+            <button
+              onClick={handleInviaAlProvider}
+              disabled={inviandoProvider}
+              className={`flex-1 min-w-[140px] px-4 py-2.5 rounded-apple font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                modalitaReale
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-amber-500 text-white hover:bg-amber-600'
+              }`}
+              title={modalitaReale
+                ? `Invio REALE a ${providerFiscale === 'fpt' ? 'FPT' : 'SDI'}`
+                : `Simulazione invio a ${providerFiscale === 'fpt' ? 'FPT' : 'SDI'} (nessun invio reale)`}
+            >
+              {inviandoProvider
+                ? '⏳...'
+                : fattura.inviato_sdi
+                  ? `📤 Reinvia a ${providerFiscale === 'fpt' ? 'FPT' : 'SDI'}`
+                  : `📤 Invia a ${providerFiscale === 'fpt' ? 'FPT' : 'SDI'}`}
             </button>
           )}
 

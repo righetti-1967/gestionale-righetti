@@ -274,10 +274,18 @@ export function ModaleConfigFiscale({
                 </h3>
 
                 {provider === 'fpt' && (
-                  <FptConfig config={config as ConfigFPT} onChange={aggiorna} />
+                  <FptConfig
+                    config={config as ConfigFPT}
+                    onChange={aggiorna}
+                    onRichiediConfermaReale={() => setShowConfermaReale(true)}
+                  />
                 )}
                 {provider === 'ade_diretto' && (
-                  <AdeDirettoConfig config={config as ConfigAdeDiretto} onChange={aggiorna} />
+                  <AdeDirettoConfig
+                    config={config as ConfigAdeDiretto}
+                    onChange={aggiorna}
+                    onRichiediConfermaReale={() => setShowConfermaReale(true)}
+                  />
                 )}
                 {provider === 'rch' && (
                   <RCHConfig
@@ -431,12 +439,25 @@ export function ModaleConfigFiscale({
 function FptConfig({
   config,
   onChange,
+  onRichiediConfermaReale,
 }: {
   config: ConfigFPT;
   onChange: (campo: string, valore: any) => void;
+  onRichiediConfermaReale: () => void;
 }) {
+  const modalita: ModalitaIntegrazione = config.modalita || 'simulazione';
   return (
     <div className="space-y-3">
+      <SelettoreModalita
+        modalita={modalita}
+        onChange={(m) => {
+          if (m === 'reale') {
+            onRichiediConfermaReale();
+          } else {
+            onChange('modalita', 'simulazione');
+          }
+        }}
+      />
       <Campo
         label="Ragione sociale"
         value={config.ragione_sociale || ''}
@@ -480,12 +501,25 @@ function FptConfig({
 function AdeDirettoConfig({
   config,
   onChange,
+  onRichiediConfermaReale,
 }: {
   config: ConfigAdeDiretto;
   onChange: (campo: string, valore: any) => void;
+  onRichiediConfermaReale: () => void;
 }) {
+  const modalita: ModalitaIntegrazione = config.modalita || 'simulazione';
   return (
     <div className="space-y-3">
+      <SelettoreModalita
+        modalita={modalita}
+        onChange={(m) => {
+          if (m === 'reale') {
+            onRichiediConfermaReale();
+          } else {
+            onChange('modalita', 'simulazione');
+          }
+        }}
+      />
       <Campo
         label="Codice SDI (destinatario)"
         value={config.codice_sdi || ''}

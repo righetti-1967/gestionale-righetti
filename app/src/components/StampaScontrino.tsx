@@ -151,17 +151,15 @@ export function StampaScontrino({ scontrino, onClose, onAnnullato }: StampaScont
     try {
       setInviandoStampante(true);
       const cfg = await getConfigFiscale('scontrini_fisico');
-      if (!cfg) {
-        setToast({
-          message: '❌ Configura prima la stampante in Impostazioni',
-          tipo: 'error',
-        });
-        return;
-      }
+
+      // Fallback: nessuna config salvata → simula comunque
+      const providerEffettivo = (cfg?.provider as 'rch' | 'epson') || 'rch';
+      const configEffettiva = cfg?.config || { modalita: 'simulazione' };
+
       const res = await inviaAStampante({
         scontrino,
-        provider: cfg.provider as 'rch' | 'epson',
-        config: cfg.config,
+        provider: providerEffettivo,
+        config: configEffettiva,
       });
       setToast({
         message: res.messaggio,
