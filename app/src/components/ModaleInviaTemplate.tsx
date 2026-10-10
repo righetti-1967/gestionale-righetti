@@ -294,7 +294,7 @@ export function ModaleInviaTemplate({
                 : 'bg-apple-blue hover:bg-blue-600'
             }`}
           >
-            {inviando ? '⏳ Invio...' : canale === 'whatsapp' ? '💬 Apri WhatsApp' : '📧 Invia Email'}
+            {inviando ? '⏳ Invio...' : canale === 'whatsapp' ? '📤 Invia WhatsApp' : '📧 Invia Email'}
           </button>
         </div>
       </div>
