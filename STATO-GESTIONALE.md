@@ -1,5 +1,5 @@
 # STATO GESTIONALE RIGHETTI 1967
-Ultimo aggiornamento: 10/10/2026 (pomeriggio)
+Ultimo aggiornamento: 11/10/2026 (notte)
 
 ---
 
@@ -19,6 +19,20 @@ Check obbligatori:
 - Tabelle scrollabili o trasformate in card su mobile
 
 Nessuna eccezione. Se non e' responsive, non e' finita.
+
+---
+
+## 📌 REGOLA FISSA INDIRIZZI
+
+**Fatture, scontrini e privacy** (documenti fiscali/GDPR):
+- Mostrare SEMPRE entrambi: **Sede Legale + Sede Operativa**
+
+**Tutti gli altri documenti** (DDT, ordini fornitori, email, PDF, WhatsApp, promemoria, automazioni, schede, cura, percorsi, report, analytics):
+- Usare **SOLO la Sede Operativa**
+- Fallback: se Sede Operativa vuota → usa Sede Legale
+- MAI la Sede Legale da sola
+
+Nessuna eccezione. Se un documento mostra l'indirizzo sbagliato, non e' finito.
 
 ---
 
@@ -107,6 +121,80 @@ Riferimento al punto 1.
 ---
 
 ## ✅ STORICO — COMPLETATO
+
+### 11/10/2026 — Sessione Mostro (Simulazioni + Notifiche Push + Orari Operatore)
+
+#### Simulazioni Integrazioni Esterne (Priorità 1-2-3) ✅
+- ✅ **Stampa Scontrini RCH/Epson** — simulazione + toggle reale
+  - `configFiscale.ts` esteso con `modalita: 'simulazione' | 'reale'`
+  - `stampanteFiscale.ts` nuova lib `inviaAStampante()`
+  - `ModaleConfigFiscale.tsx` selettore 🧪/🔴 + modale conferma `CONFERMO`
+  - `StampaScontrino.tsx` badge dinamico + pulsante "Simula/Invia"
+- ✅ **Collegamento ADE** — fatture + scontrini (simulazione + toggle)
+- ✅ **Collegamento FPT** — fatturazione elettronica (simulazione + toggle)
+- ✅ **`fatturazioneElettronica.ts`** nuova lib `inviaFatturaAlProvider()`
+- ✅ **`DettaglioFattura.tsx`** badge 🧪/🔴 + pulsante "📤 Invia a SDI/FPT"
+
+#### Log Integrazioni (nuova feature) ✅
+- ✅ **Tabella `integrazioni_log`** (generica per tutte le integrazioni)
+- ✅ **RLS multi-tenant** (Opzione Y): Righetti vede tutto, altri solo i propri, clienti bloccati
+- ✅ **Componente `IntegrazioniLogTab.tsx`** in Impostazioni → Fatturazione
+- ✅ Filtri (tipo/modalità/esito/giorni) + payload espandibile + pulisci/elimina
+
+#### Fix bug vari ✅
+- ✅ **`config_fiscale.updated_at`** mancante (bug bloccante salvataggio)
+- ✅ **Modale conferma cambio regime** (Fatture ↔ Scontrini)
+- ✅ **5 indici SQL performance** (appuntamenti, fatture, scontrini, clienti)
+- ✅ **Badge Pending Agenda** — conta TUTTI i pending futuri (RPC `get_pending_appuntamenti`)
+- ✅ **Clienti Pending** — raggruppati per cliente con riga espandibile (Opzione C)
+- ✅ **Tab Test Automazioni** ripristinata in fondo a Automazioni (stile Card)
+
+#### Notifiche Push — Fix + Titoli personalizzati ✅
+- ✅ **Fix trigger UPDATE**: `WHEN` ora include cambio data/ora (spostamento stesso giorno funziona)
+- ✅ **Fix trigger INSERT**: gestisce stato `pending` → notifica "In attesa" (non più "Confermato")
+- ✅ **5 titoli con primo nome cliente**:
+  - `appuntamento_nuovo` → "Confermato Paolo"
+  - `appuntamento_pending` → "In attesa Paolo"
+  - `appuntamento_confermato` → "Grazie Paolo"
+  - `appuntamento_spostato` → "Riprogrammato Paolo"
+  - `appuntamento_cancellato` → "Annullato Paolo"
+
+#### App Cliente ✅
+- ✅ **`short_name`** → `Righetti` (era "Area Riservata") — from Righetti nelle notifiche
+- ✅ **Pulsante "📱 Installa l'App"** in Welcome + istruzioni iOS/Safari
+- ✅ **Pulsante "✅ Conferma appuntamento"** in Appuntamenti
+  - RPC `cliente_conferma_appuntamento()` in Supabase
+  - Trigger UPDATE genera automaticamente notifica "Grazie Paolo"
+- ✅ **Operatore con nome** (op2 → Lorenzo) nelle RPC `get_my_appuntamenti` + `get_my_next_appuntamento`
+
+#### WhatSender — Audit completo ✅
+Tutti i pulsanti WhatsApp usano `inviaWhatsAppSmart` (WhatSender + fallback `wa.me`):
+- ✅ `whatsapp.ts` esteso: supporta testi senza PDF
+- ✅ `Agenda.tsx` (Pending)
+- ✅ `ModalePromemoria.tsx`
+- ✅ `ModaleInviaTemplate.tsx`
+- ✅ `CondividiLinkFirma.tsx`
+- ✅ `AppClienteTab.tsx` (invito)
+- ✅ `Clienti.tsx` (privacy con PDF GDPR allegato)
+- ✅ `DettaglioAppuntamento.tsx` (promemoria)
+
+#### Ordini Magazzino ✅
+- ✅ **Selezione multipla prodotti** in `FormNuovoOrdine.tsx`
+- ✅ Checkbox + pulsante "+" per aggiunta rapida singola
+- ✅ "Seleziona tutti visibili" + "📦 Aggiungi N prodotti"
+
+#### Orari Personalizzati per Operatore ✅
+- ✅ **`OperatoreConfig`** esteso con `orariGiorni` + `usaOrariGlobali`
+- ✅ **Helper** `getOrariOperatoreGiorno()` + `isOperatoreDisponibile()`
+- ✅ **UI Impostazioni → Agenda**: pulsante 🕐 Orari per operatore
+- ✅ **Card espandibile** con checkbox "Usa orari globali della sede"
+- ✅ **Tabella 7 giorni** con fasce multiple (multi-fascia per giorno)
+- ✅ **Modale giorno operatore** (riusa pattern globale)
+- ✅ **Agenda Giornaliera**: slot disabilitati fuori orario operatore + avviso drag&drop
+- ✅ **Persistenza** (`adatta()` legge `orariGiorni` + `usaOrariGlobali`)
+
+---
+
 
 ### 10/10/2026 — Pomeriggio (Logo neutro multi-tenant)
 
@@ -458,5 +546,36 @@ PDF Storage: nomi file con timestamp univoco (evita cache)
 WhatsApp invio: sempre via inviaWhatsAppSmart (fallback automatico se Whatsender non configurato)
 
 Logo utente: mai mostrare logo Righetti ad altri utenti. Usa sempre getLogoUrl() per Gestionale/TricoAI o getStudioLogo() per App Cliente. Fallback neutro obbligatorio.
+
+
+---
+
+## 🔮 BACKLOG — Feature Future
+
+### 📞 Chiamate AI Voice
+**Concept**: chiamata automatica con voce AI per riattivazione, compleanno, post-seduta.
+
+- **Volume stimato**: ~3 chiamate/giorno (costo ~€5-15/mese)
+- **Stack**: Vapi.ai + Twilio + backend Railway
+- **Nome chiamante**: da `impostazioni.azienda.nomeStudio`
+- **GDPR**: AI deve dichiararsi AI all'inizio
+- **Gestione richieste specifiche**: AI dice "la richiamo io personalmente" → notifica su gestionale
+- **Requisiti tecnici**:
+  - Tabella `chiamate_log` (storico + GDPR)
+  - Gestione opt-out ("non chiamarmi più" → blocco immediato)
+  - Fallback: se cliente non risponde → WhatsApp/SMS dopo 24h
+  - Numero dedicato Twilio
+- **Approccio 3 fasi**:
+  1. MVP: solo riattivazione, 10 test con te stesso/familiari
+  2. Estensione: post-seduta + compleanno
+  3. Produzione: opt-in nel privacy PDF + voci AI ufficiali
+
+### 🔒 RLS policy `_all` da droppare (8-10 tabelle)
+Vedi sezione TODO — priorità alta per multi-tenant reale.
+
+### 🕐 Fasce orarie per operatore ✅ FATTO
+(Vedi storico 11/10)
+
+---
 
 FINE FILE
