@@ -43,6 +43,7 @@ export function FormNuovoOrdine({
   const [righe, setRighe] = useState<RigaEditable[]>([]);
   const [showPickerProdotti, setShowPickerProdotti] = useState(false);
   const [ricercaPicker, setRicercaPicker] = useState('');
+  const [selezionatiPicker, setSelezionatiPicker] = useState<Set<number>>(new Set());
 
   // Carica dati iniziali
   useEffect(() => {
@@ -167,7 +168,6 @@ export function FormNuovoOrdine({
   function aggiungiProdotto(prodotto: Prodotto) {
     const fornitore = fornitori.find((f) => f.id === fornitoreId);
     setRighe((prev) => {
-      // Se già presente, non lo aggiungo
       if (prev.find((r) => r.prodotto.id === prodotto.id)) return prev;
       return [
         ...prev,
@@ -181,6 +181,35 @@ export function FormNuovoOrdine({
     });
     setShowPickerProdotti(false);
     setRicercaPicker('');
+  }
+
+  /** Aggiunge più prodotti in un colpo (selezione multipla) */
+  function aggiungiMultipli(prodottiDaAggiungere: Prodotto[]) {
+    const fornitore = fornitori.find((f) => f.id === fornitoreId);
+    setRighe((prev) => {
+      const nuovi = prodottiDaAggiungere
+        .filter((p) => !prev.find((r) => r.prodotto.id === p.id))
+        .map((p) => ({
+          prodotto: p,
+          quantita: p.quantita_riordino || 1,
+          prezzoAcquistoLordo: p.prezzo_acquisto_lordo || 0,
+          scontoPercentuale: fornitore?.sconto_percentuale || 0,
+        }));
+      return [...prev, ...nuovi];
+    });
+    setShowPickerProdotti(false);
+    setRicercaPicker('');
+    setSelezionatiPicker(new Set());
+  }
+
+  /** Toggle selezione prodotto nel picker */
+  function toggleSelezione(id: number) {
+    setSelezionatiPicker((prev) => {
+      const nuovo = new Set(prev);
+      if (nuovo.has(id)) nuovo.delete(id);
+      else nuovo.add(id);
+      return nuovo;
+    });
   }
 
   function rimuoviRiga(index: number) {
@@ -582,7 +611,11 @@ export function FormNuovoOrdine({
                   Aggiungi prodotto all'ordine
                 </h3>
                 <button
-                  onClick={() => setShowPickerProdotti(false)}
+                  onClick={() => {
+                    setShowPickerProdotti(false);
+                    setSelezionatiPicker(new Set());
+                    setRicercaPicker('');
+                  }}
                   className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-apple-gray transition-colors"
                 >
                   ✕
@@ -615,33 +648,117 @@ export function FormNuovoOrdine({
                   );
                 }
 
-                return prodottiFornitore.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => aggiungiProdotto(p)}
-                    className="w-full px-5 py-3 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-apple-darkgray truncate">
-                        {p.nome}
-                      </p>
-                      {p.nome_originale_fornitore && (
-                        <p className="text-xs text-apple-gray italic truncate">
-                          {p.nome_originale_fornitore}
+                return prodottiFornitore.map((p) => {
+                  const isSelezionato = selezionatiPicker.has(p.id);
+                  return (
+                    <div
+                      key={p.id}
+                      className={`flex items-center gap-3 px-3 py-3 transition-colors ${
+                        isSelezionato ? 'bg-blue-50' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <button
+                        type="button"
+                        onClick={() => toggleSelezione(p.id)}
+                        className={`w-6 h-6 shrink-0 rounded-md border-2 flex items-center justify-center transition-all ${
+                          isSelezionato
+                            ? 'bg-apple-blue border-apple-blue text-white'
+                            : 'bg-white border-gray-300 hover:border-apple-blue'
+                        }`}
+                        aria-label={`Seleziona ${p.nome}`}
+                      >
+                        {isSelezionato && <span className="text-xs">✓</span>}
+                      </button>
+
+                      {/* Info prodotto (click → toggle) */}
+                      <button
+                        type="button"
+                        onClick={() => toggleSelezione(p.id)}
+                        className="flex-1 min-w-0 text-left"
+                      >
+                        <p className="text-sm font-medium text-apple-darkgray truncate">
+                          {p.nome}
                         </p>
-                      )}
-                      <p className="text-xs text-apple-gray mt-0.5">
-                        Giacenza: {p.giacenza} • Scorta min: {p.scorta_minima}
-                        {p.giacenza <= p.scorta_minima && (
-                          <span className="text-red-600 font-semibold ml-1">⚠️ Sotto scorta</span>
+                        {p.nome_originale_fornitore && (
+                          <p className="text-xs text-apple-gray italic truncate">
+                            {p.nome_originale_fornitore}
+                          </p>
                         )}
-                      </p>
+                        <p className="text-xs text-apple-gray mt-0.5">
+                          Giacenza: {p.giacenza} • Scorta min: {p.scorta_minima}
+                          {p.giacenza <= p.scorta_minima && (
+                            <span className="text-red-600 font-semibold ml-1">⚠️ Sotto scorta</span>
+                          )}
+                        </p>
+                      </button>
+
+                      {/* Pulsante + per aggiunta rapida singola */}
+                      <button
+                        type="button"
+                        onClick={() => aggiungiProdotto(p)}
+                        title="Aggiungi subito questo prodotto"
+                        className="shrink-0 w-8 h-8 rounded-full bg-apple-blue text-white hover:bg-blue-600 transition-colors flex items-center justify-center text-lg font-semibold"
+                      >
+                        +
+                      </button>
                     </div>
-                  </button>
-                ));
+                  );
+                });
               })()}
             </div>
+
+            {/* Footer picker con pulsante Aggiungi N */}
+            {(() => {
+              const prodottiVisibili = prodotti.filter(
+                (p) =>
+                  p.fornitore_id === fornitoreId &&
+                  !righe.find((r) => r.prodotto.id === p.id) &&
+                  p.nome.toLowerCase().includes(ricercaPicker.toLowerCase())
+              );
+              const numSelezionati = selezionatiPicker.size;
+              const tuttiSelezionati =
+                prodottiVisibili.length > 0 &&
+                prodottiVisibili.every((p) => selezionatiPicker.has(p.id));
+
+              return (
+                <div className="px-5 py-4 border-t border-gray-200/60 bg-gray-50/50 space-y-3 shrink-0">
+                  {prodottiVisibili.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (tuttiSelezionati) {
+                          setSelezionatiPicker(new Set());
+                        } else {
+                          setSelezionatiPicker(new Set(prodottiVisibili.map((p) => p.id)));
+                        }
+                      }}
+                      className="text-xs font-medium text-apple-blue hover:underline"
+                    >
+                      {tuttiSelezionati ? '☐ Deseleziona tutti' : '☑ Seleziona tutti visibili'}
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prodottiDaAggiungere = prodotti.filter((p) =>
+                        selezionatiPicker.has(p.id)
+                      );
+                      if (prodottiDaAggiungere.length > 0) {
+                        aggiungiMultipli(prodottiDaAggiungere);
+                      }
+                    }}
+                    disabled={numSelezionati === 0}
+                    className="w-full px-4 py-3 bg-green-600 text-white rounded-apple font-semibold text-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {numSelezionati === 0
+                      ? '📦 Seleziona almeno un prodotto'
+                      : `📦 Aggiungi ${numSelezionati} prodott${numSelezionati === 1 ? 'o' : 'i'} all'ordine`}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
