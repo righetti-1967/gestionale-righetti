@@ -6,11 +6,14 @@ import {
   type ConfigAdeDiretto,
   type ConfigRCH,
   type ConfigEpson,
+  type ModalitaIntegrazione,
   configVuota,
   getConfigFiscale,
   salvaConfigFiscale,
   eliminaConfigFiscale,
   verificaConfigProvider,
+  isModalitaReale,
+  labelModalita,
   labelRegime,
   labelProvider,
 } from '../lib/configFiscale';
@@ -41,6 +44,10 @@ export function ModaleConfigFiscale({
   const [verificando, setVerificando] = useState(false);
   const [esito, setEsito] = useState<{ ok: boolean; msg: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; tipo: ToastTipo } | null>(null);
+
+  // Modale conferma attivazione REALE
+  const [showConfermaReale, setShowConfermaReale] = useState(false);
+  const [testoConferma, setTestoConferma] = useState('');
 
   // Carica configurazione esistente
   useEffect(() => {
@@ -273,10 +280,18 @@ export function ModaleConfigFiscale({
                   <AdeDirettoConfig config={config as ConfigAdeDiretto} onChange={aggiorna} />
                 )}
                 {provider === 'rch' && (
-                  <RCHConfig config={config as ConfigRCH} onChange={aggiorna} />
+                  <RCHConfig
+                    config={config as ConfigRCH}
+                    onChange={aggiorna}
+                    onRichiediConfermaReale={() => setShowConfermaReale(true)}
+                  />
                 )}
                 {provider === 'epson' && (
-                  <EpsonConfig config={config as ConfigEpson} onChange={aggiorna} />
+                  <EpsonConfig
+                    config={config as ConfigEpson}
+                    onChange={aggiorna}
+                    onRichiediConfermaReale={() => setShowConfermaReale(true)}
+                  />
                 )}
               </div>
 
@@ -337,6 +352,66 @@ export function ModaleConfigFiscale({
           </button>
         </div>
       </div>
+
+      {showConfermaReale && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[90]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="bg-white rounded-apple shadow-apple-lg max-w-md w-full p-6">
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-red-100 flex items-center justify-center text-2xl">
+                ⚠️
+              </div>
+              <h2 className="text-lg font-bold text-apple-darkgray mb-2">
+                Attivare modalità REALE?
+              </h2>
+              <p className="text-xs text-apple-gray">
+                Stai attivando l'invio effettivo alla stampante fiscale.
+                Digitando <strong>CONFERMO</strong> accetti la responsabilità
+                delle operazioni RT.
+              </p>
+            </div>
+
+            <input
+              type="text"
+              value={testoConferma}
+              onChange={(e) => setTestoConferma(e.target.value.toUpperCase())}
+              placeholder="Digita CONFERMO"
+              autoFocus
+              className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-apple text-sm font-mono text-center tracking-wider focus:outline-none focus:ring-2 focus:ring-red-300/40"
+            />
+
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => {
+                  setShowConfermaReale(false);
+                  setTestoConferma('');
+                }}
+                className="flex-1 px-4 py-2.5 bg-gray-100 text-apple-darkgray rounded-apple font-medium text-sm hover:bg-gray-200 transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                disabled={testoConferma !== 'CONFERMO'}
+                onClick={() => {
+                  aggiorna('modalita', 'reale');
+                  aggiorna('ultima_attivazione_reale', new Date().toISOString());
+                  setShowConfermaReale(false);
+                  setTestoConferma('');
+                  setToast({
+                    message: '🔴 Modalità REALE attivata',
+                    tipo: 'success',
+                  });
+                }}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-apple font-semibold text-sm hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                🔴 Attiva Reale
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <Toast
@@ -446,12 +521,25 @@ function AdeDirettoConfig({
 function RCHConfig({
   config,
   onChange,
+  onRichiediConfermaReale,
 }: {
   config: ConfigRCH;
   onChange: (campo: string, valore: any) => void;
+  onRichiediConfermaReale: () => void;
 }) {
+  const modalita: ModalitaIntegrazione = config.modalita || 'simulazione';
   return (
     <div className="space-y-3">
+      <SelettoreModalita
+        modalita={modalita}
+        onChange={(m) => {
+          if (m === 'reale') {
+            onRichiediConfermaReale();
+          } else {
+            onChange('modalita', 'simulazione');
+          }
+        }}
+      />
       <Campo
         label="Modello RCH"
         value={config.modello || ''}
@@ -492,12 +580,25 @@ function RCHConfig({
 function EpsonConfig({
   config,
   onChange,
+  onRichiediConfermaReale,
 }: {
   config: ConfigEpson;
   onChange: (campo: string, valore: any) => void;
+  onRichiediConfermaReale: () => void;
 }) {
+  const modalita: ModalitaIntegrazione = config.modalita || 'simulazione';
   return (
     <div className="space-y-3">
+      <SelettoreModalita
+        modalita={modalita}
+        onChange={(m) => {
+          if (m === 'reale') {
+            onRichiediConfermaReale();
+          } else {
+            onChange('modalita', 'simulazione');
+          }
+        }}
+      />
       <Campo
         label="Modello Epson"
         value={config.modello || ''}
@@ -571,6 +672,57 @@ function Campo({
         }`}
       />
       {help && <p className="text-[10px] text-apple-gray mt-1">{help}</p>}
+    </div>
+  );
+}
+
+function SelettoreModalita({
+  modalita,
+  onChange,
+}: {
+  modalita: ModalitaIntegrazione;
+  onChange: (m: ModalitaIntegrazione) => void;
+}) {
+  return (
+    <div
+      className={`rounded-apple border-2 p-3 transition-all ${
+        modalita === 'reale'
+          ? 'border-red-300 bg-red-50'
+          : 'border-amber-300 bg-amber-50'
+      }`}
+    >
+      <p className="text-xs font-semibold text-apple-darkgray uppercase tracking-wide mb-2">
+        ⚙️ Modalità invio
+      </p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onChange('simulazione')}
+          className={`flex-1 px-3 py-2 rounded-apple text-xs font-semibold transition-all ${
+            modalita === 'simulazione'
+              ? 'bg-amber-500 text-white shadow-sm'
+              : 'bg-white text-apple-gray border border-gray-200 hover:border-amber-300'
+          }`}
+        >
+          🧪 Simulazione
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange('reale')}
+          className={`flex-1 px-3 py-2 rounded-apple text-xs font-semibold transition-all ${
+            modalita === 'reale'
+              ? 'bg-red-600 text-white shadow-sm'
+              : 'bg-white text-apple-gray border border-gray-200 hover:border-red-300'
+          }`}
+        >
+          🔴 Reale
+        </button>
+      </div>
+      <p className="text-[10px] text-apple-gray mt-2 leading-tight">
+        {modalita === 'reale'
+          ? '⚠️ ATTENZIONE: gli invii saranno effettivi (richiede driver RT collegato).'
+          : '🧪 Nessun invio reale: le operazioni vengono simulate e loggate.'}
+      </p>
     </div>
   );
 }

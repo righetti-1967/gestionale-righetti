@@ -10,6 +10,8 @@ import {
   inviaScontrinoWhatsApp,
 } from '../lib/scontrini-figli';
 import { verificaPassword } from '../lib/sicurezza';
+import { getConfigFiscale, isModalitaReale } from '../lib/configFiscale';
+import { inviaAStampante } from '../lib/stampanteFiscale';
 import { Toast, type ToastTipo } from './Toast';
 
 interface StampaScontrinoProps {
@@ -25,6 +27,10 @@ export function StampaScontrino({ scontrino, onClose, onAnnullato }: StampaScont
   const [inviandoEmail, setInviandoEmail] = useState(false);
   const [inviandoWa, setInviandoWa] = useState(false);
   const [toast, setToast] = useState<{ message: string; tipo: ToastTipo } | null>(null);
+
+  // Stato stampante fiscale
+  const [modalitaReale, setModalitaReale] = useState(false);
+  const [inviandoStampante, setInviandoStampante] = useState(false);
 
   // Stato modale annullo
   const [showAnnulla, setShowAnnulla] = useState(false);
@@ -47,6 +53,25 @@ export function StampaScontrino({ scontrino, onClose, onAnnullato }: StampaScont
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose, showAnnulla]);
+
+  // Carica modalità stampante fiscale (RCH/Epson)
+  useEffect(() => {
+    let annullato = false;
+    async function carica() {
+      try {
+        const cfg = await getConfigFiscale('scontrini_fisico');
+        if (!annullato && cfg) {
+          setModalitaReale(isModalitaReale(cfg.config));
+        }
+      } catch (err) {
+        console.warn('Errore lettura config stampante:', err);
+      }
+    }
+    carica();
+    return () => {
+      annullato = true;
+    };
+  }, []);
 
   const isFisico = scontrino.modalita_cassa === 'fisico';
   const isFiglio = scontrino.tipo === 'figlio';
@@ -122,6 +147,36 @@ export function StampaScontrino({ scontrino, onClose, onAnnullato }: StampaScont
     }
   }
 
+  async function handleInviaAStampante() {
+    try {
+      setInviandoStampante(true);
+      const cfg = await getConfigFiscale('scontrini_fisico');
+      if (!cfg) {
+        setToast({
+          message: '❌ Configura prima la stampante in Impostazioni',
+          tipo: 'error',
+        });
+        return;
+      }
+      const res = await inviaAStampante({
+        scontrino,
+        provider: cfg.provider as 'rch' | 'epson',
+        config: cfg.config,
+      });
+      setToast({
+        message: res.messaggio,
+        tipo: res.ok ? 'success' : 'error',
+      });
+    } catch (err: any) {
+      setToast({
+        message: '❌ ' + (err?.message || 'Errore invio stampante'),
+        tipo: 'error',
+      });
+    } finally {
+      setInviandoStampante(false);
+    }
+  }
+
   async function handleAnnulla() {
     setErroreAnnullo(null);
 
@@ -173,7 +228,7 @@ export function StampaScontrino({ scontrino, onClose, onAnnullato }: StampaScont
         className="relative flex flex-col items-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-3 flex-wrap justify-center">
           <span className={`text-xs font-bold px-3 py-1 rounded-full ${
             isFisico
               ? 'bg-amber-100 text-amber-800 border border-amber-200'
@@ -181,6 +236,15 @@ export function StampaScontrino({ scontrino, onClose, onAnnullato }: StampaScont
           }`}>
             {isFisico ? '🖨️ Scontrino FISICO' : '📱 Scontrino DIGITALE'}
           </span>
+          {isFisico && (
+            <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+              modalitaReale
+                ? 'bg-red-100 text-red-800 border-red-300'
+                : 'bg-amber-50 text-amber-700 border-amber-300'
+            }`}>
+              {modalitaReale ? '🔴 REALE' : '🧪 SIMULAZIONE'}
+            </span>
+          )}
           {isFiglio && (
             <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
               👶 FIGLIO (0€)
@@ -398,8 +462,12 @@ export function StampaScontrino({ scontrino, onClose, onAnnullato }: StampaScont
             <p className="text-center mt-1 text-[8px] tracking-widest">{barcodeSeed}</p>
 
             {isFisico && (
-              <p className="text-center mt-2 text-[9px] italic text-gray-500">
-                — simulazione stampa termica 80mm —
+              <p className={`text-center mt-2 text-[9px] italic ${
+                modalitaReale ? 'text-red-600 font-bold' : 'text-gray-500'
+              }`}>
+                {modalitaReale
+                  ? '— 🔴 modalità REALE attiva —'
+                  : '— 🧪 simulazione stampa termica 80mm —'}
               </p>
             )}
           </div>
@@ -417,6 +485,27 @@ export function StampaScontrino({ scontrino, onClose, onAnnullato }: StampaScont
           >
             ⬇️ Scarica PDF
           </button>
+
+          {isFisico && !isAnnullato && (
+            <button
+              onClick={handleInviaAStampante}
+              disabled={inviandoStampante}
+              className={`px-4 py-2.5 rounded-apple font-semibold text-xs shadow-apple transition-colors ${
+                modalitaReale
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-amber-500 text-white hover:bg-amber-600'
+              } disabled:opacity-40 disabled:cursor-not-allowed`}
+              title={modalitaReale
+                ? 'Invio REALE alla stampante'
+                : 'Simulazione invio (nessun invio reale)'}
+            >
+              {inviandoStampante
+                ? '⏳...'
+                : modalitaReale
+                  ? '🔴 Invia a stampante'
+                  : '🧪 Simula invio'}
+            </button>
+          )}
 
           <button
             onClick={handleInviaEmail}

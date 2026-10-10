@@ -19,7 +19,21 @@ export type ProviderFiscale =
   | 'ade_diretto'   // SDI (fatture) o ADE Corrispettivi (scontrini) — invio manuale
   | 'fpt'           // Fatture Per Tutti (via API)
   | 'rch'           // Registratore RCH (scontrini fisici)
-  | 'epson';        // Epson 80mm (scontrini fisici)
+  | 'epson';
+
+// ============================================================
+// MODALITÀ INTEGRAZIONE (simulazione vs reale)
+// ============================================================
+
+/**
+ * Modalità di comunicazione con il provider esterno:
+ * - 'simulazione' → nessun invio reale, tutto a video/log
+ * - 'reale'       → invio effettivo al provider (richiede driver collegato)
+ *
+ * Default: 'simulazione' (per sicurezza)
+ */
+export type ModalitaIntegrazione = 'simulazione' | 'reale';
+        // Epson 80mm (scontrini fisici)
 
 export interface ConfigFiscaleDB {
   id: number;
@@ -59,6 +73,8 @@ export interface ConfigRCH {
   porta?: number;            // default 9100
   matricola_rt?: string;     // matricola registratore telematico
   seriale?: string;
+  modalita?: ModalitaIntegrazione;   // NEW — default 'simulazione'
+  ultima_attivazione_reale?: string; // NEW — ISO date
 }
 
 /** Stampante Epson */
@@ -68,6 +84,8 @@ export interface ConfigEpson {
   porta?: number;            // default 9100
   matricola_rt?: string;
   seriale?: string;
+  modalita?: ModalitaIntegrazione;   // NEW — default 'simulazione'
+  ultima_attivazione_reale?: string; // NEW — ISO date
 }
 
 // ============================================================
@@ -97,6 +115,7 @@ export function configVuota(provider: ProviderFiscale): Record<string, any> {
         porta: 9100,
         matricola_rt: '',
         seriale: '',
+        modalita: 'simulazione',
       } as ConfigRCH;
     case 'epson':
       return {
@@ -105,6 +124,7 @@ export function configVuota(provider: ProviderFiscale): Record<string, any> {
         porta: 9100,
         matricola_rt: '',
         seriale: '',
+        modalita: 'simulazione',
       } as ConfigEpson;
     default:
       return {};
@@ -260,9 +280,12 @@ export async function verificaConfigProvider(params: {
     if (!ipValido) {
       return { ok: false, messaggio: 'Formato IP non valido' };
     }
+    const reale = c.modalita === 'reale';
     return {
       ok: true,
-      messaggio: '✅ IP valido (mock — nessun test connessione reale)',
+      messaggio: reale
+        ? '✅ IP valido — modalità REALE attiva (driver RT non ancora collegato)'
+        : '✅ IP valido — modalità SIMULAZIONE (nessun invio reale)',
     };
   }
 
@@ -272,6 +295,28 @@ export async function verificaConfigProvider(params: {
 // ============================================================
 // HELPER: Etichette
 // ============================================================
+
+// ============================================================
+// HELPER: Modalità
+// ============================================================
+
+/**
+ * Ritorna true se il provider è configurato per l'invio reale.
+ * Default: false (simulazione) — fail-safe.
+ */
+export function isModalitaReale(
+  config: Record<string, any> | null | undefined
+): boolean {
+  if (!config) return false;
+  return config.modalita === 'reale';
+}
+
+/**
+ * Etichetta human-readable della modalità.
+ */
+export function labelModalita(m: ModalitaIntegrazione | undefined): string {
+  return m === 'reale' ? '🔴 Reale' : '🧪 Simulazione';
+}
 
 export function labelRegime(regime: RegimeFiscale): string {
   switch (regime) {
