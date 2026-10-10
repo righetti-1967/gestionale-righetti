@@ -14,7 +14,6 @@ import {
 } from '../lib/automazioni';
 import { Toast, type ToastTipo } from './Toast';
 import { NotifichePushAppuntamenti } from './NotifichePushAppuntamenti';
-import { AutomazioniTestTab } from './AutomazioniTestTab';
 
 export function AutomazioniTab() {
   const [automazioni, setAutomazioni] = useState<Record<TipoAutomazione, Automazione> | null>(null);
@@ -136,11 +135,6 @@ export function AutomazioniTab() {
         salvando={salvando === 'riattivazione'}
         onUpdate={(patch) => aggiornaAutomazione('riattivazione', patch)}
       />
-
-      {/* Log Simulazione */}
-      <div className="mt-8 pt-6 border-t border-gray-100">
-        <AutomazioniTestTab />
-      </div>
 
       {toast && (
         <Toast

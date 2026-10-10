@@ -103,32 +103,22 @@ export function AutomazioniTestTab() {
 
   return (
     <div className="space-y-3">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h3 className="text-sm font-bold text-apple-darkgray">
-            🧪 Log Simulazione Automazioni
-          </h3>
-          <p className="text-xs text-apple-gray mt-0.5">
-            Anteprime delle automazioni in modalità simulazione (nessun invio reale).
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handlePulisci}
-            disabled={pulendo || loading || logs.length === 0}
-            className="px-3 py-1.5 text-xs bg-red-50 border border-red-200 text-red-700 rounded-apple hover:bg-red-100 disabled:opacity-50"
-          >
-            {pulendo ? '🧹 Pulisco…' : '🧹 Pulisci log simulazione'}
-          </button>
-          <button
-            onClick={carica}
-            disabled={loading}
-            className="px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-apple hover:bg-gray-50 disabled:opacity-50"
-          >
-            🔄 Aggiorna
-          </button>
-        </div>
+      {/* Header azioni */}
+      <div className="flex items-center justify-end gap-2 flex-wrap">
+        <button
+          onClick={handlePulisci}
+          disabled={pulendo || loading || logs.length === 0}
+          className="px-3 py-1.5 text-xs bg-red-50 border border-red-200 text-red-700 rounded-apple hover:bg-red-100 disabled:opacity-50"
+        >
+          {pulendo ? '🧹 Pulisco…' : '🧹 Pulisci log simulazione'}
+        </button>
+        <button
+          onClick={carica}
+          disabled={loading}
+          className="px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-apple hover:bg-gray-50 disabled:opacity-50"
+        >
+          🔄 Aggiorna
+        </button>
       </div>
 
       {/* Pulsanti Esegui Dry-Run */}
