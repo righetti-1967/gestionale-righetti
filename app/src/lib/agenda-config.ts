@@ -172,12 +172,33 @@ function adatta(raw: unknown): ConfigAgenda {
 
   // Carica gli operatori salvati o usa i default
   const operatori: OperatoreConfig[] = Array.isArray(r.operatori) && r.operatori.length > 0
-    ? r.operatori.map((o: any) => ({
-        id: String(o.id || generaIdOperatore(o.label || 'operatore')),
-        label: String(o.label || 'Operatore'),
-        ruolo: String(o.ruolo || ''),
-        colore: String(o.colore || 'blue'),
-      }))
+    ? r.operatori.map((o: any) => {
+        // Parsing orariGiorni dell'operatore (se presenti)
+        let orariOp: Record<number, OrarioGiorno> | undefined = undefined;
+        if (o.orariGiorni && typeof o.orariGiorni === 'object') {
+          orariOp = {};
+          for (let g = 0; g <= 6; g++) {
+            const gg = o.orariGiorni[g];
+            if (gg && typeof gg === 'object') {
+              const fasce = Array.isArray(gg.fasce)
+                ? gg.fasce
+                    .filter((f: any) => f && typeof f.inizio === 'string' && typeof f.fine === 'string')
+                    .map((f: any) => ({ inizio: f.inizio, fine: f.fine }))
+                : [];
+              orariOp[g] = { aperto: !!gg.aperto, fasce };
+            }
+          }
+        }
+        return {
+          id: String(o.id || generaIdOperatore(o.label || 'operatore')),
+          label: String(o.label || 'Operatore'),
+          ruolo: String(o.ruolo || ''),
+          colore: String(o.colore || 'blue'),
+          // NEW — orari per operatore
+          orariGiorni: orariOp,
+          usaOrariGlobali: o.usaOrariGlobali !== false, // default true
+        };
+      })
     : OPERATORI_DEFAULT;
 
   const idsValidi = new Set(operatori.map((o) => o.id));
