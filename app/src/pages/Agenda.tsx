@@ -34,7 +34,6 @@ import { useDatiAziendali } from '../lib/useDatiAziendali';
 import {
   caricaConfigPromemoria,
   generaTestoPromemoria,
-  apriWhatsAppPromemoria,
   marcaPromemoriaInviato,
   isPromemoriaInviato,
   type ConfigPromemoria,

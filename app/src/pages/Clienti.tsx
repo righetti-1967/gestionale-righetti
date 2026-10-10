@@ -1,6 +1,7 @@
 import { getBrandInfo } from '../lib/brand';
 import jsPDF from 'jspdf';
 import { inviaEmailConConfig, inviaEmailTest } from '../lib/api';
+import { inviaWhatsAppSmart } from '../lib/whatsapp';
 import { useEffect, useMemo, useState } from 'react';
 import {
   getClienti,
@@ -462,17 +463,44 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
     if (canale === 'whatsapp') {
       const tel = cliente.cellulare || '';
       const numPulito = tel.replace(/\D/g, '');
-      const prefisso = numPulito.startsWith('39') ? '' : '39';
-      const numeroFinale = numPulito ? `${prefisso}${numPulito}` : '';
-      
+      if (!numPulito) {
+        setToastMessage(`Nessun cellulare per ${cliente.nome_cognome}`);
+        setToastTipo('error');
+        return;
+      }
+
       const testo = `Gentile ${cliente.nome_cognome}, confermiamo che la sua Informativa sul trattamento dei dati personali (Privacy GDPR) è stata archiviata con successo presso lo Righetti Since 1967. Cordiali saluti!`;
-      const waUrl = numeroFinale
-        ? `https://wa.me/${numeroFinale}?text=${encodeURIComponent(testo)}`
-        : `https://wa.me/?text=${encodeURIComponent(testo)}`;
-      
-      window.open(waUrl, '_blank');
-      setToastMessage(`Chat WhatsApp aperta per ${cliente.nome_cognome}`);
-      setToastTipo('success');
+
+      // Genera PDF privacy ufficiale (2 pagine GDPR + firme)
+      let pdfBase64: string | undefined = undefined;
+      const nomeAllegato = `Informativa_Privacy_${cliente.nome_cognome.replace(/\s+/g, '_')}.pdf`;
+      try {
+        const { generaPdfPrivacyCompleto } = await import('../lib/pdfPrivacy');
+        const doc = await generaPdfPrivacyCompleto(cliente);
+        pdfBase64 = doc.output('datauristring').split(',')[1];
+      } catch (errPdf) {
+        console.warn('PDF privacy non generato:', errPdf);
+      }
+
+      setToastMessage(`Invio WhatsApp in corso a ${cliente.nome_cognome}...`);
+      setToastTipo('info');
+      try {
+        const res = await inviaWhatsAppSmart({
+          cellulare: numPulito,
+          messaggio: testo,
+          pdf_base64: pdfBase64,
+          pdf_filename: pdfBase64 ? nomeAllegato : undefined,
+        });
+        setToastMessage(
+          res.metodo === 'whatsender'
+            ? `✅ Privacy inviata via WhatsApp a ${cliente.nome_cognome}!`
+            : `💬 Chat WhatsApp aperta per ${cliente.nome_cognome}`
+        );
+        setToastTipo('success');
+      } catch (err: any) {
+        setToastMessage('❌ ' + (err?.message || 'Errore invio WhatsApp'));
+        setToastTipo('error');
+      }
       return;
     }
 

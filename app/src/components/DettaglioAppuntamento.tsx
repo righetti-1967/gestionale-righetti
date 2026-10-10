@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useDatiAziendali } from '../lib/useDatiAziendali';
+import { inviaWhatsAppSmart } from '../lib/whatsapp';
 import {
   caricaConfigPromemoria,
   generaTestoPromemoria,
@@ -122,14 +123,22 @@ export function DettaglioAppuntamento({
       setInviando('whatsapp');
       const testo = generaTestoPromemoria(appuntamento, configProm, azienda.ragioneSociale);
       const cell = appuntamento.cliente?.cellulare || '';
-      const ok = apriWhatsAppPromemoria(cell, testo);
-      if (!ok) {
+      if (!cell.trim()) {
         onToast('❌ Cellulare non valido', 'error');
         return;
       }
+      const res = await inviaWhatsAppSmart({
+        cellulare: cell,
+        messaggio: testo,
+      });
       await marcaPromemoriaInviato(appuntamento.id, 'whatsapp');
       setPromemoriaInviato(true);
-      onToast('✅ WhatsApp aperto e promemoria marcato come inviato', 'success');
+      onToast(
+        res.metodo === 'whatsender'
+          ? '✅ WhatsApp inviato via Whatsender'
+          : '💬 WhatsApp aperto e promemoria marcato come inviato',
+        'success'
+      );
       setShowPromemoria(false);
       onPromemoriaInviato?.();
     } catch (err: any) {
