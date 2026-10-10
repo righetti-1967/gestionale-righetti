@@ -53,23 +53,18 @@ interface ParametriPdf {
  * Genera il PDF dello scontrino formato 80mm.
  * Ritorna il jsPDF doc.
  */
-export async function generaPdfScontrino({
-  scontrino,
-  scarica = false,
-}: ParametriPdf): Promise<jsPDF> {
-  const azienda: DatiAziendali = await caricaDatiAziendali();
-
-  // Formato 80mm larghezza, altezza dinamica (usiamo 297mm come A4 ma la larghezza è 80mm)
-  const larghezza = 80;
-  const altezza = 297;
-  const margine = 4;
-  const centro = larghezza / 2;
-
-  const doc = new jsPDF({
-    unit: 'mm',
-    format: [larghezza, altezza],
-  });
-
+/**
+ * Funzione interna: disegna il contenuto dello scontrino sul doc e ritorna y finale.
+ * Usata due volte: prima per misurare l'altezza, poi per generare il PDF definitivo.
+ */
+function disegnaContenuto(
+  doc: jsPDF,
+  scontrino: Scontrino,
+  azienda: DatiAziendali,
+  larghezza: number,
+  margine: number,
+  centro: number
+): number {
   let y = 8;
 
   const isFiglio = scontrino.tipo === 'figlio';
@@ -327,6 +322,39 @@ export async function generaPdfScontrino({
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   doc.text('GRAZIE E ARRIVEDERCI', centro, y, { align: 'center' });
+
+  // Ritorna altezza reale + margine inferiore
+  return y + 6;
+}
+
+/**
+ * Genera il PDF scontrino formato 80mm con altezza DINAMICA.
+ * Doppia passata: prima misura, poi rigenera con altezza corretta.
+ */
+export async function generaPdfScontrino({
+  scontrino,
+  scarica = false,
+}: ParametriPdf): Promise<jsPDF> {
+  const azienda: DatiAziendali = await caricaDatiAziendali();
+
+  const larghezza = 80;
+  const margine = 4;
+  const centro = larghezza / 2;
+
+  // === PASSATA 1: misura altezza reale ===
+  const docMisura = new jsPDF({
+    unit: 'mm',
+    format: [larghezza, 500],
+  });
+  const yFinale = disegnaContenuto(docMisura, scontrino, azienda, larghezza, margine, centro);
+  const altezzaFinale = Math.max(yFinale, 40);
+
+  // === PASSATA 2: PDF definitivo con altezza corretta ===
+  const doc = new jsPDF({
+    unit: 'mm',
+    format: [larghezza, altezzaFinale],
+  });
+  disegnaContenuto(doc, scontrino, azienda, larghezza, margine, centro);
 
   // --- Upload su Storage SEMPRE (se cliente_id presente) ---
   const nomeFile = generaNomeFilePdf(scontrino);
