@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { inviaWhatsAppSmart } from '../lib/whatsapp';
 import {
   getAppuntamenti,
   aggiornaAppuntamentiCompletati,
@@ -203,7 +204,7 @@ export function Agenda({
     [appuntamenti]
   );
 
-  function apriWhatsAppCliente(
+  async function apriWhatsAppCliente(
     app: AppuntamentoConCliente,
     tipo: 'pending' | 'rebooking' = 'pending'
   ) {
@@ -230,21 +231,20 @@ export function Agenda({
       testo = `Ciao ${primoNome}, ti scrivo dallo Studio Righetti per riprogrammare il tuo appuntamento. Le nostre disponibilità sono:\n- `;
     }
 
-    const encoded = encodeURIComponent(testo);
-    // whatsapp:// apre l'APP nativa (Mac/iPhone/Android)
-    // wa.me apre il web (fallback)
-    const appUrl = `whatsapp://send?phone=${numero}&text=${encoded}`;
-    const webUrl = `https://wa.me/${numero}?text=${encoded}`;
-
-    // Prova ad aprire l'app nativa; se non c'è, fallback sul web
-    const start = Date.now();
-    window.location.href = appUrl;
-    setTimeout(() => {
-      // Se dopo 1.5s la pagina non è cambiata (app non installata), apri web
-      if (Date.now() - start < 2000) {
-        window.open(webUrl, '_blank');
+    // Invia via Whatsender (se configurato) o apri wa.me (fallback)
+    try {
+      const res = await inviaWhatsAppSmart({
+        cellulare: numero,
+        messaggio: testo,
+      });
+      if (res.metodo === 'whatsender') {
+        setToast({ message: '✅ WhatsApp inviato via Whatsender', tipo: 'success' });
+      } else {
+        setToast({ message: '💬 WhatsApp aperto', tipo: 'success' });
       }
-    }, 1500);
+    } catch (err: any) {
+      setToast({ message: '❌ ' + (err?.message || 'Errore invio WhatsApp'), tipo: 'error' });
+    }
   }
 
 

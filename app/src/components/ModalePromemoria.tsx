@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { inviaWhatsAppSmart } from '../lib/whatsapp';
 import { ModaleTestoPromemoria } from './ModaleTestoPromemoria';
 import { getTestoTemplate } from '../lib/testiTemplate';
 import { caricaConfigPromemoria, inviaEmailPromemoria, marcaPromemoriaInviato, type ConfigPromemoria } from '../lib/promemoria';
@@ -209,17 +210,27 @@ export function ModalePromemoria({ lunedi, sabato, onClose }: Props) {
         ? generaTestoPromemoria(getAppuntamentoDaRpc(a), config!, nomeAzienda, testoWhatsapp)
         : generaTestoPromemoria(getAppuntamentoDaRpc(a), config!, nomeAzienda);
       const numeroPulito = a.cliente_cellulare.replace(/[^0-9]/g, '');
-      const url = `https://wa.me/${numeroPulito}?text=${encodeURIComponent(testo)}`;
-      window.open(url, '_blank', 'noopener,noreferrer');
-      // Marca come inviato (l'utente confermerà manualmente su WhatsApp)
-      await supabase
-        .from('appuntamenti')
-        .update({
-          reminder_whatsapp_at: new Date().toISOString(),
-          reminder_whatsapp_inviato: true,
-        })
-        .eq('id', id);
-      ok++;
+      try {
+        const res = await inviaWhatsAppSmart({
+          cellulare: numeroPulito,
+          messaggio: testo,
+        });
+        // Marca come inviato
+        await supabase
+          .from('appuntamenti')
+          .update({
+            reminder_whatsapp_at: new Date().toISOString(),
+            reminder_whatsapp_inviato: true,
+          })
+          .eq('id', id);
+        ok++;
+        if (res.metodo === 'wa_me') {
+          console.log(`[promemoria wa] fallback wa.me per ${a.cliente_nome}`);
+        }
+      } catch (err: any) {
+        console.error('[promemoria wa] errore:', err);
+        errori.push(`${a.cliente_nome}: ${err.message || err}`);
+      }
     }
     return { ok, errori };
   }

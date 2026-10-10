@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Cliente } from '../lib/clienti';
 import { inviaEmailConConfig } from '../lib/api';
+import { inviaWhatsAppSmart } from '../lib/whatsapp';
 
 interface CondividiLinkFirmaProps {
   urlFirma: string;
@@ -15,7 +16,9 @@ export function CondividiLinkFirma({
 }: CondividiLinkFirmaProps) {
   const [copiato, setCopiato] = useState(false);
   const [inviandoEmail, setInviandoEmail] = useState(false);
+  const [inviandoWa, setInviandoWa] = useState(false);
   const [esitoEmail, setEsitoEmail] = useState<{ tipo: 'ok' | 'errore'; testo: string } | null>(null);
+  const [esitoWa, setEsitoWa] = useState<{ tipo: 'ok' | 'errore'; testo: string } | null>(null);
 
   function handleCopia() {
     navigator.clipboard.writeText(urlFirma);
@@ -23,17 +26,35 @@ export function CondividiLinkFirma({
     setTimeout(() => setCopiato(false), 2000);
   }
 
-  function handleWhatsApp() {
+  async function handleWhatsApp() {
     const nome = cliente?.nome_cognome || 'Gentile Cliente';
     const tel = cliente?.cellulare || (cliente as any)?.telefono || '';
     const numPulito = tel.replace(/\D/g, '');
-    const prefisso = numPulito.startsWith('39') ? '' : '39';
-    const numeroCompleto = numPulito ? `${prefisso}${numPulito}` : '';
+    if (!numPulito) {
+      setEsitoWa({ tipo: 'errore', testo: 'Numero cellulare non disponibile' });
+      setTimeout(() => setEsitoWa(null), 4000);
+      return;
+    }
     const testo = `Ciao ${nome}, per completare la procedura ti chiediamo cortesemente di apporre la tua firma digitale per ${tipoDocumento} cliccando su questo link:\n\n${urlFirma}`;
-    const waUrl = numeroCompleto
-      ? `https://wa.me/${numeroCompleto}?text=${encodeURIComponent(testo)}`
-      : `https://wa.me/?text=${encodeURIComponent(testo)}`;
-    window.open(waUrl, '_blank');
+    try {
+      setInviandoWa(true);
+      setEsitoWa(null);
+      const res = await inviaWhatsAppSmart({
+        cellulare: numPulito,
+        messaggio: testo,
+      });
+      if (res.metodo === 'whatsender') {
+        setEsitoWa({ tipo: 'ok', testo: `✅ WhatsApp inviato a ${cliente?.nome_cognome || ''}` });
+      } else {
+        setEsitoWa({ tipo: 'ok', testo: `💬 WhatsApp aperto` });
+      }
+      setTimeout(() => setEsitoWa(null), 5000);
+    } catch (err: any) {
+      setEsitoWa({ tipo: 'errore', testo: `Errore: ${err?.message || 'invio fallito'}` });
+      setTimeout(() => setEsitoWa(null), 5000);
+    } finally {
+      setInviandoWa(false);
+    }
   }
 
   async function handleEmail() {
@@ -106,10 +127,19 @@ export function CondividiLinkFirma({
         <button
           type="button"
           onClick={handleWhatsApp}
-          className="px-3.5 py-2 rounded-apple bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition-colors shadow-sm flex items-center gap-1.5"
+          disabled={inviandoWa}
+          className="px-3.5 py-2 rounded-apple bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Invia link firma su WhatsApp"
         >
-          <span>💬</span> Invia WhatsApp
+          {inviandoWa ? (
+            <>
+              <span>⏳</span> Invio...
+            </>
+          ) : (
+            <>
+              <span>💬</span> Invia WhatsApp
+            </>
+          )}
         </button>
 
         <button
@@ -140,6 +170,18 @@ export function CondividiLinkFirma({
           <span>{copiato ? 'Copiato!' : 'Copia Link'}</span>
         </button>
       </div>
+
+      {esitoWa && (
+        <div
+          className={`mt-3 px-3 py-2 rounded-apple text-xs font-medium flex items-center justify-center gap-2 ${
+            esitoWa.tipo === 'ok'
+              ? 'bg-green-50 text-green-800 border border-green-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}
+        >
+          {esitoWa.testo}
+        </div>
+      )}
 
       {/* Banner esito invio */}
       {esitoEmail && (

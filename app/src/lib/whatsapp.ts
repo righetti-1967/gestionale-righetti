@@ -51,8 +51,10 @@ export interface InviaWhatsAppResult {
 
 /**
  * Invia un messaggio WhatsApp con la strategia migliore:
- * - Se Whatsender è configurato → chiama Edge Function `send-whatsapp` con PDF allegato
+ * - Se Whatsender è configurato → chiama Edge Function `send-whatsapp` (testo + PDF opzionale)
  * - Altrimenti → apre `wa.me` con link al PDF pubblico (fallback)
+ *
+ * Il PDF è opzionale: se assente, viene inviato solo il testo.
  *
  * Ritorna info su cosa è stato fatto.
  */
@@ -66,8 +68,8 @@ export async function inviaWhatsAppSmart(
 
   const hasWhatsender = await haWhatsenderConfigurato();
 
-  // === STRATEGIA 1: Whatsender API (PDF allegato) ===
-  if (hasWhatsender && params.pdf_base64 && params.pdf_filename) {
+  // === STRATEGIA 1: Whatsender API (testo + PDF opzionale) ===
+  if (hasWhatsender) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) {
       throw new Error('Sessione scaduta');

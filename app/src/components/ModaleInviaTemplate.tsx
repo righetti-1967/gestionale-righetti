@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { getTestoTemplate, renderTemplate, type ChiaveTesto } from '../lib/testiTemplate';
 import { inviaEmailConConfig } from '../lib/api';
+import { inviaWhatsAppSmart } from '../lib/whatsapp';
 import { useDatiAziendali } from '../lib/useDatiAziendali';
 import type { Cliente } from '../lib/clienti';
 
@@ -104,14 +105,26 @@ export function ModaleInviaTemplate({
       if (canale === 'whatsapp') {
         const tel = cliente.cellulare || '';
         const numPulito = tel.replace(/\D/g, '');
-        const prefisso = numPulito.startsWith('39') ? '' : '39';
-        const numeroFinale = numPulito ? `${prefisso}${numPulito}` : '';
-        const waUrl = numeroFinale
-          ? `https://wa.me/${numeroFinale}?text=${encodeURIComponent(testoWhatsApp)}`
-          : `https://wa.me/?text=${encodeURIComponent(testoWhatsApp)}`;
-        window.open(waUrl, '_blank');
-        onSuccess?.(`WhatsApp aperto per ${cliente.nome_cognome}`);
-        onClose();
+        if (!numPulito) {
+          onError?.(`Nessun cellulare per ${cliente.nome_cognome}`);
+          setInviando(false);
+          return;
+        }
+        try {
+          const res = await inviaWhatsAppSmart({
+            cellulare: numPulito,
+            messaggio: testoWhatsApp,
+          });
+          const msg = res.metodo === 'whatsender'
+            ? `✅ WhatsApp inviato a ${cliente.nome_cognome}`
+            : `💬 WhatsApp aperto per ${cliente.nome_cognome}`;
+          onSuccess?.(msg);
+          onClose();
+        } catch (err: any) {
+          onError?.(err?.message || 'Errore invio WhatsApp');
+        } finally {
+          setInviando(false);
+        }
         return;
       }
 
