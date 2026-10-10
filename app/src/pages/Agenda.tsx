@@ -123,6 +123,7 @@ export function Agenda({
   const [dettaglio, setDettaglio] = useState<AppuntamentoConCliente | null>(null);
   const [highlightAppuntamentoId, setHighlightAppuntamentoId] = useState<number | null>(null);
   const [modalePendingRebooking, setModalePendingRebooking] = useState<'pending' | 'rebooking' | null>(null);
+  const [pendingList, setPendingList] = useState<any[]>([]);
 
   const [scaricoDaApp, setScaricoDaApp] = useState<{
     percorso: Percorso;
@@ -172,13 +173,24 @@ export function Agenda({
 
   const oggiStringa = dataToLocaleISO(new Date());
 
-  const pendingList = useMemo(
-    () =>
-      appuntamenti.filter(
-        (a) => a.stato === 'pending' && a.data >= oggiStringa && !a.is_blocco
-      ),
-    [appuntamenti, oggiStringa]
-  );
+  // pendingList da RPC (tutti i pending futuri, non solo range corrente)
+  async function caricaPending() {
+    try {
+      const { data, error } = await supabase.rpc('get_pending_appuntamenti');
+      if (error) {
+        console.warn('Errore caricamento pending:', error);
+        return;
+      }
+      setPendingList(data || []);
+    } catch (e) {
+      console.warn('Errore inatteso pending:', e);
+    }
+  }
+
+  useEffect(() => {
+    if (!configCaricata) return;
+    caricaPending();
+  }, [configCaricata]);
 
   const rebookingList = useMemo(
     () =>
@@ -775,7 +787,10 @@ export function Agenda({
         <div className="flex flex-wrap gap-2 mb-3">
           {pendingList.length > 0 && (
             <button
-              onClick={() => setModalePendingRebooking('pending')}
+              onClick={async () => {
+                await caricaPending();
+                setModalePendingRebooking('pending');
+              }}
               className="px-3 py-2 rounded-apple text-xs font-semibold transition-all shadow-apple bg-red-50 border border-red-200 text-red-700 hover:bg-red-100"
             >
               ⏳ Pending <strong>({pendingList.length})</strong>
@@ -1051,7 +1066,7 @@ export function Agenda({
                       >
                         {(app.cliente?.nome_cognome ?? '?')
                           .split(' ')
-                          .map((n) => n[0])
+                          .map((n: string) => n[0])
                           .slice(0, 2)
                           .join('')
                           .toUpperCase()}
