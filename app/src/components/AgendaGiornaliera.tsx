@@ -12,7 +12,7 @@ import {
   type Operatore,
   type VoceSelezionata,
 } from '../lib/appuntamenti';
-import { getFasceDaDataISO, type Fascia } from '../lib/agenda-config';
+import { getFasceDaDataISO, getOrariOperatoreGiorno, isOperatoreDisponibile, type Fascia } from '../lib/agenda-config';
 
 interface AgendaGiornalieraProps {
   data: string;
@@ -129,10 +129,22 @@ export function AgendaGiornaliera({
     return lista;
   }, [agendaConfig.oraApertura, agendaConfig.oraChiusura, agendaConfig.granularitaMinuti]);
 
-  // Fasce del giorno corrente (dal config orariGiorni)
+  // Fasce del giorno corrente (dal config orariGiorni GLOBALI)
   const fasceOggi = useMemo(() => {
     return getFasceDaDataISO(agendaConfig, data);
   }, [agendaConfig, data]);
+
+  // Helper: ritorna le fasce per un OPERATORE specifico (custom o globali)
+  function getFasceOperatore(opId: string): Fascia[] {
+    try {
+      const giornoSettimana = new Date(data + 'T00:00:00').getDay();
+      const orario = getOrariOperatoreGiorno(agendaConfig, opId, giornoSettimana);
+      return orario.aperto ? orario.fasce : [];
+    } catch (err) {
+      console.warn('Errore getFasceOperatore, fallback globali:', err);
+      return fasceOggi;
+    }
+  }
 
   const altezzaSlot = useMemo(() => {
     if (slots.length === 0) return 22;
@@ -162,12 +174,12 @@ export function AgendaGiornaliera({
     motivo: string;
   } | null>(null);
 
-  // Info "fuori orario" per blocco corrente
-  function bloccoFuoriOrario(oraInizio: string, oraFine: string): boolean {
-    if (!fasceOggi || fasceOggi.length === 0) return false;
-    // Se l'inizio O la fine cadono fuori da ogni fascia
-    const dentroInizio = fasceOggi.some((f) => oraInizio >= f.inizio && oraInizio < f.fine);
-    const dentroFine = fasceOggi.some((f) => oraFine > f.inizio && oraFine <= f.fine);
+  // Info "fuori orario" per blocco corrente (considerando l'OPERATORE)
+  function bloccoFuoriOrario(oraInizio: string, oraFine: string, operatoreId: string): boolean {
+    const fasce = getFasceOperatore(operatoreId);
+    if (!fasce || fasce.length === 0) return false;
+    const dentroInizio = fasce.some((f) => oraInizio >= f.inizio && oraInizio < f.fine);
+    const dentroFine = fasce.some((f) => oraFine > f.inizio && oraFine <= f.fine);
     return !dentroInizio || !dentroFine;
   }
 
@@ -380,12 +392,27 @@ export function AgendaGiornaliera({
 
     const cambiaOperatore = nuovoOperatore !== operatoreAttuale;
 
+    // Verifica se la nuova posizione è fuori dall'orario DELL'OPERATORE DI DESTINAZIONE
+    const durata = voceIndex !== null
+      ? (app.voci_selezionate?.[voceIndex]?.durata_minuti || app.durata_minuti || 30)
+      : (app.durata_minuti || 30);
+    const minutoFine = minutoSnap + durata;
+    const oraFine = minutiToOra(minutoFine);
+
+    const operatoreFinale = cambiaOperatore ? nuovoOperatore : operatoreAttuale;
+    const dentroInizio = isOperatoreDisponibile(agendaConfig, operatoreFinale, data, oraInizio);
+    const dentroFine = isOperatoreDisponibile(agendaConfig, operatoreFinale, data, minutiToOra(minutoFine - 1));
+    const fuoriOrarioDest = !dentroInizio || !dentroFine;
+
+    const opLabelFinale = getOpInfo(operatoreFinale).label;
+
     if (cambiaOperatore) {
-      const nuovoNome = getOpInfo(nuovoOperatore).label;
-      const msg =
-        voceIndex === null
-          ? `Spostare l'appuntamento su ${nuovoNome} alle ${oraInizio}?`
-          : `Spostare questa voce su ${nuovoNome} alle ${oraInizio}?`;
+      const msgBase = voceIndex === null
+        ? `Spostare l'appuntamento su ${opLabelFinale} alle ${oraInizio}?`
+        : `Spostare questa voce su ${opLabelFinale} alle ${oraInizio}?`;
+      const msg = fuoriOrarioDest
+        ? `⚠️ Attenzione: ${opLabelFinale} non è disponibile alle ${oraInizio} (fuori orario).\n\n${msgBase}`
+        : msgBase;
       setConferma({
         app,
         voceIndex,
@@ -395,20 +422,26 @@ export function AgendaGiornaliera({
         messaggio: msg,
       });
     } else if (voceIndex === null) {
+      const msg = fuoriOrarioDest
+        ? `⚠️ Attenzione: ${opLabelFinale} non è disponibile alle ${oraInizio} (fuori orario).\n\nSpostare comunque l'appuntamento?`
+        : `Spostare l'appuntamento alle ${oraInizio}?`;
       setConferma({
         app,
         voceIndex,
         tipo: 'sposta',
         nuovaOra: oraInizio,
-        messaggio: `Spostare l'appuntamento alle ${oraInizio}?`,
+        messaggio: msg,
       });
     } else {
+      const msg = fuoriOrarioDest
+        ? `⚠️ Attenzione: ${opLabelFinale} non è disponibile alle ${oraInizio} (fuori orario).\n\nSpostare comunque la voce?`
+        : `Spostare la voce alle ${oraInizio}?`;
       setConferma({
         app,
         voceIndex,
         tipo: 'sposta',
         nuovaOra: oraInizio,
-        messaggio: `Spostare la voce alle ${oraInizio}?`,
+        messaggio: msg,
       });
     }
   }
@@ -683,18 +716,24 @@ export function AgendaGiornaliera({
                 operatore={op}
                 slots={slots}
                 onClickSlot={(operatore, ora) => {
-                  // Se cella chiusa → apri modale avviso
-                  if (fasceOggi && fasceOggi.length > 0) {
-                    const dentro = fasceOggi.some((f) => ora >= f.inizio && ora < f.fine);
+                  // Se cella chiusa per l'OPERATORE → apri modale avviso
+                  const fasceOp = getFasceOperatore(op);
+                  if (fasceOp && fasceOp.length > 0) {
+                    const dentro = fasceOp.some((f) => ora >= f.inizio && ora < f.fine);
                     if (!dentro) {
-                      setAvvisoFuoriOrario({ operatore, ora, motivo: '' });
+                      const opInfo = agendaConfig.operatori?.find((o) => o.id === op);
+                      setAvvisoFuoriOrario({
+                        operatore,
+                        ora,
+                        motivo: opInfo?.label || op,
+                      });
                       return;
                     }
                   }
                   onClickSlot(operatore, ora);
                 }}
                 altezzaSlot={altezzaSlot}
-                fasceGiorno={fasceOggi}
+                fasceGiorno={getFasceOperatore(op)}
                 slotMinuti={agendaConfig.granularitaMinuti}
               />
               {(blocchiPerOperatore[op] || []).map((b, i) => (
@@ -713,7 +752,7 @@ export function AgendaGiornaliera({
                   }
                   onResizeStop={(h) => handleResizeStop(b.app, b.voceIndex, h)}
                   isHighlighted={highlightAppuntamentoId === b.app.id}
-                  fuoriOrario={bloccoFuoriOrario(b.oraInizio, b.oraFine)}
+                  fuoriOrario={bloccoFuoriOrario(b.oraInizio, b.oraFine, op)}
                 />
               ))}
             </div>
