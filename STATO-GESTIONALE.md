@@ -1,5 +1,5 @@
 # STATO GESTIONALE RIGHETTI 1967
-Ultimo aggiornamento: 11/10/2026 (notte)
+Ultimo aggiornamento: 11/10/2026 (mattina)
 
 ---
 
@@ -121,6 +121,60 @@ Riferimento al punto 1.
 ---
 
 ## ✅ STORICO — COMPLETATO
+
+### 11/10/2026 — Mattina (Fix notifiche push + Chiusure straordinarie + App Cliente)
+
+#### 🔴 FIX CRITICO — Trigger notifiche push non funzionanti
+**Scoperta**: esistevano **2 versioni** di `crea_notifica_cliente` in conflitto:
+- **8 parametri** (senza `p_staff_user_id`) — vecchia
+- **9 parametri** (con `p_staff_user_id`) — nuova
+
+**Conseguenza**: quando il trigger chiamava senza cast esplicito → errore `function is not unique` → **tutte le notifiche fallivano silenziosamente** (scontrini, DDT, fatture, privacy).
+
+**Fix**: droppata la versione vecchia → ora solo 1 versione → tutti i trigger funzionano.
+
+**Trigger mancanti aggiunti**:
+- ✅ `trg_notify_scontrino_pdf` su `scontrini` (UPDATE pdf_url)
+- ✅ `trg_notify_ddt_pdf` su `scarichi_seduta` (UPDATE pdf_url)
+
+**Trigger verificati funzionanti** (dopo fix):
+- ✅ `appuntamenti` INSERT/UPDATE
+- ✅ `fatture` UPDATE pdf_url
+- ✅ `clienti` UPDATE privacy_pdf_url
+- ✅ `cliente_note` INSERT
+- ✅ `cura_domiciliare` INSERT
+- ✅ `schede_tricologiche` INSERT
+- ✅ `percorsi` INSERT
+- ✅ `scontrini` UPDATE pdf_url (NUOVO)
+- ✅ `scarichi_seduta` UPDATE pdf_url (NUOVO DDT)
+
+**Effetto**: ora il cliente riceve notifica push per **tutti** i nuovi documenti (fatture, scontrini, DDT, privacy, schede, cura, percorsi, note).
+
+#### 🏖️ Chiusure Straordinarie (Agenda)
+- ✅ `agenda-config.ts`: interface `ChiusuraStraordinaria` + campo `chiusureStraordinarie`
+- ✅ Helper `getChiusuraInData()` + `isDataChiusa()`
+- ✅ **Impostazioni → Agenda**: nuova Card **"🏖️ Chiusure Straordinarie"**
+  - Aggiungi/modifica/elimina con modale (data inizio/fine + motivo)
+  - Badge stato: In corso / Programmata / Passata
+- ✅ **Agenda Giornaliera**: giorni chiusi → banner arancione + slot tutti grigi/bloccati
+- ✅ Click su slot chiuso → alert con motivo e date
+
+#### 🕐 Card "Aperture e chiusure Studio" (App Cliente)
+- ✅ RPC `get_my_studio_contatti` estesa con `orari` (JSONB) + `chiusure` (JSONB)
+- ✅ Interface TS `StudioContatti` aggiornata
+- ✅ **Home App Cliente**: nuova card con **badge alert** se chiusure nel mese corrente
+- ✅ **Nuova pagina `/aperture-chiusure`**:
+  - Orari di apertura (solo giorni aperti)
+  - Chiusure straordinarie con **tab mesi**
+  - Tab con pallino ambra se mese ha chiusure
+  - Chiusure a cavallo (es. Natale) appaiono in entrambi i mesi
+
+#### 📝 Note / TODO per il futuro
+- ⚠️ **PDF privacy NON viene caricato** in Storage (campo `privacy_pdf_url` resta null anche dopo firma) → da indagare
+- ⚠️ **PDF scontrini vecchi** (pre-11/10) hanno formato A4 lungo (fix applicato solo ai nuovi)
+
+---
+
 
 ### 11/10/2026 — Sessione Mostro (Simulazioni + Notifiche Push + Orari Operatore)
 
@@ -575,6 +629,60 @@ Vedi sezione TODO — priorità alta per multi-tenant reale.
 
 ### 🕐 Fasce orarie per operatore ✅ FATTO
 (Vedi storico 11/10)
+
+---
+
+
+---
+
+## 🚨 PRIORITÀ ASSOLUTA — Annullamento documenti fiscali
+
+**Concetto**: l'annullo in gestionale DEVE essere comunicato ai sistemi fiscali esterni. Altrimenti documento annullato in gestionale ma valido fiscalmente.
+
+### Fatture MADRE
+- Prima annullare DDT collegati (già bloccato ✅)
+- Poi annullare la fattura → **generare NOTA DI CREDITO** e inviarla a:
+  - **ADE/SDI** (se provider `ade_diretto`)
+  - **FPT** (se provider `fpt` → FPT trasmette auto a ADE)
+- Salvare riferimento nota di credito in DB
+- Log in `integrazioni_log`
+
+### Scontrini MADRE
+- Prima annullare figli (già bloccato ✅)
+- **Scontrini fisici** → comando annullo a RT (RCH/Epson)
+- **Scontrini digitali** → invio annullo corrispettivi (ADE o FPT)
+- Log in `integrazioni_log`
+
+### DDT
+- Non fiscale → solo soft-delete locale
+- Ma se collegato a fattura → gestito insieme
+
+### Comportamento
+- Se **modalità simulazione** → solo log con `esito='simulato'`
+- Se **modalità reale** → driver vero (stub con `pending_driver`)
+- Se provider non configurato → **bloccare annullo** con avviso
+
+---
+
+## 📋 TODO — Da fare a breve
+
+### 🔴 Alta priorità
+- [ ] **Annullamento fiscale** (vedi sopra) — priorità assoluta
+- [ ] **Notifica in-app conferma appuntamento** nel Gestionale
+  - Toast centro schermo quando cliente conferma da App
+  - Click → apre Agenda sul cliente
+- [ ] **Fix PDF privacy** non caricato in Storage
+- [ ] **RLS policy `_all`** da droppare (8-10 tabelle)
+
+### 🟡 Media
+- [ ] Rigenerare PDF scontrini vecchi (formato A4 lungo)
+- [ ] Motore Cron Automazioni (da verificare)
+- [ ] Test end-to-end notifiche push con cliente reale
+
+### 🔮 Backlog
+- [ ] Chiamate AI Voice (Vapi.ai + Twilio)
+- [ ] Fasce orarie per operatore ✅ FATTO
+- [ ] Rigenerare PDF scontrini vecchi
 
 ---
 
