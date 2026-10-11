@@ -66,11 +66,6 @@ export function NotificaConfermaCliente() {
               if (prev.find((n) => n.id === notifica.id)) return prev;
               return [...prev, notifica];
             });
-
-            // Auto-dismiss dopo 20 secondi
-            setTimeout(() => {
-              setNotifiche((prev) => prev.filter((n) => n.id !== notifica.id));
-            }, 20000);
           }
         }
       )
