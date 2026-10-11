@@ -1,14 +1,13 @@
-import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { getLogoUrl } from '../lib/logo';
+import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 
 export function Registrati() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [conferma, setConferma] = useState('');
-  const [nome, setNome] = useState('');
-  const [azienda, setAzienda] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [conferma, setConferma] = useState("");
+  const [nome, setNome] = useState("");
+  const [azienda, setAzienda] = useState("");
   const [mostraPassword, setMostraPassword] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
   const [successo, setSuccesso] = useState(false);
@@ -20,18 +19,18 @@ export function Registrati() {
     setLoadingGoogle(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider: "google",
         options: {
           redirectTo: `${window.location.origin}/`,
           queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
+            access_type: "offline",
+            prompt: "consent",
           },
         },
       });
       if (error) throw error;
     } catch (e: any) {
-      setErrore(e.message || 'Errore durante la registrazione con Google');
+      setErrore(e.message || "Errore durante la registrazione con Google");
       setLoadingGoogle(false);
     }
   }
@@ -41,24 +40,30 @@ export function Registrati() {
     setErrore(null);
 
     const emailTrim = email.trim().toLowerCase();
-    if (!emailTrim || !password || !conferma || !nome.trim() || !azienda.trim()) {
-      setErrore('Compila tutti i campi obbligatori');
+    if (
+      !emailTrim ||
+      !password ||
+      !conferma ||
+      !nome.trim() ||
+      !azienda.trim()
+    ) {
+      setErrore("Compila tutti i campi obbligatori");
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(emailTrim)) {
-      setErrore('Email non valida');
+      setErrore("Email non valida");
       return;
     }
 
     if (password.length < 8) {
-      setErrore('La password deve avere almeno 8 caratteri');
+      setErrore("La password deve avere almeno 8 caratteri");
       return;
     }
 
     if (password !== conferma) {
-      setErrore('Le due password non coincidono');
+      setErrore("Le due password non coincidono");
       return;
     }
 
@@ -72,23 +77,27 @@ export function Registrati() {
           data: {
             full_name: nome.trim(),
             azienda: azienda.trim(),
-            ruolo: 'demo',
-            demo_scadenza: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+            ruolo: "demo",
+            demo_scadenza: new Date(
+              Date.now() + 15 * 24 * 60 * 60 * 1000,
+            ).toISOString(),
           },
         },
       });
 
       if (error) {
         let msg = error.message;
-        if (error.message.includes('already registered')) msg = 'Questa email è già registrata';
-        else if (error.message.includes('rate limit')) msg = 'Troppi tentativi. Riprova tra qualche minuto.';
-        else if (error.message.includes('invalid')) msg = 'Email non valida';
+        if (error.message.includes("already registered"))
+          msg = "Questa email è già registrata";
+        else if (error.message.includes("rate limit"))
+          msg = "Troppi tentativi. Riprova tra qualche minuto.";
+        else if (error.message.includes("invalid")) msg = "Email non valida";
         setErrore(msg);
       } else {
         setSuccesso(true);
       }
     } catch (e) {
-      setErrore(e instanceof Error ? e.message : 'Errore sconosciuto');
+      setErrore(e instanceof Error ? e.message : "Errore sconosciuto");
     } finally {
       setLoading(false);
     }
@@ -98,16 +107,9 @@ export function Registrati() {
     <div className="min-h-screen flex items-center justify-center bg-apple-lightgray px-4 py-8">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-apple shadow-apple-lg p-8 sm:p-10 border border-gray-200/60">
-          <div className="flex flex-col items-center mb-6">
-            <div className="w-20 h-20 flex items-center justify-center mb-3">
-              <img
-                src={getLogoUrl()}
-                alt="Righetti Since 1967"
-                className="w-20 h-20 object-contain mix-blend-multiply"
-              />
-            </div>
-            <h1 className="text-2xl font-semibold text-apple-darkgray tracking-tight">
-              Righetti Since 1967
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-bold text-apple-darkgray tracking-tight">
+              Gestionale Studio
             </h1>
             <p className="text-sm text-apple-gray mt-1">Crea il tuo account</p>
           </div>
@@ -153,7 +155,9 @@ export function Registrati() {
 
               <div className="flex items-center mb-6">
                 <div className="flex-1 border-t border-gray-200/60" />
-                <span className="px-3 text-xs text-apple-gray uppercase tracking-wider font-medium">oppure con email</span>
+                <span className="px-3 text-xs text-apple-gray uppercase tracking-wider font-medium">
+                  oppure con email
+                </span>
                 <div className="flex-1 border-t border-gray-200/60" />
               </div>
 
@@ -182,7 +186,7 @@ export function Registrati() {
                     value={azienda}
                     onChange={(e) => setAzienda(e.target.value)}
                     required
-                    placeholder="Es. Studio Righetti"
+                    placeholder="Es. Studio Rossi"
                     disabled={loading || loadingGoogle}
                     className="w-full px-3.5 py-2 rounded-apple bg-apple-lightgray border border-transparent text-apple-darkgray placeholder:text-apple-gray text-sm focus:outline-none focus:bg-white focus:border-apple-blue transition-all"
                   />
@@ -210,7 +214,7 @@ export function Registrati() {
                   </label>
                   <div className="relative">
                     <input
-                      type={mostraPassword ? 'text' : 'password'}
+                      type={mostraPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
@@ -224,9 +228,9 @@ export function Registrati() {
                       onClick={() => setMostraPassword((v) => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-apple-gray hover:text-apple-darkgray transition-colors text-base"
                       tabIndex={-1}
-                      title={mostraPassword ? 'Nascondi' : 'Mostra'}
+                      title={mostraPassword ? "Nascondi" : "Mostra"}
                     >
-                      {mostraPassword ? '🙈' : '👁️'}
+                      {mostraPassword ? "🙈" : "👁️"}
                     </button>
                   </div>
                 </div>
@@ -236,7 +240,7 @@ export function Registrati() {
                     Conferma password *
                   </label>
                   <input
-                    type={mostraPassword ? 'text' : 'password'}
+                    type={mostraPassword ? "text" : "password"}
                     value={conferma}
                     onChange={(e) => setConferma(e.target.value)}
                     required
@@ -265,15 +269,18 @@ export function Registrati() {
                       <span>Registrazione in corso…</span>
                     </>
                   ) : (
-                    'Inizia la prova di 15 giorni'
+                    "Inizia la prova di 15 giorni"
                   )}
                 </button>
               </form>
 
               <div className="mt-5 pt-5 border-t border-gray-100 text-center">
                 <p className="text-xs text-apple-gray">
-                  Hai già un account?{' '}
-                  <Link to="/login" className="text-apple-blue hover:underline font-medium">
+                  Hai già un account?{" "}
+                  <Link
+                    to="/login"
+                    className="text-apple-blue hover:underline font-medium"
+                  >
                     Accedi
                   </Link>
                 </p>
@@ -288,7 +295,8 @@ export function Registrati() {
                 Controlla la tua email
               </h2>
               <p className="text-xs text-apple-gray leading-relaxed mb-6">
-                Abbiamo inviato un link di conferma a <strong className="text-apple-darkgray">{email}</strong>.<br />
+                Abbiamo inviato un link di conferma a{" "}
+                <strong className="text-apple-darkgray">{email}</strong>.<br />
                 Clicca sul link per attivare la tua prova gratuita di 15 giorni.
               </p>
               <Link
@@ -302,7 +310,7 @@ export function Registrati() {
         </div>
 
         <p className="text-center text-xs text-apple-gray mt-6">
-          Studio Righetti Since 1967
+          Powered by Gestionale Studio
         </p>
       </div>
     </div>
