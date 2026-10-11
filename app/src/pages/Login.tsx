@@ -143,7 +143,7 @@ export function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                placeholder="nome@righetti.club"
+                placeholder="nome@esempio.it"
                 disabled={loading || loadingGoogle}
                 className="w-full px-4 py-3 rounded-apple bg-apple-lightgray border border-transparent text-apple-darkgray placeholder:text-apple-gray text-base focus:outline-none focus:bg-white focus:border-apple-blue transition-all"
               />
