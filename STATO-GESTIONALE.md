@@ -1,5 +1,5 @@
 # STATO GESTIONALE RIGHETTI 1967
-Ultimo aggiornamento: 11/10/2026 (pomeriggio)
+Ultimo aggiornamento: 11/10/2026 (sera)
 
 ---
 
@@ -121,6 +121,54 @@ Riferimento al punto 1.
 ---
 
 ## ✅ STORICO — COMPLETATO
+
+### 11/10/2026 — Sera (Annullo fiscale + DDT collegati + Cestino scontrini)
+
+#### 🚨 Annullo fiscale documenti (nota credito + RT)
+- ✅ **Nuova lib `annulloFiscale.ts`**:
+  - `annullaFiscalmente()` per fatture, scontrini fisici, scontrini digitali
+  - Modalità `simulazione` → log `esito='simulato'` in `integrazioni_log`
+  - Modalità `reale` → log `esito='pending_driver'` (driver non ancora collegato)
+  - Blocca se provider fiscale non configurato
+  - Tipi log: `nota_credito` / `annullo_scontrino_rt` / `annullo_corrispettivi`
+- ✅ **`fatture.ts`**: `annullaFattura` chiama `annullaFiscalmente` dopo soft-delete
+- ✅ **`scontrini.ts`**: `annullaScontrino` chiama `annullaFiscalmente` per MADRE
+- ✅ **DB**: nuovi campi `annullo_fiscale_at` / `esito` / `note` su `fatture` + `scontrini`
+- ✅ Test PROD: annullo fattura → log `nota_credito` + `simulato` correttamente
+
+#### 🔗 Annullo fattura con DDT collegati (2 step)
+- ✅ **`ScaricoSeduta`** estesa con campi `annullato` + `annullato_at` + motivo + da
+- ✅ **`DettaglioFattura.tsx`**: pulsante 🚫 Annulla carica DDT collegati attivi
+- ✅ **Modale 2 step**:
+  - **Step 1** → lista DDT con checkbox (tutti selezionati) + password + motivo
+  - Pulsante "📦 Annulla N DDT e procedi"
+  - **Step 2** → conferma annullo fattura (password già verificata)
+  - Pulsante "🚫 Confermo annullo fattura"
+
+#### 🗑️ Cestino scontrini annullati
+- ✅ **`eliminaScontrinoAnnullato(id)`** in `scontrini.ts`:
+  - Solo scontrini annullati
+  - Blocca madre con figli attivi
+  - Elimina righe scontrino collegate
+- ✅ **`CassaFiscale.tsx`**: pulsante 🗑️ visibile SOLO su scontrini annullati
+- ✅ Modale conferma "IRREVERSIBILE"
+- ✅ Badge `ANNULLATO` già visibile
+
+#### 📸 INCI Prodotti TricoLab v2 (bonus pomeriggio)
+- ✅ **Scoperto**: TricoLab v2 su Railway (`righetti-1967-tricolab-v2`) è il progetto attivo
+- ✅ **Vecchio TricoLab** (Streamlit) archiviato
+- ✅ **DB Supabase TricoAI** esteso: `prodotti.inci` + `principi_attivi` + `azioni_estratte` + `inci_aggiornato_at`
+- ✅ **Backend FastAPI**: endpoint `POST /api/gemini/genera-nota-prodotto`
+  - Routing Vertex (Righetti) / Groq (demo)
+  - Parametro `skip_regole_densita` per prompt INCI-only
+  - Fix parsing Vertex: ritorna dict per qualsiasi JSON valido
+- ✅ **Frontend React**: campo INCI + pulsante "✨ Genera nota da INCI con AI"
+- ✅ **Test PROD funziona**: AI genera note simili alle esistenti
+- ✅ **INCI dei prodotti Righetti estratti dal PDF** (11 prodotti + 3 mancanti)
+- ✅ **TODO**: popolare INCI rimanenti + foto per CEROTUM/INTEGRATORE/PROBIOTICO
+
+---
+
 
 ### 11/10/2026 — Pomeriggio (Privacy GDPR + App Cliente + Dashboard)
 
@@ -699,32 +747,41 @@ Vedi sezione TODO — priorità alta per multi-tenant reale.
 
 ---
 
-## 🚨 PRIORITÀ ASSOLUTA — Annullamento documenti fiscali
+## 🚨 PRIORITÀ ASSOLUTA — Fiscale
 
-**Concetto**: l'annullo in gestionale DEVE essere comunicato ai sistemi fiscali esterni. Altrimenti documento annullato in gestionale ma valido fiscalmente.
+### 1. ⏰ Motore Cron Automazioni (invio reale)
+**Stato**: 5 automazioni in dry-run OK. Manca motore cron per modalità `automatico`.
 
-### Fatture MADRE
-- Prima annullare DDT collegati (già bloccato ✅)
-- Poi annullare la fattura → **generare NOTA DI CREDITO** e inviarla a:
-  - **ADE/SDI** (se provider `ade_diretto`)
-  - **FPT** (se provider `fpt` → FPT trasmette auto a ADE)
-- Salvare riferimento nota di credito in DB
-- Log in `integrazioni_log`
+### 2. 📖 Manuale PDF utente (Gestionale + TricoAI)
+**Concept**: manuale scaricabile direttamente da:
+- **Gestionale**: pulsante "📖 Scarica Manuale" in Impostazioni
+- **TricoAI v2**: pulsante in Impostazioni
 
-### Scontrini MADRE
-- Prima annullare figli (già bloccato ✅)
-- **Scontrini fisici** → comando annullo a RT (RCH/Epson)
-- **Scontrini digitali** → invio annullo corrispettivi (ADE o FPT)
-- Log in `integrazioni_log`
+**Contenuti Gestionale** (~50-80 pagine):
+Setup, Clienti, Agenda, Percorsi, Fatture/DDT, Cassa Fiscale, Magazzino, Automazioni, Notifiche push, App Cliente, Integrazioni, Analytics, Sicurezza, FAQ.
 
-### DDT
-- Non fiscale → solo soft-delete locale
-- Ma se collegato a fattura → gestito insieme
+**Contenuti TricoAI** (~30-50 pagine):
+Setup, Analisi Tricoscopica, Prodotti + INCI, Clienti, Cura Domiciliare, Dashboard, Multi-tenant, FAQ.
 
-### Comportamento
-- Se **modalità simulazione** → solo log con `esito='simulato'`
-- Se **modalità reale** → driver vero (stub con `pending_driver`)
-- Se provider non configurato → **bloccare annullo** con avviso
+### 3. 🔒 RLS policy `_all` da droppare (8-10 tabelle)
+- `appuntamenti`, `fornitori`, `movimenti_magazzino`, `ordini_fornitore`, `righe_ordine_fornitore`
+- `prodotti`, `servizi`, `sessioni_firma_*`
+- Priorità alta per multi-tenant reale
+
+---
+
+## 📋 TODO — Altre priorità
+
+### 🟡 Media
+- [ ] Popolare INCI dei 18 prodotti TricoAI (11 già estratti)
+- [ ] Foto per CEROTUM POTENTIA + INTEGRATORE ANTI-DHT + PROBIOTICO
+- [ ] Test utenti demo TricoAI (Groq BYOK)
+- [ ] Test end-to-end notifiche push con cliente reale
+- [ ] Rigenerare PDF scontrini vecchi (formato A4 lungo)
+
+### 🔮 Backlog
+- [ ] 📞 Chiamate AI Voice (Vapi.ai + Twilio)
+
 
 ---
 
