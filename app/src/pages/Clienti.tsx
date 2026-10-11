@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import { inviaEmailConConfig, inviaEmailTest } from '../lib/api';
 import { inviaWhatsAppSmart } from '../lib/whatsapp';
 import { supabase } from '../lib/supabase';
+import { caricaPrivacy, isPrivacyObsoleta, getPrivacySync, type ConfigPrivacy } from '../lib/privacy';
 import { useEffect, useMemo, useState } from 'react';
 import {
   getClienti,
@@ -162,6 +163,11 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
   const [showAnteprimaPrivacy, setShowAnteprimaPrivacy] = useState(false);
   const [filtroClienti, setFiltroClienti] = useState<'pending' | 'rebooking' | null>(null);
   const [clientiIdsFiltrati, setClientiIdsFiltrati] = useState<Set<number> | null>(null);
+  const [versionePrivacyCorrente, setVersionePrivacyCorrente] = useState<string>(() => {
+    const cfg = getPrivacySync();
+    return cfg?.versione || '1.0';
+  });
+
   const [appuntamentiPendingByCliente, setAppuntamentiPendingByCliente] = useState<
     Map<number, import('../lib/appuntamenti').Appuntamento[]>
   >(new Map());
@@ -200,6 +206,8 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
       localStorage.removeItem('clienti_filtro');
     }
     caricaClienti();
+    // Carica versione privacy corrente
+    caricaPrivacy().then((c) => setVersionePrivacyCorrente(c.versione || '1.0')).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -1213,11 +1221,42 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
             >
               {clienteSelezionato.privacy_firmata ? (
                 <div>
+                  {/* Badge Privacy obsoleta */}
+                  {(() => {
+                    const versioneFirmata = (clienteSelezionato as any).privacy_versione_firmata;
+                    const obsoleta = isPrivacyObsoleta(versioneFirmata, versionePrivacyCorrente);
+                    if (!obsoleta) return null;
+                    return (
+                      <div className="mb-3 p-3 rounded-apple bg-amber-100 border-2 border-amber-400">
+                        <div className="flex items-start gap-2">
+                          <span className="text-xl shrink-0">⚠️</span>
+                          <div className="flex-1">
+                            <p className="text-xs font-bold text-amber-900 uppercase">
+                              Privacy obsoleta
+                            </p>
+                            <p className="text-xs text-amber-800 mt-0.5">
+                              Il cliente ha firmato la versione <strong>v{versioneFirmata}</strong>, 
+                              ma la versione corrente è <strong>v{versionePrivacyCorrente}</strong>.
+                            </p>
+                            <p className="text-[10px] text-amber-700 mt-1 italic">
+                              Il cliente deve rifirmare per accettare le modifiche.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="text-xs font-semibold text-apple-blue uppercase">
                         ✓ Privacy firmata
                       </p>
+                      {(clienteSelezionato as any).privacy_versione_firmata && (
+                        <p className="text-[10px] text-apple-gray">
+                          Versione firmata: v{(clienteSelezionato as any).privacy_versione_firmata}
+                        </p>
+                      )}
                       {clienteSelezionato.privacy_data_firma && (
                         <p className="text-xs text-apple-gray mt-0.5">
                           il{' '}
@@ -1225,7 +1264,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
                         </p>
                       )}
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-wrap">
                       <button
                         onClick={() => setShowAnteprimaPrivacy(true)}
                         className="text-xs font-medium text-apple-darkgray hover:underline"

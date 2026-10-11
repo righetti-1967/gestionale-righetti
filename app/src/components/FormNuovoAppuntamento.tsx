@@ -24,6 +24,7 @@ import { formatEuro } from '../lib/fatture';
 import { getScarichiFattura } from '../lib/scarichi';
 import { getOperatoriVisibili } from '../lib/appuntamenti';
 import { calcolaResiduo, type ResiduoPercorso } from '../lib/percorsi-helper';
+import { caricaPrivacy, isPrivacyObsoleta } from '../lib/privacy';
 import type { VoceSelezionata } from '../lib/appuntamenti';
 import { FormNuovoClienteRapido } from './FormNuovoClienteRapido';
 
@@ -62,6 +63,12 @@ export function FormNuovoAppuntamento({
   const [servizi, setServizi] = useState<Servizio[]>([]);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [versionePrivacyCorrente, setVersionePrivacyCorrente] = useState<string>('1.0');
+  const [privacyAvviso, setPrivacyAvviso] = useState<{
+    versioneFirmata: string;
+    versioneCorrente: string;
+    clienteNome: string;
+  } | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
 
   const [clienteId, setClienteId] = useState<number | null>(
@@ -78,6 +85,12 @@ export function FormNuovoAppuntamento({
   );
 
   // 🔄 Sync valori quando cambiano le props (evita stale state in remount)
+  useEffect(() => {
+    caricaPrivacy()
+      .then((c) => setVersionePrivacyCorrente(c.versione || '1.0'))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (appuntamentoIniziale?.data) {
       setData(appuntamentoIniziale.data);
@@ -520,10 +533,24 @@ export function FormNuovoAppuntamento({
     );
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(ignoraPrivacyObsoleta = false) {
     if (!clienteId) {
       setErrore('Seleziona un cliente');
       return;
+    }
+
+    // Controllo privacy obsoleta (solo per nuovi appuntamenti, non per modifiche)
+    if (!modifica && !ignoraPrivacyObsoleta && clienteSelezionato) {
+      const versioneFirmata = (clienteSelezionato as any).privacy_versione_firmata;
+      const privacyFirmata = clienteSelezionato.privacy_firmata;
+      if (privacyFirmata && isPrivacyObsoleta(versioneFirmata, versionePrivacyCorrente)) {
+        setPrivacyAvviso({
+          versioneFirmata: versioneFirmata || '?',
+          versioneCorrente: versionePrivacyCorrente,
+          clienteNome: clienteSelezionato.nome_cognome,
+        });
+        return;
+      }
     }
     if (!titolo.trim()) {
       setErrore('Inserisci un titolo');
@@ -1336,7 +1363,7 @@ export function FormNuovoAppuntamento({
           </button>
           <button
             type="button"
-            onClick={handleSubmit}
+            onClick={() => handleSubmit()}
             disabled={salvando || !clienteId || !titolo.trim()}
             className="flex-1 px-4 py-3 sm:py-2.5 bg-apple-blue text-white rounded-apple font-medium text-sm hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -1557,6 +1584,71 @@ export function FormNuovoAppuntamento({
                 onClick={() => setMostraConfermaSpostamento(null)}
                 disabled={salvando}
                 className="w-full px-4 py-2.5 text-apple-gray text-xs font-medium hover:text-apple-darkgray transition-colors"
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modale avviso: privacy obsoleta */}
+      {privacyAvviso && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[95]"
+          onClick={() => setPrivacyAvviso(null)}
+        >
+          <div
+            className="bg-white rounded-apple shadow-apple-lg max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-amber-100 flex items-center justify-center text-2xl">
+                ⚠️
+              </div>
+              <h2 className="text-lg font-bold text-apple-darkgray mb-2">
+                Privacy obsoleta
+              </h2>
+              <p className="text-xs text-apple-gray leading-relaxed">
+                Il cliente <strong>{privacyAvviso.clienteNome}</strong> ha firmato la privacy
+                nella versione <strong>v{privacyAvviso.versioneFirmata}</strong>, ma la versione
+                corrente è <strong>v{privacyAvviso.versioneCorrente}</strong>.
+              </p>
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-apple text-left">
+                <p className="text-xs text-amber-900 leading-relaxed">
+                  💡 Consiglio: fai rifirmare la privacy aggiornata prima di procedere con
+                  l'appuntamento. Puoi farlo dalla scheda cliente → sezione Privacy.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPrivacyAvviso(null);
+                  // Vai alla scheda cliente per rifirmare
+                  // (chiudi form + emetti evento)
+                  window.dispatchEvent(new CustomEvent('navigate-to-page', { detail: { page: 'clienti' } }));
+                }}
+                className="w-full px-4 py-2.5 bg-amber-500 text-white rounded-apple font-semibold text-sm hover:bg-amber-600 transition-colors"
+              >
+                📄 Vai a far rifirmare privacy
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPrivacyAvviso(null);
+                  handleSubmit(true); // procedi ignorando l'avviso
+                }}
+                className="w-full px-4 py-2.5 bg-gray-100 text-apple-darkgray rounded-apple font-medium text-sm hover:bg-gray-200 transition-colors"
+              >
+                Procedi comunque
+              </button>
+              <button
+                type="button"
+                onClick={() => setPrivacyAvviso(null)}
+                className="w-full px-4 py-2 text-apple-gray text-xs font-medium hover:text-apple-darkgray transition-colors"
               >
                 Annulla
               </button>

@@ -241,14 +241,32 @@ export async function ripristinaCliente(id: number): Promise<void> {
  */
 export async function salvaFirmaPrivacy(
   id: number,
-  firmaBase64: string
+  firmaBase64: string,
+  versioneFirmata?: string
 ): Promise<Cliente> {
+  // Se non passata, leggi la versione corrente da config privacy
+  let versione = versioneFirmata;
+  if (!versione) {
+    try {
+      const { getPrivacySync, caricaPrivacy } = await import('./privacy');
+      let cfg = getPrivacySync();
+      if (!cfg || !cfg.versione) {
+        cfg = await caricaPrivacy();
+      }
+      versione = cfg.versione || '1.0';
+    } catch (e) {
+      console.warn('Impossibile leggere versione privacy, default 1.0:', e);
+      versione = '1.0';
+    }
+  }
+
   const { data, error } = await supabase
     .from('clienti')
     .update({
       privacy_firmata: true,
       privacy_firma_immagine: firmaBase64,
       privacy_data_firma: new Date().toISOString(),
+      privacy_versione_firmata: versione,
     })
     .eq('id', id)
     .select()
