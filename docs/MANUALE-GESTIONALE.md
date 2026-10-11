@@ -1,42 +1,9 @@
----
-title: "Manuale Utente — Gestionale Righetti 1967"
-author: "Righetti Consulting S.r.l."
-date: "11 Ottobre 2026"
----
-
-# Manuale Utente — Gestionale Righetti 1967
-
-**Versione:** 1.0
-**Data:** 11 Ottobre 2026
-**Studio:** Righetti Consulting S.r.l. — Since 1967
-
----
-
-## Indice
-
-1. [Introduzione](#1-introduzione)
-2. [Setup Iniziale](#2-setup-iniziale)
-3. [Clienti](#3-clienti)
-4. [Agenda](#4-agenda)
-5. [Percorsi](#5-percorsi)
-6. [Fatture e DDT](#6-fatture-e-ddt)
-7. [Cassa Fiscale](#7-cassa-fiscale)
-8. [Magazzino](#8-magazzino)
-9. [Automazioni](#9-automazioni)
-10. [Integrazioni](#10-integrazioni)
-11. [Analytics e Report](#11-analytics-e-report)
-12. [App Cliente](#12-app-cliente)
-13. [Sicurezza](#13-sicurezza)
-14. [FAQ](#14-faq)
-15. [🚀 In Arrivo: Chiamate AI Voice](#15-in-arrivo-chiamate-ai-voice)
-
----
 
 ## 1. Introduzione
 
-### 1.1 Cos'è il Gestionale Righetti 1967
+### 1.1 Cos'è il Gestionale Studio
 
-Il **Gestionale Righetti 1967** è un'applicazione web professionale (PWA) sviluppata per lo Studio Tricologico Righetti. È pensata per gestire in modo completo tutte le attività dello studio:
+Il **Gestionale Studio** è un'applicazione web professionale (PWA) sviluppata per lo il tuo Studio. È pensata per gestire in modo completo tutte le attività dello studio:
 
 - **Clienti** e anagrafiche
 - **Agenda** con appuntamenti e promemoria automatici
@@ -51,9 +18,9 @@ Il gestionale è **multi-tenant**: ogni studio che lo utilizza ha i propri dati,
 
 ### 1.2 Visione Multi-Tenant
 
-Il Gestionale è progettato per essere utilizzato da **studi tricologici diversi**, non solo da Righetti 1967:
+Il Gestionale è progettato per essere utilizzato da **studi tricologici diversi**, non solo da Gestionale Studio:
 
-- **Righetti 1967** (`righetti@righetti.club`) → admin principale con funzionalità complete
+- **Gestionale Studio** (`supporto@tuostudio.it`) → admin principale con funzionalità complete
 - **Altri studi reali** → ognuno con i propri dati separati
 - **Utenti demo** → per prova gratuita di 15 giorni con dati demo pre-popolati
 
@@ -78,8 +45,6 @@ Ogni studio vede **solo i propri dati**: clienti, appuntamenti, fatture, scontri
 - ✅ Migliore esperienza utente (full-screen)
 - ✅ Funziona anche con connessione lenta
 
----
-
 ## 2. Setup Iniziale
 
 ### 2.1 Dati Azienda
@@ -89,8 +54,8 @@ Ogni studio vede **solo i propri dati**: clienti, appuntamenti, fatture, scontri
 Qui configuri l'identità dello studio che apparirà su fatture, scontrini, email e documenti:
 
 - **Logo Aziendale**: caricato su Storage Supabase (bucket `azienda`)
-- **Ragione Sociale**: denominazione legale (es. "Righetti Consulting S.r.l.")
-- **Nome Studio**: nome commerciale che appare al cliente (es. "Righetti Since 1967")
+- **Ragione Sociale**: denominazione legale (es. "Gestionale Studio")
+- **Nome Studio**: nome commerciale che appare al cliente (es. "Gestionale Studio")
 - **Partita IVA** e **Codice Fiscale**
 - **Sede Legale**: indirizzo completo (indirizzo, CAP, città, provincia)
 - **Sede Operativa**: indirizzo dove si opera fisicamente (spesso diverso dalla sede legale)
@@ -199,7 +164,6 @@ Configura i canali di comunicazione con i clienti:
 
 *(continua...)*
 
-
 ---
 
 ## 3. Clienti
@@ -287,7 +251,7 @@ Vedi tutto lo storico del cliente:
 - **Operatore** (Luca, Lorenzo, ecc.)
 - **Data** e **Ora inizio**
 - **Durata** (minuti)
-- **Titolo** (es. "Trattamento Righetti 4-2-1")
+- **Titolo** (es. "Trattamento lo studio 4-2-1")
 - **Tipo**: Percorso / Nuovo / Seduta / Generico
 
 **Campi opzionali:**
@@ -344,7 +308,7 @@ Configura ferie e festività:
 
 Un **percorso** è un pacchetto di sedute prepagate. Campi:
 - **Cliente**
-- **Tipologia** (es. "Righetti 4-2-1")
+- **Tipologia** (es. "lo studio 4-2-1")
 - **Numero sedute** totali
 - **Prezzo totale**
 - **Data inizio** e **Data fine** prevista
@@ -783,4 +747,4 @@ A: Verifica che:
 
 **Fine Manuale — Versione 1.0**
 
-*Per assistenza: righetti@righetti.club*
+*Per assistenza: supporto@tuostudio.it*

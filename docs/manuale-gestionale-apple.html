@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Manuale Utente — Gestionale Righetti 1967</title>
+<style>
+@page {
+  size: A4;
+  margin: 15mm;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.55;
+  color: #1C1C1E;
+  margin: 0 auto;
+  padding: 0;
+  background: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  max-width: 100%;
+}
+
+/* Contenitore principale: centrato, largo 180mm */
+.page {
+  max-width: 180mm;
+  margin: 0 auto;
+  padding: 20mm 0;
+}
+
+h1 {
+  font-size: 26pt;
+  font-weight: 700;
+  color: #1C1C1E;
+  margin: 30px 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 3px solid #007AFF;
+  letter-spacing: -0.5px;
+  page-break-before: always;
+  page-break-after: avoid;
+}
+
+h1:first-of-type {
+  page-break-before: avoid;
+  margin-top: 0;
+}
+
+h2 {
+  font-size: 16pt;
+  font-weight: 600;
+  color: #1C1C1E;
+  margin: 24px 0 12px 0;
+  letter-spacing: -0.3px;
+  page-break-after: avoid;
+}
+
+h3 {
+  font-size: 12.5pt;
+  font-weight: 600;
+  color: #3A3A3C;
+  margin: 18px 0 8px 0;
+  page-break-after: avoid;
+}
+
+p {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+ul, ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+li {
+  margin: 4px 0;
+  line-height: 1.55;
+}
+
+strong {
+  font-weight: 600;
+  color: #1C1C1E;
+}
+
+em {
+  font-style: italic;
+  color: #3A3A3C;
+}
+
+code {
+  background: #F2F2F7;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-family: "SF Mono", Menlo, Monaco, monospace;
+  font-size: 9.5pt;
+  color: #C41E3A;
+}
+
+pre {
+  background: #F2F2F7;
+  padding: 12px 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 9.5pt;
+  line-height: 1.4;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  color: #1C1C1E;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 10pt;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px #E5E5EA;
+}
+
+table th {
+  background: #F2F2F7;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #1C1C1E;
+  border-bottom: 1px solid #D1D1D6;
+  font-size: 10pt;
+}
+
+table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #F2F2F7;
+  color: #3A3A3C;
+}
+
+table tr:last-child td {
+  border-bottom: none;
+}
+
+table tr:nth-child(even) td {
+  background: #FAFAFC;
+}
+
+a {
+  color: #007AFF;
+  text-decoration: none;
+}
+
+blockquote {
+  border-left: 4px solid #007AFF;
+  padding: 10px 16px;
+  margin: 14px 0;
+  background: #F0F7FF;
+  color: #1C1C1E;
+  border-radius: 0 8px 8px 0;
+  font-style: normal;
+}
+
+blockquote p {
+  margin: 4px 0;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #E5E5EA;
+  margin: 28px 0;
+}
+
+/* Copertina stile Apple */
+.cover {
+  text-align: center;
+  padding: 60mm 20px 40px 20px;
+  page-break-after: always;
+  background: linear-gradient(180deg, #F9F9FB 0%, #FFFFFF 100%);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.cover-logo {
+  width: 100px;
+  height: 100px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48pt;
+  color: #ffffff;
+  font-weight: 700;
+  margin-bottom: 30px;
+  box-shadow: 0 10px 40px rgba(0, 122, 255, 0.3);
+}
+
+.cover h1 {
+  font-size: 34pt !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 0 16px 0 !important;
+  page-break-before: avoid !important;
+  color: #1C1C1E;
+  letter-spacing: -1px;
+}
+
+.cover-subtitle {
+  font-size: 16pt;
+  color: #8E8E93;
+  margin-bottom: 50px;
+  font-weight: 400;
+}
+
+.cover-meta {
+  display: inline-block;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #E5E5EA;
+  border-radius: 16px;
+  padding: 24px 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  margin-top: 40px;
+}
+
+.cover-meta-row {
+  padding: 6px 0;
+  font-size: 12pt;
+}
+
+.cover-meta-label {
+  color: #8E8E93;
+  font-weight: 500;
+  display: inline-block;
+  width: 100px;
+}
+
+.cover-meta-value {
+  color: #1C1C1E;
+  font-weight: 600;
+}
+
+.cover-footer {
+  margin-top: 60px;
+  font-size: 10pt;
+  color: #8E8E93;
+}
+
+/* Box "novità" */
+.novelty {
+  background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
+  color: #ffffff;
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin: 20px 0;
+}
+
+.novelty strong {
+  color: #ffffff;
+}
+
+/* Indice elegante */
+.toc {
+  page-break-after: always;
+}
+
+.toc h1 {
+  page-break-before: avoid;
+}
+
+.toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 30px 0;
+}
+
+.toc-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid #F2F2F7;
+  font-size: 13pt;
+  color: #1C1C1E;
+  font-weight: 500;
+}
+
+.toc-list li:last-child {
+  border-bottom: none;
+}
+
+.toc-num {
+  display: inline-block;
+  width: 40px;
+  color: #007AFF;
+  font-weight: 600;
+}
+
+/* Print */
+@media print {
+  body {
+    font-size: 10pt;
+    padding: 0;
+    margin: 0;
+  }
+  .page {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+  .cover {
+    min-height: 100vh;
+    page-break-after: always;
+    padding: 40mm 20mm 20mm 20mm;
+  }
+  h1 {
+    font-size: 22pt;
+    page-break-before: always;
+  }
+  h1:first-of-type {
+    page-break-before: avoid;
+  }
+  h2, h3 {
+    page-break-after: avoid;
+  }
+  p, li, table, blockquote, pre {
+    page-break-inside: avoid;
+  }
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  img {
+    max-width: 100%;
+    page-break-inside: avoid;
+  }
+  .toc {
+    page-break-after: always;
+  }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- COPERTINA -->
+<div class="cover">
+  <div class="cover-logo">📖</div>
+  <h1>Manuale Utente</h1>
+  <div class="cover-subtitle">Gestionale Studio</div>
+  <div class="cover-meta">
+    <div class="cover-meta-row">
+      <span class="cover-meta-label">Versione</span>
+      <span class="cover-meta-value">1.0</span>
+    </div>
+    <div class="cover-meta-row">
+      <span class="cover-meta-label">Data</span>
+      <span class="cover-meta-value">11 Ottobre 2026</span>
+    </div>
+  </div>
+</div>
+
+<!-- INDICE -->
+<div class="toc">
+  <h1>Indice</h1>
+  <ol class="toc-list">
+    <li><span class="toc-num">1.</span> Introduzione</li>
+    <li><span class="toc-num">2.</span> Setup Iniziale</li>
+    <li><span class="toc-num">3.</span> Clienti</li>
+    <li><span class="toc-num">4.</span> Agenda</li>
+    <li><span class="toc-num">5.</span> Percorsi</li>
+    <li><span class="toc-num">6.</span> Fatture e DDT</li>
+    <li><span class="toc-num">7.</span> Cassa Fiscale</li>
+    <li><span class="toc-num">8.</span> Magazzino</li>
+    <li><span class="toc-num">9.</span> Automazioni</li>
+    <li><span class="toc-num">10.</span> Integrazioni</li>
+    <li><span class="toc-num">11.</span> Analytics e Report</li>
+    <li><span class="toc-num">12.</span> App Cliente</li>
+    <li><span class="toc-num">13.</span> Sicurezza</li>
+    <li><span class="toc-num">14.</span> FAQ</li>
+    <li><span class="toc-num">15.</span> 🚀 In Arrivo: Chiamate AI Voice</li>
+  </ol>
+</div>
+
+<p>---</p>
+<p>title: "Manuale Utente — Gestionale Righetti 1967"</p>
+<p>author: "Righetti Consulting S.r.l."</p>
+<p>date: "11 Ottobre 2026"</p>
+<p>---</p>
+<h1>Manuale Utente — Gestionale Righetti 1967</h1>
+<p><strong>Versione:</strong> 1.0</p>
+<p><strong>Data:</strong> 11 Ottobre 2026</p>
+<p><strong>Studio:</strong> Righetti Consulting S.r.l. — Since 1967</p>
+<p>---</p>
+<h2>Indice</h2>
+<ol>
+<li>[Introduzione](#1-introduzione)</li>
+<li>[Setup Iniziale](#2-setup-iniziale)</li>
+<li>[Clienti](#3-clienti)</li>
+<li>[Agenda](#4-agenda)</li>
+<li>[Percorsi](#5-percorsi)</li>
+<li>[Fatture e DDT](#6-fatture-e-ddt)</li>
+<li>[Cassa Fiscale](#7-cassa-fiscale)</li>
+<li>[Magazzino](#8-magazzino)</li>
+<li>[Automazioni](#9-automazioni)</li>
+<li>[Integrazioni](#10-integrazioni)</li>
+<li>[Analytics e Report](#11-analytics-e-report)</li>
+<li>[App Cliente](#12-app-cliente)</li>
+<li>[Sicurezza](#13-sicurezza)</li>
+<li>[FAQ](#14-faq)</li>
+<li>[🚀 In Arrivo: Chiamate AI Voice](#15-in-arrivo-chiamate-ai-voice)</li>
+</ul>
+<p>---</p>
+<h2>1. Introduzione</h2>
+<h3>1.1 Cos'è il Gestionale Righetti 1967</h3>
+<p>Il <strong>Gestionale Righetti 1967</strong> è un'applicazione web professionale (PWA) sviluppata per lo Studio Tricologico Righetti. È pensata per gestire in modo completo tutte le attività dello studio:</p>
+<ul>
+<li><strong>Clienti</strong> e anagrafiche</li>
+<li><strong>Agenda</strong> con appuntamenti e promemoria automatici</li>
+<li><strong>Percorsi</strong> tricologici con riscatto sedute</li>
+<li><strong>Fatture</strong>, <strong>DDT</strong> e <strong>Scontrini</strong> con invio automatico ai sistemi fiscali (ADE, FPT, RCH/Epson)</li>
+<li><strong>Magazzino</strong> con giacenze e movimenti</li>
+<li><strong>Automazioni</strong> per promemoria, compleanni, riattivazione clienti</li>
+<li><strong>App Cliente</strong> dedicata con notifiche push</li>
+<li><strong>Analytics</strong> e report per il commercialista</li>
+</ul>
+<p>Il gestionale è <strong>multi-tenant</strong>: ogni studio che lo utilizza ha i propri dati, completamente separati e protetti.</p>
+<h3>1.2 Visione Multi-Tenant</h3>
+<p>Il Gestionale è progettato per essere utilizzato da <strong>studi tricologici diversi</strong>, non solo da Righetti 1967:</p>
+<ul>
+<li><strong>Righetti 1967</strong> (<code>righetti@righetti.club</code>) → admin principale con funzionalità complete</li>
+<li><strong>Altri studi reali</strong> → ognuno con i propri dati separati</li>
+<li><strong>Utenti demo</strong> → per prova gratuita di 15 giorni con dati demo pre-popolati</li>
+</ul>
+<p>Ogni studio vede <strong>solo i propri dati</strong>: clienti, appuntamenti, fatture, scontrini, prodotti, ecc. La separazione è garantita a livello database (Row Level Security su Supabase).</p>
+<h3>1.3 Primo Accesso</h3>
+<p><strong>URL di accesso:</strong> <code>https://gestionale.righetti.club</code></p>
+<p><strong>Credenziali:</strong></p>
+<ul>
+<li><strong>Email</strong>: fornita dall'amministratore dello studio</li>
+<li><strong>Password</strong>: ricevuta via email al primo accesso</li>
+</ul>
+<p><strong>Consiglio:</strong> installa il Gestionale come <strong>PWA</strong> sul tuo Mac, iPad o iPhone:</p>
+<ol>
+<li>Apri il gestionale in <strong>Safari</strong> (iOS) o <strong>Chrome</strong> (Mac/Android)</li>
+<li>Tocca <strong>Condividi</strong> → <strong>Aggiungi a Home</strong> (iOS) o <strong>Installa app</strong> (Chrome)</li>
+<li>Ora hai un'icona sul dispositivo come una vera app</li>
+</ul>
+<p><strong>Perché la PWA?</strong></p>
+<ul>
+<li>✅ Accesso immediato senza dover aprire il browser</li>
+<li>✅ Notifiche push in tempo reale</li>
+<li>✅ Migliore esperienza utente (full-screen)</li>
+<li>✅ Funziona anche con connessione lenta</li>
+</ul>
+<p>---</p>
+<h2>2. Setup Iniziale</h2>
+<h3>2.1 Dati Azienda</h3>
+<p><strong>Dove:</strong> Impostazioni → Azienda</p>
+<p>Qui configuri l'identità dello studio che apparirà su fatture, scontrini, email e documenti:</p>
+<ul>
+<li><strong>Logo Aziendale</strong>: caricato su Storage Supabase (bucket <code>azienda</code>)</li>
+<li><strong>Ragione Sociale</strong>: denominazione legale (es. "Righetti Consulting S.r.l.")</li>
+<li><strong>Nome Studio</strong>: nome commerciale che appare al cliente (es. "Righetti Since 1967")</li>
+<li><strong>Partita IVA</strong> e <strong>Codice Fiscale</strong></li>
+<li><strong>Sede Legale</strong>: indirizzo completo (indirizzo, CAP, città, provincia)</li>
+<li><strong>Sede Operativa</strong>: indirizzo dove si opera fisicamente (spesso diverso dalla sede legale)</li>
+<li><strong>Telefono</strong>, <strong>Email</strong>, <strong>Sito Web</strong>, <strong>WhatsApp</strong></li>
+</ul>
+<p><strong>⚠️ Regola importante sugli indirizzi:</strong></p>
+<ul>
+<li><strong>Fatture, scontrini e privacy</strong>: mostrano <strong>entrambe</strong> le sedi (legale + operativa)</li>
+<li><strong>Tutti gli altri documenti</strong> (DDT, email, WhatsApp, promemoria, PDF): usano <strong>solo la sede operativa</strong></li>
+</ul>
+<p>Se la sede operativa non è compilata, il sistema usa automaticamente quella legale.</p>
+<p>---</p>
+<h3>2.2 Agenda</h3>
+<p><strong>Dove:</strong> Impostazioni → Agenda</p>
+<p>Configura la griglia dell'agenda e gli operatori dello studio:</p>
+<p>#### Operatori</p>
+<ul>
+<li><strong>Aggiungi operatore</strong>: nome, ruolo (es. "Consulente Tricologo"), colore</li>
+<li><strong>Visibilità</strong>: scegli quali operatori mostrare in agenda</li>
+<li><strong>Orari personalizzati per operatore</strong>: opzionale, permette di assegnare fasce orarie diverse (es. per part-time o turni)</li>
+</ul>
+<p>#### Orari di apertura</p>
+<ul>
+<li><strong>Orari globali della sede</strong>: apertura, chiusura, giorni lavorativi</li>
+<li><strong>Fasce multiple per giorno</strong>: es. mattina 9-13 + pomeriggio 15-19</li>
+<li><strong>Granularità griglia</strong>: 10, 15, 20 o 30 minuti</li>
+</ul>
+<p>#### Chiusure Straordinarie</p>
+<ul>
+<li><strong>🏖️ Ferie e festività</strong>: configurà periodi di chiusura (es. Natale dal 24/12 al 06/01)</li>
+<li><strong>Motivo</strong>: opzionale (es. "Ferie Natalizie", "Ferragosto")</li>
+<li><strong>Effetto in agenda</strong>: i giorni in chiusura hanno slot disabilitati</li>
+<li><strong>Effetto in App Cliente</strong>: i clienti vedono le chiusure dal 1° del mese interessato</li>
+</ul>
+<p>---</p>
+<h3>2.3 Fiscale</h3>
+<p><strong>Dove:</strong> Impostazioni → Fatturazione</p>
+<p>Scegli il <strong>regime documenti</strong> dello studio e configura i provider fiscali:</p>
+<p>#### Regime Documenti</p>
+<ul>
+<li><strong>📄 Regime Fatture</strong>: emetti fatture e DDT, cassa fiscale nascosta</li>
+<li><strong>🧾 Regime Scontrini</strong>: emetti scontrini (fisici o digitali), fatture/DDT nascosti</li>
+</ul>
+<p>⚠️ Cambiare regime richiede una conferma esplicita. La sidebar si adatta automaticamente.</p>
+<p>#### Provider Fiscali</p>
+<p><strong>Per fatture elettroniche:</strong></p>
+<ul>
+<li><strong>ADE Diretto (SDI)</strong>: genera XML, invio manuale via PEC o portale ADE</li>
+<li><strong>Fatture Per Tutti (FPT)</strong>: invio automatico allo SDI tramite API</li>
+</ul>
+<p><strong>Per scontrini digitali (cloud):</strong></p>
+<ul>
+<li><strong>ADE Diretto</strong>: invio corrispettivi via ADE</li>
+<li><strong>FPT</strong>: trasmissione automatica ad ADE</li>
+</ul>
+<p><strong>Per scontrini fisici (RT):</strong></p>
+<ul>
+<li><strong>RCH Registratore</strong>: registratore telematico (RCH 100, RCH 500)</li>
+<li><strong>Epson 80mm</strong>: stampante fiscale Epson (TM-T88, TM-m30)</li>
+</ul>
+<p>#### Modalità Simulazione / Reale</p>
+<p>Ogni provider ha un <strong>toggle</strong> in cima alla config:</p>
+<ul>
+<li><strong>🧪 Simulazione</strong> (default): nessun invio reale. Tutte le operazioni vengono simulate e loggate.</li>
+<li><strong>🔴 Reale</strong>: invio effettivo al provider. Richiede conferma esplicita digitando <code>CONFERMO</code>.</li>
+</ul>
+<p>⚠️ <strong>IMPORTANTE</strong>: attivare "Reale" senza il driver collegato produrrà log con esito <code>pending_driver</code>. Il driver vero verrà collegato in una sessione successiva.</p>
+<p>#### Log Integrazioni</p>
+<p><strong>Dove:</strong> Impostazioni → Fatturazione → Log Integrazioni</p>
+<p>Qui vedi lo storico di tutte le chiamate ai provider fiscali:</p>
+<ul>
+<li><strong>Tipo</strong>: stampa scontrino, fattura FPT, fattura ADE, nota credito, ecc.</li>
+<li><strong>Modalità</strong>: simulazione / reale</li>
+<li><strong>Esito</strong>: <code>simulato</code> / <code>pending_driver</code> / <code>ok</code> / <code>errore</code></li>
+<li><strong>Payload</strong>: JSON completo della chiamata (utile per debug)</li>
+<li><strong>Filtri</strong>: tipo, modalità, esito, giorni</li>
+<li><strong>Azioni</strong>: elimina singolo log, pulisci tutti i log</li>
+</ul>
+<p>---</p>
+<h3>2.4 Comunicazioni</h3>
+<p><strong>Dove:</strong> Impostazioni → Comunicazioni</p>
+<p>Configura i canali di comunicazione con i clienti:</p>
+<p>#### WhatSender (WhatsApp automatico)</p>
+<ul>
+<li><strong>Token</strong>: dalla dashboard WhatSender</li>
+<li><strong>Phone</strong>: numero dello studio</li>
+<li><strong>Effetto</strong>: tutti i pulsanti WhatsApp del gestionale useranno WhatSender per invio automatico (con fallback automatico a <code>wa.me</code> se non configurato)</li>
+</ul>
+<p>#### Google Workspace (Email)</p>
+<ul>
+<li><strong>Username</strong>: email Google Workspace</li>
+<li><strong>Password</strong>: app password Google (non la password normale)</li>
+<li><strong>From Name</strong>: nome mittente visibile al cliente</li>
+<li><strong>Google Script URL</strong>: webhook Apps Script per relay HTTPS</li>
+<li><strong>Effetto</strong>: tutte le email ai clienti passano da Google Workspace</li>
+</ul>
+<p>---</p>
+<p><em>(continua...)</em></p>
+<p>---</p>
+<h2>3. Clienti</h2>
+<h3>3.1 Anagrafica</h3>
+<p><strong>Dove:</strong> Sidebar → Clienti</p>
+<p>Il cuore del gestionale. Ogni cliente ha una scheda completa:</p>
+<ul>
+<li><strong>Nome e Cognome</strong> (obbligatorio)</li>
+<li><strong>Cellulare</strong> (per WhatsApp e App Cliente)</li>
+<li><strong>Email</strong> (per fatture e documenti)</li>
+<li><strong>Codice Fiscale</strong> / <strong>Partita IVA</strong> (per fatture)</li>
+<li><strong>Indirizzo di residenza</strong> e <strong>indirizzo di spedizione</strong></li>
+<li><strong>Data di nascita</strong> (per automazione compleanno)</li>
+<li><strong>Segnalazioni annulli</strong> (log automatico di fatture/scontrini annullati)</li>
+<li><strong>Note anamnestiche</strong></li>
+</ul>
+<p><strong>Ricerca rapida:</strong> in alto c'è la barra di ricerca per nome, email o cellulare.</p>
+<h3>3.2 Privacy GDPR</h3>
+<p><strong>Dove:</strong> Cliente → Privacy firmata</p>
+<p>Il sistema gestisce l'informativa privacy GDPR con <strong>versioning</strong>:</p>
+<ul>
+<li><strong>Firma digitale</strong> su iPad con dito/stylus</li>
+<li><strong>PDF completo</strong> generato automaticamente (2 pagine: informativa + firma)</li>
+<li><strong>Versione tracciata</strong> (v1.0, v1.1, v2.0, ecc.)</li>
+<li><strong>Alert obsoleto</strong>: se il testo privacy cambia versione, il cliente deve rifirmare</li>
+<li><strong>Badge in Dashboard</strong>: "⚠️ X da rifirmare"</li>
+</ul>
+<p><strong>Pulsanti disponibili:</strong></p>
+<ul>
+<li><strong>👁️ Anteprima</strong>: visualizza il PDF della privacy</li>
+<li><strong>📄 Ristampa PDF</strong>: rigenera il PDF (se perso)</li>
+<li><strong>🗑️ Rimuovi firma</strong>: cancella la firma (richiede conferma)</li>
+<li><strong>📧 Email</strong> / <strong>💬 WhatsApp</strong>: invia il link firma al cliente</li>
+</ul>
+<p><strong>Come far firmare un cliente:</strong></p>
+<ol>
+<li>Apri il cliente → Privacy firmata</li>
+<li>Click <strong>"✍️ Firma per accettazione"</strong></li>
+<li>Apri il link su iPad → cliente firma con dito</li>
+<li>Conferma → PDF salvato + notifica push al cliente</li>
+</ul>
+<h3>3.3 Note Studio</h3>
+<p><strong>Dove:</strong> Cliente → Note studio</p>
+<p>Note private dello studio visibili al cliente tramite App Cliente. Ottimo per:</p>
+<ul>
+<li>Promemoria post-seduta</li>
+<li>Consigli personalizzati</li>
+<li>Aggiornamenti trattamento</li>
+</ul>
+<p>Il cliente riceve <strong>notifica push</strong> quando aggiungi una nota.</p>
+<h3>3.4 Storico</h3>
+<p><strong>Dove:</strong> Cliente → scorrimento pagina</p>
+<p>Vedi tutto lo storico del cliente:</p>
+<ul>
+<li><strong>Appuntamenti</strong> passati e futuri</li>
+<li><strong>Percorsi</strong> attivi e completati</li>
+<li><strong>Fatture</strong> emesse</li>
+<li><strong>Scontrini</strong> emessi</li>
+<li><strong>Prodotti</strong> riscattati</li>
+<li><strong>Schede tricologiche</strong> (da TricoAI)</li>
+</ul>
+<p>---</p>
+<h2>4. Agenda</h2>
+<h3>4.1 Creare Appuntamenti</h3>
+<p><strong>Dove:</strong> Sidebar → Agenda</p>
+<p><strong>3 modi per creare un appuntamento:</strong></p>
+<ol>
+<li><strong>Click sulla cella vuota</strong>: seleziona operatore, data e ora</li>
+<li><strong>Pulsante "+ Nuovo"</strong>: form completo</li>
+<li><strong>Da cliente</strong>: dal dettaglio cliente → "+ Nuovo appuntamento"</li>
+</ul>
+<p><strong>Campi obbligatori:</strong></p>
+<ul>
+<li><strong>Cliente</strong> (ricerca con autocomplete)</li>
+<li><strong>Operatore</strong> (Luca, Lorenzo, ecc.)</li>
+<li><strong>Data</strong> e <strong>Ora inizio</strong></li>
+<li><strong>Durata</strong> (minuti)</li>
+<li><strong>Titolo</strong> (es. "Trattamento Righetti 4-2-1")</li>
+<li><strong>Tipo</strong>: Percorso / Nuovo / Seduta / Generico</li>
+</ul>
+<p><strong>Campi opzionali:</strong></p>
+<ul>
+<li><strong>Servizio</strong> (dal catalogo)</li>
+<li><strong>Percorso attivo</strong> (se appartiene a un percorso)</li>
+<li><strong>Note interne</strong></li>
+<li><strong>Colore</strong> personalizzato</li>
+</ul>
+<h3>4.2 Stati Appuntamento</h3>
+<table><thead><tr>
+<th>Stato</th>
+<th>Colore</th>
+<th>Descrizione</th>
+</tr></thead><tbody>
+<tr>
+<td>**Pending**</td>
+<td>🟡 Ambra</td>
+<td>In attesa di conferma dal cliente</td>
+</tr>
+<tr>
+<td>**Confermato**</td>
+<td>🔵 Blu</td>
+<td>Confermato (cliente o studio)</td>
+</tr>
+<tr>
+<td>**Prenotato**</td>
+<td>🔵 Blu</td>
+<td>Prenotato, non ancora confermato</td>
+</tr>
+<tr>
+<td>**Completato**</td>
+<td>⚪ Grigio</td>
+<td>Seduta effettuata</td>
+</tr>
+<tr>
+<td>**Cancellato**</td>
+<td>🔴 Rosso</td>
+<td>Annullato (con motivo tracciato)</td>
+</tr>
+</tbody></table>
+<p><strong>Cambio stato:</strong> click sull'appuntamento → modifica stato → salva. Il cliente riceve <strong>notifica push</strong> automatica.</p>
+<h3>4.3 Promemoria Automatici</h3>
+<p>Due tipi di promemoria configurabili in <strong>Impostazioni → Automazioni</strong>:</p>
+<ul>
+<li><strong>Promemoria Appuntamento</strong>: X ore prima (12, 24, 48, 72, ecc.)</li>
+<li><strong>Promemoria Check-Up Gratuito</strong>: dedicato ai nuovi clienti con prima visita check-up</li>
+</ul>
+<p><strong>Canale:</strong> WhatsApp / Email / Entrambi</p>
+<p><strong>Invio manuale:</strong> dalla modale "Promemoria" in Agenda (selezione multipla clienti).</p>
+<h3>4.4 Chiusure Straordinarie</h3>
+<p><strong>Dove:</strong> Impostazioni → Agenda → 🏖️ Chiusure Straordinarie</p>
+<p>Configura ferie e festività:</p>
+<ul>
+<li><strong>Data inizio</strong> e <strong>Data fine</strong></li>
+<li><strong>Motivo</strong> opzionale (es. "Ferie Natalizie")</li>
+</ul>
+<p><strong>Effetti:</strong></p>
+<ul>
+<li><strong>Agenda</strong>: i giorni in chiusura hanno slot disabilitati (grigi)</li>
+<li><strong>Banner</strong>: se apri un giorno chiuso, appare banner arancione in alto</li>
+<li><strong>App Cliente</strong>: i clienti vedono le chiusure dal 1° del mese interessato</li>
+</ul>
+<p><strong>Badge nella card Home App Cliente:</strong> "⚠️ X chiusure questo mese"</p>
+<p>---</p>
+<h2>5. Percorsi</h2>
+<h3>5.1 Creazione</h3>
+<p><strong>Dove:</strong> Sidebar → Percorsi (o Cliente → Nuovo percorso)</p>
+<p>Un <strong>percorso</strong> è un pacchetto di sedute prepagate. Campi:</p>
+<ul>
+<li><strong>Cliente</strong></li>
+<li><strong>Tipologia</strong> (es. "Righetti 4-2-1")</li>
+<li><strong>Numero sedute</strong> totali</li>
+<li><strong>Prezzo totale</strong></li>
+<li><strong>Data inizio</strong> e <strong>Data fine</strong> prevista</li>
+<li><strong>Servizi</strong> inclusi (righe)</li>
+</ul>
+<h3>5.2 Riscatto Sedute</h3>
+<p>Quando il cliente completa una seduta del percorso:</p>
+<ol>
+<li>Dalla seduta in agenda → click <strong>"Riscatta percorso"</strong></li>
+<li>Seleziona il percorso attivo</li>
+<li>Compila i prodotti/servizi usati</li>
+<li>Conferma → genera uno <strong>scontrino figlio</strong> (0€, non fiscale) o <strong>DDT</strong></li>
+</ul>
+<p><strong>Il residuo</strong> si aggiorna automaticamente.</p>
+<h3>5.3 Residuo</h3>
+<p>Il <strong>residuo</strong> è il valore del percorso non ancora riscattato:</p>
+<ul>
+<li>Calcolato come <code>(righe percorso) - (righe riscattate)</code></li>
+<li>Visibile nel dettaglio cliente</li>
+<li><strong>Fatturabile</strong>: quando il residuo è significativo, puoi emettere fattura</li>
+</ul>
+<h3>5.4 Fatturazione</h3>
+<p><strong>Da percorso a fattura:</strong></p>
+<ol>
+<li>Apri cliente → percorsi attivi</li>
+<li>Click <strong>"Fattura percorso"</strong></li>
+<li>Scegli se fatturare tutto o solo il residuo</li>
+<li>Genera proforma o fattura</li>
+</ul>
+<p>---</p>
+<h2>6. Fatture e DDT</h2>
+<h3>6.1 Emissione Fattura</h3>
+<p><strong>Dove:</strong> Sidebar → Fatture → + Nuova Fattura</p>
+<p><strong>Procedura:</strong></p>
+<ol>
+<li>Seleziona <strong>cliente</strong> (o apri da percorso)</li>
+<li>Aggiungi <strong>righe</strong> (servizi, prodotti, percorsi)</li>
+<li>Applica <strong>sconti</strong> (per riga o totale)</li>
+<li>Compila <strong>note</strong> e <strong>dicitura legale</strong></li>
+<li>Salva come <strong>Bozza</strong> o <strong>Emetti</strong> (diventa proforma)</li>
+</ul>
+<p><strong>Numerazione:</strong> automatica, con prefisso configurabile.</p>
+<h3>6.2 Firma Cliente</h3>
+<p><strong>2 modalità:</strong></p>
+<p><strong>A) Firma iPad diretta:</strong></p>
+<ol>
+<li>Apri fattura → <strong>"✍️ Firma per accettazione"</strong></li>
+<li>Apri link su iPad → cliente firma</li>
+<li>Firma salvata</li>
+</ul>
+<p><strong>B) Firma QR:</strong></p>
+<ol>
+<li>Genera QR code</li>
+<li>Cliente scansiona con iPhone</li>
+<li>Firma da mobile</li>
+</ul>
+<h3>6.3 Invio Email/WhatsApp</h3>
+<p>Dalla fattura aperta:</p>
+<ul>
+<li><strong>📧 Email</strong>: PDF allegato + template personalizzabile</li>
+<li><strong>💬 WhatsApp</strong>: WhatSender (PDF) o fallback <code>wa.me</code></li>
+<li><strong>📄 Scarica PDF</strong>: per stampa manuale</li>
+</ul>
+<h3>6.4 Annullo Fattura (Nota di Credito)</h3>
+<p>⚠️ <strong>IMPORTANTE</strong>: annullare una fattura emessa <strong>richiede Nota di Credito</strong> (obbligo fiscale).</p>
+<p><strong>Procedura:</strong></p>
+<ol>
+<li>Apri fattura → click <strong>🚫 Annulla</strong></li>
+<li>Se ci sono <strong>DDT collegati attivi</strong> → la modale mostra <strong>lista DDT</strong> con checkbox</li>
+<li>Seleziona DDT da annullare (tutti di default)</li>
+<li>Inserisci <strong>password gestionale</strong> + <strong>motivo</strong> (min 10 caratteri)</li>
+<li>Click <strong>"📦 Annulla N DDT e procedi"</strong> → annulla DDT selezionati</li>
+<li>Modale passa a <strong>step 2</strong>: conferma annullo fattura</li>
+<li>Click <strong>"🚫 Confermo annullo fattura"</strong> → annulla fattura + genera <strong>nota di credito</strong> verso ADE/FPT</li>
+</ul>
+<p><strong>Il log</strong> appare in Impostazioni → Fatturazione → Log Integrazioni.</p>
+<h3>6.5 DDT: Emissione, Firma, Annullo</h3>
+<p><strong>Emissione:</strong> da percorsi → scarico seduta → genera DDT</p>
+<p><strong>Firma:</strong> stesso flusso fatture (iPad o QR)</p>
+<p><strong>Annullo:</strong> se collegato a fattura, prima annulla fattura. Altrimenti annullo libero.</p>
+<p><strong>⚠️ DDT non è fiscale</strong> → non serve nota di credito.</p>
+<p>---</p>
+<h2>7. Cassa Fiscale</h2>
+<h3>7.1 Scontrini Fisici (RCH/Epson)</h3>
+<p>Se hai configurato provider RCH o Epson:</p>
+<p><strong>Emissione:</strong></p>
+<ol>
+<li>Cassa Fiscale → scontrino</li>
+<li>Il sistema genera PDF in formato <strong>termico 80mm</strong></li>
+<li><strong>Modalità Simulazione</strong> (default): mostra anteprima a video</li>
+<li><strong>Modalità Reale</strong>: invia comando alla stampante fiscale</li>
+</ul>
+<p><strong>Config:</strong> Impostazioni → Fiscale → RCH/Epson → IP + porta</p>
+<h3>7.2 Scontrini Digitali (Cloud)</h3>
+<p><strong>Emissione:</strong></p>
+<ol>
+<li>Cassa Fiscale → scontrino digitale</li>
+<li>Il PDF viene generato in A4</li>
+<li>Inviato via Email/WhatsApp al cliente</li>
+<li>Notifica push automatica</li>
+</ul>
+<h3>7.3 Scontrini Figli (Scarichi)</h3>
+<p>Quando riscatti un percorso, si genera uno <strong>scontrino figlio</strong> (0€, di cortesia). <strong>Non è fiscale</strong> ma è collegato allo scontrino madre.</p>
+<h3>7.4 Chiusura Giornaliera</h3>
+<p><strong>Dove:</strong> Cassa Fiscale → Chiusura</p>
+<p>Ogni sera:</p>
+<ol>
+<li>Inserisci <strong>fondo cassa iniziale</strong></li>
+<li>Il sistema calcola incassi per metodo (contanti, carta, ecc.)</li>
+<li>Genera <strong>PDF chiusura</strong> per commercialista</li>
+<li>Archivia chiusura</li>
+</ul>
+<h3>7.5 Annullo Scontrino</h3>
+<p><strong>Procedura:</strong></p>
+<ol>
+<li>Apri scontrino → <strong>🗑️ Annulla</strong></li>
+<li>Se è <strong>MADRE con figli attivi</strong> → modale mostra <strong>lista figli</strong> con checkbox</li>
+<li>Seleziona figli da annullare → <strong>"📦 Annulla N figli e procedi"</strong></li>
+<li>Step 2: <strong>"🗑️ Confermo annullo madre"</strong></li>
+<li>Sistema invia <strong>annullo a RT</strong> (RCH/Epson) o <strong>corrispettivi</strong> (ADE/FPT)</li>
+</ul>
+<h3>7.6 Cestino Scontrini Annullati</h3>
+<p>Uno scontrino annullato resta visibile nella lista con <strong>badge rosso ANNULLATO</strong>.</p>
+<p>Per <strong>eliminarlo definitivamente</strong>:</p>
+<ol>
+<li>Click <strong>🗑️ cestino</strong> accanto allo scontrino</li>
+<li>Conferma "IRREVERSIBILE"</li>
+<li>Scontrino eliminato dal DB (PDF resta su Storage)</li>
+</ul>
+<p>---</p>
+<h2>8. Magazzino</h2>
+<h3>8.1 Prodotti e Giacenze</h3>
+<p><strong>Dove:</strong> Sidebar → Magazzino → Prodotti</p>
+<p>Ogni prodotto ha:</p>
+<ul>
+<li><strong>Nome</strong>, <strong>Codice</strong>, <strong>Descrizione</strong></li>
+<li><strong>Prezzo acquisto</strong> e <strong>prezzo vendita</strong></li>
+<li><strong>Giacenza</strong> attuale</li>
+<li><strong>Scorta minima</strong> (alert se sotto)</li>
+<li><strong>Fornitore</strong> collegato</li>
+</ul>
+<h3>8.2 Movimenti</h3>
+<p><strong>Dove:</strong> Magazzino → Movimenti</p>
+<p>Ogni movimento è tracciato:</p>
+<ul>
+<li><strong>Carico</strong> (acquisto fornitore)</li>
+<li><strong>Scarico</strong> (uso in seduta)</li>
+<li><strong>Rettifica</strong> (inventario)</li>
+</ul>
+<h3>8.3 Scarichi da Seduta</h3>
+<p>Durante una seduta, riscatti percorso → il sistema chiede quali prodotti usare → genera <strong>scarico</strong> automatico.</p>
+<h3>8.4 Ordini Fornitori</h3>
+<p><strong>Dove:</strong> Sidebar → Ordini</p>
+<p>Crea ordini con <strong>selezione multipla prodotti</strong>:</p>
+<ol>
+<li>Scegli fornitore</li>
+<li>Pulsante <strong>"📦 Aggiungi N prodotti"</strong></li>
+<li>Checkbox multipli → aggiungi tutti in un colpo</li>
+<li>Salva bozza o invia</li>
+</ul>
+<p>---</p>
+<h2>9. Automazioni</h2>
+<p><strong>Dove:</strong> Impostazioni → Automazioni</p>
+<p>5 automazioni disponibili, ognuna con <strong>toggle</strong> e <strong>modalità</strong>:</p>
+<h3>9.1 Promemoria Appuntamento</h3>
+<ul>
+<li><strong>Quando</strong>: X ore prima (configurabile: 12/24/48/72/96/120/168)</li>
+<li><strong>Ora invio</strong>: es. 09:00</li>
+<li><strong>Canale</strong>: WhatsApp / Email / Entrambi</li>
+<li><strong>Testo</strong>: personalizzabile in Impostazioni → Testi Messaggi</li>
+</ul>
+<h3>9.2 Promemoria Check-Up Gratuito</h3>
+<ul>
+<li><strong>Quando</strong>: X ore prima della prima visita check-up</li>
+<li><strong>Rivolta a</strong>: nuovi clienti con check-up gratuito</li>
+</ul>
+<h3>9.3 Post-Seduta</h3>
+<ul>
+<li><strong>Quando</strong>: X minuti/ore/giorni dopo seduta completata</li>
+<li><strong>Scopo</strong>: indagine soddisfazione, consigli post-cura</li>
+</ul>
+<h3>9.4 Compleanno</h3>
+<ul>
+<li><strong>Quando</strong>: X giorni prima del compleanno (0-7)</li>
+<li><strong>Ora invio</strong>: es. 09:00</li>
+<li><strong>Scopo</strong>: auguri + eventuale promo</li>
+</ul>
+<h3>9.5 Riattivazione</h3>
+<ul>
+<li><strong>Quando</strong>: dopo N giorni di inattività (default 90)</li>
+<li><strong>Scopo</strong>: recupero clienti dormienti</li>
+</ul>
+<h3>9.6 Notifiche Push Tempo-Reale</h3>
+<p><strong>Dove:</strong> Impostazioni → Automazioni → Notifiche Push</p>
+<p>5 trigger automatici (già attivi):</p>
+<ul>
+<li>Nuovo appuntamento</li>
+<li>Appuntamento confermato</li>
+<li>Appuntamento cancellato</li>
+<li>Appuntamento spostato</li>
+<li>Appuntamento pending</li>
+</ul>
+<p><strong>Dry-run globale</strong>: disattivabile quando pronto per push reali.</p>
+<p>---</p>
+<h2>10. Integrazioni</h2>
+<h3>10.1 ADE/SDI (Agenzia Entrate)</h3>
+<ul>
+<li><strong>Provider</strong>: ADE Diretto o FPT</li>
+<li><strong>Config</strong>: codice SDI + PEC + regime fiscale</li>
+<li><strong>Effetto</strong>: fatture elettroniche inviate a SDI</li>
+</ul>
+<h3>10.2 FPT (Fatture Per Tutti)</h3>
+<ul>
+<li><strong>API Key</strong> + <strong>Password</strong></li>
+<li><strong>Ambiente</strong>: test o produzione</li>
+<li><strong>Effetto</strong>: invio automatico fatture + corrispettivi a SDI/ADE</li>
+</ul>
+<h3>10.3 RCH/Epson (Stampanti Fiscali)</h3>
+<ul>
+<li><strong>IP</strong> + <strong>porta</strong> (default 9100)</li>
+<li><strong>Modello</strong> (RCH 500, Epson TM-T88)</li>
+<li><strong>Matricola RT</strong> + <strong>seriale</strong></li>
+<li><strong>Effetto</strong>: stampa scontrini fiscali + annulli RT</li>
+</ul>
+<h3>10.4 WhatSender (WhatsApp)</h3>
+<ul>
+<li><strong>Token</strong> + <strong>Phone</strong></li>
+<li><strong>Effetto</strong>: invio automatico WhatsApp con PDF allegato</li>
+<li><strong>Fallback</strong>: se non configurato → <code>wa.me</code></li>
+</ul>
+<h3>10.5 Google Sheets</h3>
+<ul>
+<li><strong>URL foglio Google</strong></li>
+<li><strong>Sync automatico</strong>: 1 volta al giorno</li>
+<li><strong>Effetto</strong>: clienti + appuntamenti sincronizzati con Google Sheets</li>
+</ul>
+<p>---</p>
+<h2>11. Analytics e Report</h2>
+<h3>11.1 Dashboard KPI</h3>
+<p><strong>Dove:</strong> Sidebar → Dashboard</p>
+<p>Card principali:</p>
+<ul>
+<li><strong>Incasso Oggi/Mese/Anno</strong></li>
+<li><strong>Proforma in attesa</strong></li>
+<li><strong>Clienti Totali</strong> (con badge <strong>"⚠️ X da rifirmare"</strong> privacy)</li>
+<li><strong>Percorsi Attivi</strong></li>
+<li><strong>Pending</strong> (appuntamenti in attesa)</li>
+<li><strong>Rebooking</strong></li>
+<li><strong>Sotto scorta</strong> (prodotti)</li>
+</ul>
+<h3>11.2 Report Commercialista</h3>
+<p><strong>Dove:</strong> Analytics → Report Commercialista</p>
+<p>Genera PDF con:</p>
+<ul>
+<li><strong>Elenco fatture</strong> emesse nel periodo</li>
+<li><strong>Elenco scontrini</strong> con dettaglio IVA</li>
+<li><strong>Chiusure cassa</strong> giornaliere</li>
+<li><strong>Report DDT</strong></li>
+</ul>
+<p><strong>Upload su Storage</strong> per consultazione.</p>
+<h3>11.3 Chiusure Cassa</h3>
+<p>Vedi capitolo 7.4.</p>
+<p>---</p>
+<h2>12. App Cliente</h2>
+<h3>12.1 Invito Cliente</h3>
+<p><strong>Dove:</strong> Impostazioni → App Cliente → Cliente → Genera link invito</p>
+<p>Il cliente riceve un <strong>link univoco</strong> (valido 7 giorni) via <strong>Email</strong> o <strong>WhatsApp</strong>.</p>
+<p>Click → atterra su <code>cliente.righetti.club</code> → login con magic link.</p>
+<h3>12.2 Moduli Visibili</h3>
+<p><strong>Dove:</strong> Impostazioni → App Cliente → 7 toggle</p>
+<p>Scegli quali moduli mostrare al cliente:</p>
+<ul>
+<li><strong>Appuntamenti</strong></li>
+<li><strong>Documenti</strong> (fatture, scontrini, DDT)</li>
+<li><strong>Percorsi</strong></li>
+<li><strong>Scheda Tricologica</strong> (da TricoAI)</li>
+<li><strong>Cura Domiciliare</strong></li>
+<li><strong>Privacy PDF</strong></li>
+<li><strong>Note Studio</strong></li>
+</ul>
+<h3>12.3 Privacy e Documenti</h3>
+<p><strong>Dove:</strong> App Cliente → Documenti / Privacy</p>
+<p>Il cliente vede:</p>
+<ul>
+<li><strong>Fatture</strong> PDF</li>
+<li><strong>Scontrini</strong> PDF</li>
+<li><strong>Privacy firmata</strong> PDF</li>
+<li><strong>Schede tricologiche</strong> (da TricoAI)</li>
+<li><strong>Cura domiciliare</strong> (da TricoAI)</li>
+</ul>
+<h3>12.4 Notifiche Push</h3>
+<p><strong>Dove:</strong> App Cliente → Notifiche</p>
+<p>Il cliente riceve push per:</p>
+<ul>
+<li>Nuovo appuntamento</li>
+<li>Appuntamento confermato / cancellato / spostato</li>
+<li>Nuovo documento</li>
+<li>Nuova nota studio</li>
+<li>Nuova scheda</li>
+<li>Compleanno (se configurato)</li>
+</ul>
+<h3>12.5 Aggiungi al Calendario</h3>
+<p>Dalla card appuntamento futuro (confermato o prenotato):</p>
+<ul>
+<li>Pulsante <strong>📅 Aggiungi al calendario</strong></li>
+<li>Genera file <strong>.ics</strong> compatibile con iOS/Android/Outlook</li>
+<li><strong>3 promemoria</strong> automatici: 3 giorni, 2 giorni, 1 giorno prima</li>
+<li><strong>Location</strong>: indirizzo studio (tap → apre Maps)</li>
+<li>Badge verde <strong>"✅ Aggiunto"</strong> dopo il click</li>
+</ul>
+<p>---</p>
+<h2>13. Sicurezza</h2>
+<h3>13.1 Password Gestionale</h3>
+<p><strong>Dove:</strong> Impostazioni → Sicurezza</p>
+<p>La password gestionale protegge le operazioni critiche:</p>
+<ul>
+<li>Annullo fatture / DDT / scontrini</li>
+<li>Storico e cancellazioni</li>
+</ul>
+<p><strong>Imposta password</strong>: min 4 caratteri.</p>
+<p><strong>Reimposta via email</strong>: se dimenticata.</p>
+<p><strong>Rimuovi password</strong>: per test (sconsigliato in produzione).</p>
+<h3>13.2 Timeout Sessione</h3>
+<p><em>(In sviluppo)</em> — Logout automatico dopo N minuti di inattività.</p>
+<h3>13.3 Log Accessi</h3>
+<p><em>(In sviluppo)</em> — Tracciamento accessi e azioni critiche.</p>
+<p>---</p>
+<h2>14. FAQ</h2>
+<p><strong>Q: Come faccio a installare il Gestionale sul Mac/iPhone?</strong></p>
+<p>A: Apri in Safari/Chrome → Condividi → Aggiungi a Home. L'app appare con icona dedicata.</p>
+<p><strong>Q: Devo reinstallare la PWA quando cambiate qualcosa?</strong></p>
+<p>A: NO, la maggior parte delle modifiche arriva in automatico tramite update. Solo se cambia il nome o l'icona dell'app devi reinstallare.</p>
+<p><strong>Q: Perché l'agenda su iPhone non si aggiorna subito?</strong></p>
+<p>A: iOS Safari sospende il Realtime in background. Il sistema usa un <strong>polling ogni 30 sec</strong> + refresh quando torni in app. Se serve, cambia pagina manualmente.</p>
+<p><strong>Q: Cosa succede se attivo modalità "Reale" senza driver collegato?</strong></p>
+<p>A: Le operazioni vengono loggate con esito <code>pending_driver</code>. Il driver verrà collegato in una sessione successiva.</p>
+<p><strong>Q: Posso annullare una fattura già inviata a SDI?</strong></p>
+<p>A: Sì, ma il sistema genera una <strong>Nota di Credito</strong> verso ADE/FPT (obbligo fiscale). Il cliente riceverà entrambi i documenti.</p>
+<p><strong>Q: Come sincronizzo i clienti con Google Sheets?</strong></p>
+<p>A: Impostazioni → Google Sheets → incolla URL foglio → sincronizzazione automatica giornaliera.</p>
+<p><strong>Q: Perché il cliente non riceve la notifica push?</strong></p>
+<p>A: Verifica che:</p>
+<ol>
+<li>L'App Cliente sia installata come PWA (iOS 16.4+)</li>
+<li>Il cliente abbia autorizzato le notifiche</li>
+<li>Il toggle nella config push sia attivo</li>
+<li>Il dry-run globale sia disattivato</li>
+</ul>
+<p>---</p>
+<h2>15. 🚀 In Arrivo: Chiamate AI Voice</h2>
+<p><strong>Concept</strong>: chiamate automatiche con voce AI per:</p>
+<ul>
+<li><strong>Riattivazione</strong> clienti dormienti</li>
+<li><strong>Compleanno</strong> (auguri vocali)</li>
+<li><strong>Post-seduta</strong> (indagine soddisfazione)</li>
+</ul>
+<p><strong>Caratteristiche</strong>:</p>
+<ul>
+<li><strong>Voce italiana</strong> indistinguibile da umana</li>
+<li><strong>Nome chiamante</strong>: da Impostazioni → Azienda → Nome Studio</li>
+<li><strong>GDPR</strong>: l'AI si dichiara come assistente virtuale all'inizio della chiamata</li>
+<li><strong>Gestione richieste specifiche</strong>: AI dice "la richiamo io personalmente" → notifica al gestionale</li>
+<li><strong>Costo stimato</strong>: ~€0,05-0,15/min (circa €5-15/mese per 3 chiamate/giorno)</li>
+<li><strong>Stack</strong>: Vapi.ai + Twilio + backend Railway</li>
+<li><strong>Fallback</strong>: se cliente non risponde → WhatsApp/SMS dopo 24h</li>
+</ul>
+<p><strong>Attivazione</strong>:</p>
+<ul>
+<li>Toggle per ogni automazione (riattivazione, compleanno, post-seduta)</li>
+<li>Config orari e giorni</li>
+<li>Test con te stesso/familiari prima di andare in produzione</li>
+</ul>
+<p><strong>Requisiti</strong>:</p>
+<ul>
+<li>Opt-in esplicito nel privacy PDF (aggiornamento versione)</li>
+<li>Consenso separato per chiamate AI</li>
+<li>Numero dedicato per le chiamate</li>
+</ul>
+<p><strong>Stato</strong>: 📅 in pianificazione (da attivare dopo altre priorità)</p>
+<p>---</p>
+<p><strong>Fine Manuale — Versione 1.0</strong></p>
+<p><em>Per assistenza: righetti@righetti.club</em></p>
+
+</div>
+</body>
+</html>
