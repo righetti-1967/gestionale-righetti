@@ -1,5 +1,5 @@
 # STATO GESTIONALE RIGHETTI 1967
-Ultimo aggiornamento: 11/10/2026 (mattina)
+Ultimo aggiornamento: 11/10/2026 (pomeriggio)
 
 ---
 
@@ -121,6 +121,70 @@ Riferimento al punto 1.
 ---
 
 ## ✅ STORICO — COMPLETATO
+
+### 11/10/2026 — Pomeriggio (Privacy GDPR + App Cliente + Dashboard)
+
+#### 🔴 Fix critici
+- ✅ **Fix trigger notifiche push** (drop funzione `crea_notifica_cliente` duplicata)
+  - Erano presenti 2 versioni in conflitto (8 + 9 parametri) → errore `function is not unique`
+  - **Effetto**: scontrini, DDT, fatture, privacy, schede, cura, percorsi, note → ora tutti generano notifiche
+  - Trigger mancanti aggiunti: `trg_notify_scontrino_pdf` + `trg_notify_ddt_pdf`
+- ✅ **Fix RLS bucket `privacy-pdf`** → INSERT/UPDATE ora consentiti ad anon
+  - Prima solo `{authenticated}` → la firma privacy da link anonimo falliva silenziosamente
+  - **Effetto**: PDF privacy si carica + trigger privacy scatta + notifica arriva al cliente
+- ✅ **Fix navigazione "Vedi in Agenda"** dalla notifica conferma (anche se Agenda già montata)
+
+#### 🏖️ Chiusure Straordinarie (Agenda)
+- ✅ Interface `ChiusuraStraordinaria` in `agenda-config.ts`
+- ✅ Helper `getChiusuraInData()` + `isDataChiusa()`
+- ✅ **Impostazioni → Agenda**: nuova Card **"🏖️ Chiusure Straordinarie"**
+  - Aggiungi/modifica/elimina con modale
+  - Badge stato: In corso / Programmata / Passata
+- ✅ **Agenda Giornaliera**: giorni chiusi → banner arancione + slot grigi/bloccati
+- ✅ Click su slot chiuso → alert con motivo e date
+
+#### 🔔 Notifica in-app conferma appuntamento (Gestionale)
+- ✅ Campo DB `appuntamenti.confermato_da_cliente_at` (distingue conferma cliente vs studio)
+- ✅ RPC `cliente_conferma_appuntamento` setta il timestamp
+- ✅ Componente `NotificaConfermaCliente.tsx`:
+  - Ascolta Realtime UPDATE su `appuntamenti`
+  - Toast centro schermo con nome cliente + data/ora
+  - Pulsante "Vedi in Agenda" → naviga + salta alla data
+  - **Persistente** (no auto-dismiss)
+- ✅ Listener custom event `navigate-to-page` + `agenda-vai-a-data` in `App.tsx` / `Agenda.tsx`
+
+#### 📄 Privacy GDPR — Versioning
+- ✅ `ConfigPrivacy` esteso con `versione` + `dataVersione`
+- ✅ Helper `incrementaVersione()` + `isPrivacyObsoleta()`
+- ✅ **Impostazioni → Privacy**: badge versione corrente + pulsante **"🚀 Pubblica nuova versione"**
+  - Modale scelta minor/major con anteprima
+- ✅ **`salvaFirmaPrivacy`** salva `privacy_versione_firmata` automaticamente
+- ✅ **Clienti.tsx**: badge **"⚠️ Privacy obsoleta"** + versione firmata visibile
+- ✅ **FormNuovoAppuntamento**: modale avviso se cliente ha privacy obsoleta
+  - "Vai a far rifirmare privacy" / "Procedi comunque" / "Annulla"
+- ✅ **Dashboard**: badge **"⚠️ X da rifirmare"** nella card "Clienti Totali"
+  - Click → naviga a Clienti con filtro `privacy_obsoleta`
+- ✅ **Clienti.tsx**: filtro `privacy_obsoleta` per lista filtrata
+
+#### 🎁 Pulsante "Rimuovi firma privacy"
+- ✅ In `Clienti.tsx`: pulsante accanto a "Anteprima" / "Ristampa PDF"
+- ✅ Rimuove firma dal DB + PDF da Storage
+- ✅ Utile se cliente ha firmato per sbaglio o vuole rifirmare
+
+#### 📱 App Cliente
+- ✅ **Card "Aperture e chiusure Studio"** nella griglia Home + pallino ambra
+- ✅ **Pagina `/aperture-chiusure`**: orari + chiusure in tab mesi
+- ✅ **Pulsante "Aggiungi al calendario"** su appuntamenti futuri prenotati/confermati
+  - Utility `generaICS.ts` (RFC 5545)
+  - 3 promemoria (72h/48h/24h)
+  - Location studio → tap apre Maps
+  - Titolo: `Appuntamento - Righetti Since 1967`
+  - Badge verde "✅ Aggiunto" persistente (localStorage)
+  - Pulizia automatica ID non più validi
+- ✅ RPC `get_my_studio_contatti` estesa con `nome_studio` + `orari` + `chiusure`
+
+---
+
 
 ### 11/10/2026 — Mattina (Fix notifiche push + Chiusure straordinarie + App Cliente)
 
