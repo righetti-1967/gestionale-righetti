@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { annullaFiscalmente } from './annulloFiscale';
 import type { Cliente } from './clienti';
 
 export type MetodoPagamento = 'Bonifico' | 'Carta' | 'Bancomat' | 'Contanti' | 'Non richiesto';
@@ -393,6 +394,30 @@ export async function annullaFattura(params: AnnullaFatturaParams): Promise<void
     } catch (errCli) {
       console.warn('⚠️ Errore segnalazione cliente:', errCli);
     }
+  }
+
+  // 6. Annullo fiscale (nota di credito a ADE/FPT)
+  try {
+    const esito = await annullaFiscalmente({
+      tipo: 'fattura',
+      documentoId: id,
+      numeroDocumento: fatt.numero_fattura,
+      motivo: motivo.trim(),
+      clienteId: fatt.cliente_id,
+      importoLordo: Number(fatt.lordo_ivato || 0),
+    });
+    // Salva esito nel DB
+    await supabase
+      .from('fatture')
+      .update({
+        annullo_fiscale_at: new Date().toISOString(),
+        annullo_fiscale_esito: esito.esito,
+        annullo_fiscale_note: esito.messaggio,
+      })
+      .eq('id', id);
+    console.log('📤 Annullo fiscale fattura:', esito);
+  } catch (errFisc) {
+    console.warn('⚠️ Errore annullo fiscale (non bloccante):', errFisc);
   }
 }
 

@@ -9,6 +9,7 @@
  * - Numerazione: progressiva per anno (per utente)
  */
 import { supabase } from './supabase';
+import { annullaFiscalmente } from './annulloFiscale';
 
 // ============================================================
 // TIPI
@@ -413,7 +414,34 @@ export async function annullaScontrino(
     }
   }
 
-  // 6. Se è un FIGLIO, aggiorna il percorso (se esiste) per riportare il residuo
+  // 6. Annullo fiscale (fisico → RT / digitale → corrispettivi)
+  //    Solo se è uno scontrino MADRE (i figli non sono fiscali)
+  if (sc.tipo === 'madre') {
+    try {
+      const tipoAnnullo = sc.modalita_cassa === 'fisico' ? 'scontrino_fisico' : 'scontrino_digitale';
+      const esito = await annullaFiscalmente({
+        tipo: tipoAnnullo,
+        documentoId: id,
+        numeroDocumento: sc.numero_scontrino,
+        motivo: motivo.trim(),
+        clienteId: sc.cliente_id,
+        importoLordo: Number(sc.totale_lordo || 0),
+      });
+      await supabase
+        .from('scontrini')
+        .update({
+          annullo_fiscale_at: new Date().toISOString(),
+          annullo_fiscale_esito: esito.esito,
+          annullo_fiscale_note: esito.messaggio,
+        })
+        .eq('id', id);
+      console.log('📤 Annullo fiscale scontrino:', esito);
+    } catch (errFisc) {
+      console.warn('⚠️ Errore annullo fiscale (non bloccante):', errFisc);
+    }
+  }
+
+  // 7. Se è un FIGLIO, aggiorna il percorso (se esiste) per riportare il residuo
   // (non facciamo nulla: il residuo si calcola escludendo i figli annullati,
   //  grazie al filtro `.eq('annullato', false)` in getRigheRiscattateDaFigli)
 }
