@@ -105,6 +105,18 @@ function AppGestionale() {
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  // Ascolta evento custom per navigazione programmatica (es. notifiche)
+  useEffect(() => {
+    const handler = (e: any) => {
+      const page = e.detail?.page;
+      if (typeof page === 'string' && PAGINE_VALIDE.includes(page)) {
+        setCurrentPage(page);
+      }
+    };
+    window.addEventListener('navigate-to-page', handler);
+    return () => window.removeEventListener('navigate-to-page', handler);
+  }, []);
+
   // Sincronizza l'URL e il localStorage ogni volta che cambi pagina
   useEffect(() => {
     localStorage.setItem('gestionale_current_page', currentPage);

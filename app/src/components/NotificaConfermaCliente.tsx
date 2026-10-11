@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 interface AppuntamentoConfermato {
@@ -13,7 +12,6 @@ interface AppuntamentoConfermato {
 }
 
 export function NotificaConfermaCliente() {
-  const navigate = useNavigate();
   const [notifiche, setNotifiche] = useState<AppuntamentoConfermato[]>([]);
 
   useEffect(() => {
@@ -86,7 +84,9 @@ export function NotificaConfermaCliente() {
   function apriInAgenda(n: AppuntamentoConfermato) {
     localStorage.setItem('agenda_data_iniziale', n.data);
     setNotifiche((prev) => prev.filter((x) => x.id !== n.id));
-    navigate('/agenda');
+    window.dispatchEvent(
+      new CustomEvent('navigate-to-page', { detail: { page: 'agenda' } })
+    );
   }
 
   function chiudi(id: number) {
