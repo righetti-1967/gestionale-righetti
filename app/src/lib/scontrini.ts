@@ -630,3 +630,66 @@ export function oraAdesso(): string {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
+
+/**
+ * Elimina definitivamente uno scontrino ANNULLATO dal database.
+ * - Solo scontrini annullati possono essere eliminati
+ * - Elimina anche le righe scontrino collegate
+ * - Non elimina il PDF da Storage (per sicurezza GDPR)
+ */
+export async function eliminaScontrinoAnnullato(id: number): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Non autenticato');
+
+  // 1) Verifica che sia annullato
+  const { data: sc, error: errLettura } = await supabase
+    .from('scontrini')
+    .select('id, annullato, tipo, scontrino_madre_id')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .single();
+
+  if (errLettura || !sc) {
+    throw new Error('Scontrino non trovato');
+  }
+
+  if (!sc.annullato) {
+    throw new Error('Solo gli scontrini annullati possono essere eliminati definitivamente');
+  }
+
+  // 2) Se è un MADRE, verifica che non abbia figli attivi
+  if (sc.tipo === 'madre') {
+    const { data: figli } = await supabase
+      .from('scontrini')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('scontrino_madre_id', id)
+      .eq('annullato', false);
+
+    if (figli && figli.length > 0) {
+      throw new Error('Impossibile eliminare: la madre ha figli attivi. Annullali prima.');
+    }
+  }
+
+  // 3) Elimina le righe scontrino
+  const { error: errRighe } = await supabase
+    .from('scontrini_righe')
+    .delete()
+    .eq('scontrino_id', id);
+
+  if (errRighe) {
+    console.warn('⚠️ Errore eliminazione righe:', errRighe);
+  }
+
+  // 4) Elimina lo scontrino
+  const { error: errDelete } = await supabase
+    .from('scontrini')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (errDelete) {
+    console.error('❌ Errore eliminazione scontrino:', errDelete);
+    throw errDelete;
+  }
+}

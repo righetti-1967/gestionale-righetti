@@ -15,6 +15,7 @@ import {
   type ModalitaCassa,
   type Scontrino,
 } from '../lib/scontrini';
+import { eliminaScontrinoAnnullato } from '../lib/scontrini';
 import { getTuttiPercorsi, type Percorso } from '../lib/percorsi';
 import {
   calcolaResiduo,
@@ -179,6 +180,7 @@ export function CassaFiscale() {
   const [caricandoArchivio, setCaricandoArchivio] = useState(false);
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('tutti');
   const [scontrinoAperto, setScontrinoAperto] = useState<Scontrino | null>(null);
+  const [cestinandoId, setCestinandoId] = useState<number | null>(null)
 
   // Filtri data archivio
   const [filtroData, setFiltroData] = useState<FiltroData>('tutti');
@@ -721,6 +723,29 @@ export function CassaFiscale() {
 
   // === Stato espansione gruppi ===
   const [gruppiEspansi, setGruppiEspansi] = useState<Set<number>>(new Set());
+
+  async function handleCestina(scontrino: any) {
+    if (!scontrino.annullato) {
+      alert('Solo scontrini annullati possono essere eliminati');
+      return;
+    }
+    const nome = scontrino.cliente?.nome_cognome || 'questo documento';
+    if (!confirm(`⚠️ Eliminare DEFINITIVAMENTE ${scontrino.numero_scontrino}?\n\nL'operazione è IRREVERSIBILE.\nIl PDF resta archiviato su Storage.`)) {
+      return;
+    }
+    try {
+      setCestinandoId(scontrino.id);
+      await eliminaScontrinoAnnullato(scontrino.id);
+      // Ricarica lista scontrini direttamente
+      const lista = await getScontrini();
+      setScontrini(lista);
+      alert('✅ Scontrino eliminato definitivamente');
+    } catch (err: any) {
+      alert('❌ ' + (err?.message || 'Errore eliminazione'));
+    } finally {
+      setCestinandoId(null);
+    }
+  }
 
   function toggleGruppo(madreId: number) {
     setGruppiEspansi((prev) => {
@@ -1849,6 +1874,20 @@ export function CassaFiscale() {
                           {s.metodo_pagamento || '—'}
                         </p>
                       </div>
+                      {s.annullato && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCestina(s);
+                          }}
+                          disabled={cestinandoId === s.id}
+                          className="shrink-0 ml-1 px-2 py-1 rounded-apple bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-bold transition-colors disabled:opacity-50"
+                          title="Elimina definitivamente"
+                        >
+                          {cestinandoId === s.id ? '⏳' : '🗑️'}
+                        </button>
+                      )}
                       {isMadre && numFigli > 0 && (
                         <span
                           role="button"
