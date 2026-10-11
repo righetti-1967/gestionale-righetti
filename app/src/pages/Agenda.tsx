@@ -294,6 +294,8 @@ export function Agenda({
         () => {
           // Ping istantaneo da un altro dispositivo: aggiorna la griglia al volo
           ricarica(true);
+          // Aggiorna anche pending + rebooking (badge in alto)
+          caricaPending();
         }
       )
       .subscribe();
