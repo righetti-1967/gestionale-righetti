@@ -9,6 +9,7 @@ import { getTestoTemplate, renderTemplate } from '../lib/testiTemplate';
 import { caricaDatiAziendali } from '../lib/datiAziendali';
 import { inviaWhatsAppSmart } from '../lib/whatsapp';
 import { supabase } from '../lib/supabase';
+import { getScarichiFattura, annullaScarico } from '../lib/scarichi';
 import { FirmaFatturaQR } from './FirmaFatturaQR';
 import { getConfigFiscale, isModalitaReale, type ProviderFiscale } from '../lib/configFiscale';
 import { inviaFatturaAlProvider } from '../lib/fatturazioneElettronica';
@@ -53,6 +54,10 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
 
   // Modale annullo
   const [showAnnulla, setShowAnnulla] = useState(false);
+  const [ddtCollegati, setDdtCollegati] = useState<any[]>([]);
+  const [ddtSelezionati, setDdtSelezionati] = useState<Set<number>>(new Set());
+  const [caricandoDdt, setCaricandoDdt] = useState(false);
+  const [step, setStep] = useState<'ddt' | 'fattura'>('ddt');
   const [passwordAnnullo, setPasswordAnnullo] = useState('');
   const [motivoAnnullo, setMotivoAnnullo] = useState('');
   const [verificando, setVerificando] = useState(false);
@@ -365,6 +370,93 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
       const msg = err?.message || err?.details || (typeof err === 'object' ? JSON.stringify(err) : String(err));
       setErrore(msg || 'Errore nell\'eliminazione');
       setSalvando(false);
+    }
+  }
+
+  async function caricaDdtCollegati() {
+    setCaricandoDdt(true);
+    try {
+      const scarichi = await getScarichiFattura(fattura.id);
+      const attivi = scarichi.filter((s: any) => !s.annullato);
+      setDdtCollegati(attivi);
+      // Seleziona tutti di default
+      setDdtSelezionati(new Set(attivi.map((s: any) => s.id)));
+      setStep(attivi.length > 0 ? 'ddt' : 'fattura');
+      setShowAnnulla(true);
+    } catch (err) {
+      console.error('Errore caricamento DDT:', err);
+      alert('Errore caricamento DDT collegati');
+    } finally {
+      setCaricandoDdt(false);
+    }
+  }
+
+  function toggleDdt(id: number) {
+    setDdtSelezionati((prev) => {
+      const nuovo = new Set(prev);
+      if (nuovo.has(id)) nuovo.delete(id);
+      else nuovo.add(id);
+      return nuovo;
+    });
+  }
+
+  function toggleTuttiDdt() {
+    if (ddtSelezionati.size === ddtCollegati.length) {
+      setDdtSelezionati(new Set());
+    } else {
+      setDdtSelezionati(new Set(ddtCollegati.map((d: any) => d.id)));
+    }
+  }
+
+  async function handleAnnullaDdtSelezionati() {
+    if (ddtSelezionati.size === 0) {
+      alert('Seleziona almeno un DDT da annullare');
+      return;
+    }
+    if (motivoAnnullo.trim().length < 10) {
+      alert('Inserisci un motivo (minimo 10 caratteri)');
+      return;
+    }
+
+    try {
+      setAnnullando(true);
+      setErroreAnnullo(null);
+
+      // Verifica password
+      setVerificando(true);
+      const ok = await verificaPassword(passwordAnnullo.trim());
+      if (!ok) {
+        setErroreAnnullo('Password gestionale non corretta');
+        return;
+      }
+      setVerificando(false);
+
+      // Annulla DDT selezionati
+      const daAnnullare = ddtCollegati.filter((d: any) => ddtSelezionati.has(d.id));
+      let annullati = 0;
+      for (const ddt of daAnnullare) {
+        try {
+          await annullaScarico({
+            id: ddt.id,
+            motivo: motivoAnnullo.trim(),
+            ripristinoMagazzino: false,
+            annullatoDa: user?.email || 'utente',
+          });
+          annullati++;
+        } catch (err: any) {
+          console.error('Errore annullo DDT', ddt.id, err);
+          setErroreAnnullo(`Errore annullo DDT-${ddt.numero_ddt}: ${err.message}`);
+          return;
+        }
+      }
+
+      // Passa al passo 2 (annullo fattura)
+      setStep('fattura');
+    } catch (err: any) {
+      setErroreAnnullo(err?.message || 'Errore annullo DDT');
+    } finally {
+      setAnnullando(false);
+      setVerificando(false);
     }
   }
 
@@ -737,18 +829,69 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
             <div className="bg-white rounded-apple shadow-apple-lg max-w-md w-full p-5 sm:p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-start gap-3 mb-4">
                 <div className="w-11 h-11 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 text-xl shrink-0">
-                  🚫
+                  {step === 'ddt' ? '📦' : '🚫'}
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-base font-bold text-apple-darkgray">
-                    Annullare la fattura {fattura.numero_fattura}?
+                    {step === 'ddt'
+                      ? `Annullare prima i ${ddtCollegati.length} DDT collegati`
+                      : `Confermare annullo fattura ${fattura.numero_fattura}?`}
                   </p>
                   <p className="text-xs text-apple-gray mt-1 leading-relaxed">
-                    L'annullo è <strong>tracciato</strong> (data, motivo, utente) e resta visibile nello storico.
-                    I percorsi collegati torneranno fatturabili.
+                    {step === 'ddt'
+                      ? 'La fattura ha DDT attivi collegati. Devi annullarli prima di poter procedere.'
+                      : 'La password è già stata verificata. Conferma per annullare la fattura.'}
                   </p>
                 </div>
               </div>
+
+              {step === 'ddt' && ddtCollegati.length > 0 && (
+                <div className="mb-4 border border-gray-200 rounded-apple overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
+                    <span className="text-xs font-semibold text-apple-gray uppercase">
+                      DDT collegati ({ddtCollegati.length})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={toggleTuttiDdt}
+                      className="text-xs text-apple-blue hover:underline font-medium"
+                    >
+                      {ddtSelezionati.size === ddtCollegati.length ? '☐ Deseleziona tutti' : '☑ Seleziona tutti'}
+                    </button>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto divide-y divide-gray-100">
+                    {ddtCollegati.map((ddt: any) => {
+                      const sel = ddtSelezionati.has(ddt.id);
+                      const dataFmt = ddt.data_seduta
+                        ? new Date(ddt.data_seduta).toLocaleDateString('it-IT')
+                        : '—';
+                      return (
+                        <label
+                          key={ddt.id}
+                          className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
+                            sel ? 'bg-amber-50' : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={sel}
+                            onChange={() => toggleDdt(ddt.id)}
+                            className="w-4 h-4 accent-amber-600"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-apple-darkgray">
+                              DDT-{String(ddt.numero_ddt).padStart(3, '0')}
+                            </p>
+                            <p className="text-xs text-apple-gray">
+                              {dataFmt} · €{Number(ddt.totale_lordo_scontato || 0).toFixed(2)}
+                            </p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-3 mb-4">
                 <div>
@@ -791,20 +934,47 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
               <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAnnulla(false)}
+                  onClick={() => {
+                    setShowAnnulla(false);
+                    setErroreAnnullo(null);
+                    setPasswordAnnullo('');
+                    setMotivoAnnullo('');
+                    setStep('ddt');
+                  }}
                   disabled={annullando || verificando}
                   className="flex-1 px-4 py-2.5 bg-gray-100 text-apple-darkgray rounded-apple font-medium text-sm hover:bg-gray-200 transition-colors disabled:opacity-50"
                 >
                   Annulla
                 </button>
-                <button
-                  type="button"
-                  onClick={handleAnnulla}
-                  disabled={annullando || verificando || !passwordAnnullo.trim() || motivoAnnullo.trim().length < 10}
-                  className="flex-1 px-4 py-2.5 bg-amber-500 text-white rounded-apple font-semibold text-sm hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {verificando ? '🔐 Verifica...' : annullando ? '⏳ Annullo...' : '🚫 Annulla fattura'}
-                </button>
+                {step === 'ddt' ? (
+                  <button
+                    type="button"
+                    onClick={handleAnnullaDdtSelezionati}
+                    disabled={
+                      annullando ||
+                      verificando ||
+                      ddtSelezionati.size === 0 ||
+                      !passwordAnnullo.trim() ||
+                      motivoAnnullo.trim().length < 10
+                    }
+                    className="flex-1 px-4 py-2.5 bg-amber-500 text-white rounded-apple font-semibold text-sm hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {verificando
+                      ? '🔐 Verifica...'
+                      : annullando
+                        ? '⏳ Annullo DDT...'
+                        : `📦 Annulla ${ddtSelezionati.size} DDT e procedi`}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleAnnulla}
+                    disabled={annullando || verificando}
+                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-apple font-semibold text-sm hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {annullando ? '⏳ Annullo...' : '🚫 Confermo annullo fattura'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1008,7 +1178,7 @@ export function DettaglioFattura({ fattura, onClose, onUpdate }: DettaglioFattur
 
           {!showElimina && !showAnnulla && !fattura.annullato && (
             <button
-              onClick={() => setShowAnnulla(true)}
+              onClick={caricaDdtCollegati}
               disabled={salvando}
               className="px-4 py-2.5 bg-amber-50 text-amber-700 rounded-apple font-medium text-sm hover:bg-amber-100 transition-colors disabled:opacity-50"
               aria-label="Annulla fattura"

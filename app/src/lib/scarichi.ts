@@ -39,6 +39,11 @@ export interface ScaricoSeduta {
   ddt_inviato_email_at?: string | null;
   ddt_inviato_whatsapp_at?: string | null;
   created_at: string;
+  // Annullo
+  annullato?: boolean;
+  annullato_at?: string | null;
+  annullato_motivo?: string | null;
+  annullato_da?: string | null;
 }
 
 export type NuovoScarico = Omit<
