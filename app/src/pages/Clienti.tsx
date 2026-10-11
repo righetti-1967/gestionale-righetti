@@ -2,6 +2,7 @@ import { getBrandInfo } from '../lib/brand';
 import jsPDF from 'jspdf';
 import { inviaEmailConConfig, inviaEmailTest } from '../lib/api';
 import { inviaWhatsAppSmart } from '../lib/whatsapp';
+import { supabase } from '../lib/supabase';
 import { useEffect, useMemo, useState } from 'react';
 import {
   getClienti,
@@ -457,6 +458,54 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
 
   function apriFirmaPrivacy(cliente: Cliente) {
     setClienteDaFirmare(cliente);
+  }
+
+  async function handleRimuoviFirmaPrivacy(cliente: Cliente) {
+    try {
+      // 1) Rimuovi firma dal DB (set null su privacy_firma_immagine, privacy_firmata, privacy_data_firma, privacy_pdf_url)
+      const { error: errDb } = await supabase
+        .from('clienti')
+        .update({
+          privacy_firmata: false,
+          privacy_firma_immagine: null,
+          privacy_data_firma: null,
+          privacy_pdf_url: null,
+        })
+        .eq('id', cliente.id);
+
+      if (errDb) {
+        setToastMessage('❌ Errore rimozione firma: ' + errDb.message);
+        setToastTipo('error');
+        return;
+      }
+
+      // 2) Prova a cancellare il PDF dallo Storage (best effort)
+      const privacyPdfUrl = (cliente as any).privacy_pdf_url;
+      if (privacyPdfUrl) {
+        try {
+          // Estrai path dal URL pubblico
+          const match = privacyPdfUrl.match(/\/storage\/v1\/object\/public\/privacy-pdf\/(.+)$/);
+          if (match) {
+            const path = decodeURIComponent(match[1]);
+            await supabase.storage.from('privacy-pdf').remove([path]);
+            console.log('PDF eliminato da Storage:', path);
+          }
+        } catch (e) {
+          console.warn('Errore eliminazione PDF Storage:', e);
+        }
+      }
+
+      // 3) Aggiorna UI
+      setToastMessage(`✅ Firma privacy di ${cliente.nome_cognome} rimossa`);
+      setToastTipo('success');
+      setTimeout(() => setToastMessage(null), 4000);
+
+      // 4) Ricarica lista clienti
+      await caricaClienti();
+    } catch (e: any) {
+      setToastMessage('❌ ' + (e?.message || 'Errore rimozione firma'));
+      setToastTipo('error');
+    }
   }
 
   async function handleInviaPrivacy(cliente: Cliente, canale: 'email' | 'whatsapp') {
@@ -1188,6 +1237,15 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
                         className="text-xs font-medium text-apple-blue hover:underline"
                       >
                         📄 Ristampa PDF
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!confirm(`Rimuovere la firma privacy di ${clienteSelezionato.nome_cognome}?\n\nIl cliente dovrà firmare di nuovo. Il PDF verrà eliminato.`)) return;
+                          handleRimuoviFirmaPrivacy(clienteSelezionato);
+                        }}
+                        className="text-xs font-medium text-red-600 hover:underline"
+                      >
+                        🗑️ Rimuovi firma
                       </button>
                     </div>
                   </div>
