@@ -1,5 +1,5 @@
 # STATO GESTIONALE RIGHETTI 1967
-Ultimo aggiornamento: 11/10/2026 (sera)
+Ultimo aggiornamento: 11/10/2026 (notte)
 
 ---
 
@@ -121,6 +121,44 @@ Riferimento al punto 1.
 ---
 
 ## ✅ STORICO — COMPLETATO
+
+### 11/10/2026 — Notte (Manuali PDF + Fix finali)
+
+#### 📖 Manuale Gestionale (PDF multi-tenant)
+- ✅ **`docs/MANUALE-GESTIONALE.md`**: 15 capitoli completi
+  - Introduzione, Setup, Clienti, Agenda, Percorsi, Fatture/DDT, Cassa, Magazzino, Automazioni, Integrazioni, Analytics, App Cliente, Sicurezza, FAQ
+  - Sezione "In Arrivo: Chiamate AI Voice"
+- ✅ **`app/public/manuale/manuale-gestionale.pdf`**: generato con HTML → Chrome Print
+- ✅ **Impostazioni → Profilo**: card "📖 Manuale Utente" con pulsante download
+- ✅ **Copertina generica** con logo 📖 (nessun riferimento a Righetti)
+- ✅ **Multi-tenant**: URL generici (gestionale.tuostudio.it)
+
+#### 📖 Manuale TricoAI (PDF multi-tenant)
+- ✅ **`docs/MANUALE-TRICOAI.md`**: 9 capitoli
+  - Introduzione, Setup, Analisi Tricoscopica, **Prodotti + INCI**, Clienti, Cura Domiciliare, Dashboard, Multi-tenant, FAQ
+  - Sezione INCI dettagliata (4.1-4.5): come trovare INCI, generazione note AI, esempi
+- ✅ **`public/manuale/manuale-tricoai.pdf`**: generato in stile Apple
+- ✅ **TricoAI → Impostazioni → Profilo**: card "📖 Manuale Utente" con pulsante download
+- ✅ **Assistenza**: luca.trainer@icloud.com
+
+#### 🔧 Fix finali
+- ✅ **Agenda**: refresh istantaneo pending/rebooking (visibilitychange + polling 30s mobile)
+- ✅ **Cassa Fiscale**: lista scontrini ricarica subito dopo annullo (badge ANNULLATO + cestino)
+- ✅ **Annullo scontrini figli** (2 step come fattura+DDT)
+- ✅ **Cestino scontrini annullati** (`eliminaScontrinoAnnullato`)
+- ✅ **Annullo fiscale** (nota credito ADE/FPT + RT) → log in `integrazioni_log`
+- ✅ **Rifinitura UI automazioni**: recupero `client_nome` in `process_pending_notifiche` (log ora mostrano nome cliente invece di "(nessun cliente)")
+- ✅ **PDF scontrini vecchi**: rigenerati (formato A4 → altezza dinamica)
+- ✅ **INCI TricoAI**: popolati i 11 prodotti rimanenti con INCI + note AI generate
+
+---
+
+### 11/10/2026 — Pomeriggio/Sera
+
+Vedi sezione "11/10/2026 — Pomeriggio" e "Sera" nel file originale (non duplicato qui per pulizia).
+
+---
+
 
 ### 11/10/2026 — Sera (Annullo fiscale + DDT collegati + Cestino scontrini)
 
@@ -773,11 +811,9 @@ Setup, Analisi Tricoscopica, Prodotti + INCI, Clienti, Cura Domiciliare, Dashboa
 ## 📋 TODO — Altre priorità
 
 ### 🟡 Media
-- [ ] Popolare INCI dei 18 prodotti TricoAI (11 già estratti)
-- [ ] Foto per CEROTUM POTENTIA + INTEGRATORE ANTI-DHT + PROBIOTICO
+- [ ] Foto per CEROTUM POTENTIA + INTEGRATORE ANTI-DHT + PROBIOTICO (TricoAI)
 - [ ] Test utenti demo TricoAI (Groq BYOK)
-- [ ] Test end-to-end notifiche push con cliente reale
-- [ ] Rigenerare PDF scontrini vecchi (formato A4 lungo)
+- [ ] Timeout sessione inattività
 
 ### 🔮 Backlog
 - [ ] 📞 Chiamate AI Voice (Vapi.ai + Twilio)
