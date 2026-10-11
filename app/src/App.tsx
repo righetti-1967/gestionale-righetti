@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar'
 import DynamicFavicon from './components/DynamicFavicon';
+import { NotificaConfermaCliente } from './components/NotificaConfermaCliente';
 import { Dashboard } from './pages/Dashboard';
 import { Clienti } from './pages/Clienti';
 import { Fatture } from './pages/Fatture';
@@ -116,6 +117,7 @@ function AppGestionale() {
   return (
     <div className="flex h-screen bg-apple-lightgray">
       <DynamicFavicon />
+      <NotificaConfermaCliente />
       <Sidebar
         currentPage={currentPage}
         onNavigate={setCurrentPage}
