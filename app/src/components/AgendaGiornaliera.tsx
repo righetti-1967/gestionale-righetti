@@ -12,7 +12,7 @@ import {
   type Operatore,
   type VoceSelezionata,
 } from '../lib/appuntamenti';
-import { getFasceDaDataISO, getOrariOperatoreGiorno, isOperatoreDisponibile, type Fascia } from '../lib/agenda-config';
+import { getFasceDaDataISO, getOrariOperatoreGiorno, isOperatoreDisponibile, getChiusuraInData, isDataChiusa, type Fascia, type ChiusuraStraordinaria } from '../lib/agenda-config';
 
 interface AgendaGiornalieraProps {
   data: string;
@@ -133,6 +133,12 @@ export function AgendaGiornaliera({
   const fasceOggi = useMemo(() => {
     return getFasceDaDataISO(agendaConfig, data);
   }, [agendaConfig, data]);
+
+  // Chiusura straordinaria che copre la data corrente (se esiste)
+  const chiusuraOggi: ChiusuraStraordinaria | null = useMemo(() => {
+    return getChiusuraInData(agendaConfig, data);
+  }, [agendaConfig, data]);
+  const isChiuso = chiusuraOggi !== null;
 
   // Helper: ritorna le fasce per un OPERATORE specifico (custom o globali)
   function getFasceOperatore(opId: string): Fascia[] {
@@ -607,6 +613,21 @@ export function AgendaGiornaliera({
         )}
       </div>
 
+      {/* Banner chiusura straordinaria */}
+      {isChiuso && chiusuraOggi && (
+        <div className="bg-amber-50 border-b-2 border-amber-300 px-4 py-3 flex items-start gap-3 shrink-0">
+          <span className="text-2xl">🏖️</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-amber-900">
+              Studio CHIUSO{chiusuraOggi.motivo ? ` — ${chiusuraOggi.motivo}` : ''}
+            </p>
+            <p className="text-xs text-amber-800 mt-0.5">
+              Dal {formatDataBreve(chiusuraOggi.dataInizio)} al {formatDataBreve(chiusuraOggi.dataFine)}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div
         className="border-b border-gray-200/60 shrink-0"
         style={{
@@ -716,6 +737,14 @@ export function AgendaGiornaliera({
                 operatore={op}
                 slots={slots}
                 onClickSlot={(operatore, ora) => {
+                  // Se giorno chiuso straordinario → avviso
+                  if (isChiuso && chiusuraOggi) {
+                    alert(
+                      `🏖️ Studio chiuso dal ${formatDataBreve(chiusuraOggi.dataInizio)} al ${formatDataBreve(chiusuraOggi.dataFine)}` +
+                      (chiusuraOggi.motivo ? `\nMotivo: ${chiusuraOggi.motivo}` : '')
+                    );
+                    return;
+                  }
                   // Se cella chiusa per l'OPERATORE → apri modale avviso
                   const fasceOp = getFasceOperatore(op);
                   if (fasceOp && fasceOp.length > 0) {
@@ -735,6 +764,7 @@ export function AgendaGiornaliera({
                 altezzaSlot={altezzaSlot}
                 fasceGiorno={getFasceOperatore(op)}
                 slotMinuti={agendaConfig.granularitaMinuti}
+                isGiornoChiuso={isChiuso}
               />
               {(blocchiPerOperatore[op] || []).map((b, i) => (
                 <BloccoRnd
@@ -847,6 +877,7 @@ function SfondoColonna({
   altezzaSlot,
   fasceGiorno,
   slotMinuti,
+  isGiornoChiuso,
 }: {
   operatore: Operatore;
   slots: string[];
@@ -854,15 +885,22 @@ function SfondoColonna({
   altezzaSlot: number;
   fasceGiorno?: Fascia[];
   slotMinuti?: number;
+  isGiornoChiuso?: boolean;
 }) {
   // Ritorna true se lo slot è DENTRO una fascia aperta
   function isSlotAperto(slot: string): boolean {
+    if (isGiornoChiuso) return false; // chiusura straordinaria → tutto chiuso
     if (!fasceGiorno || fasceGiorno.length === 0) return true; // nessuna config → tutto aperto
     return fasceGiorno.some((f) => slot >= f.inizio && slot < f.fine);
   }
 
   // Ritorna info del blocco "Chiuso" se lo slot è il PRIMO di un gruppo chiuso
   function infoBloccoChiuso(index: number): { durata: string } | null {
+    if (isGiornoChiuso) {
+      // Se giorno chiuso straordinario, mostra solo primo slot con label
+      if (index === 0) return { durata: '🏖️ Studio chiuso' };
+      return null;
+    }
     if (!fasceGiorno || fasceGiorno.length === 0) return null;
     if (isSlotAperto(slots[index])) return null;
     // Se lo slot precedente era chiuso → non sono il primo, non metto label
@@ -1117,4 +1155,16 @@ function BloccoRnd({
     
     </Rnd>
   );
+}
+
+function formatDataBreve(dataISO: string): string {
+  try {
+    return new Date(dataISO + 'T00:00:00').toLocaleDateString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  } catch {
+    return dataISO;
+  }
 }
