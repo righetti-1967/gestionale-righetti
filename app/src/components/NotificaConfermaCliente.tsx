@@ -79,9 +79,18 @@ export function NotificaConfermaCliente() {
   function apriInAgenda(n: AppuntamentoConfermato) {
     localStorage.setItem('agenda_data_iniziale', n.data);
     setNotifiche((prev) => prev.filter((x) => x.id !== n.id));
+
+    // 1) Cambia pagina
     window.dispatchEvent(
       new CustomEvent('navigate-to-page', { detail: { page: 'agenda' } })
     );
+
+    // 2) Dopo 150ms invia la data (per Agenda già montata)
+    setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent('agenda-vai-a-data', { detail: { data: n.data } })
+      );
+    }, 150);
   }
 
   function chiudi(id: number) {

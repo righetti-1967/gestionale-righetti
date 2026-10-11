@@ -266,6 +266,22 @@ export function Agenda({
     ricarica();
   }, [range.inizio, range.fine, configCaricata]);
 
+  // Ascolta evento per cambio data programmatico (es. da notifica conferma)
+  useEffect(() => {
+    const handler = (e: any) => {
+      const nuovaData = e.detail?.data;
+      if (typeof nuovaData === 'string' && nuovaData) {
+        const d = new Date(nuovaData + 'T00:00:00');
+        if (!isNaN(d.getTime())) {
+          setDataCorrente(nuovaData);
+          setVista('giornaliera');
+        }
+      }
+    };
+    window.addEventListener('agenda-vai-a-data', handler);
+    return () => window.removeEventListener('agenda-vai-a-data', handler);
+  }, []);
+
   // ⚡ Sincronizzazione Realtime Multi-Device (MacBook, iPhone, iPad)
   useEffect(() => {
     if (!configCaricata) return;
