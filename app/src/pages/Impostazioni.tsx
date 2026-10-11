@@ -31,7 +31,7 @@ import {
 } from '../lib/agenda-config';
 import { aggiornaCostantiAgenda } from '../lib/appuntamenti';
 import { getServizi, type Servizio } from '../lib/servizi';
-import { caricaPrivacy, salvaPrivacy, invalidaCachePrivacy, PRIVACY_DEFAULT, INFORMATIVA_DEFAULT, type ConfigPrivacy } from '../lib/privacy';
+import { caricaPrivacy, salvaPrivacy, invalidaCachePrivacy, incrementaVersione, PRIVACY_DEFAULT, INFORMATIVA_DEFAULT, type ConfigPrivacy } from '../lib/privacy';
 import { caricaAspetto, salvaAspetto, invalidaCacheAspetto, ASPETTO_DEFAULT, type ConfigAspetto } from '../lib/aspetto';
 import { SicurezzaTab } from '../components/SicurezzaTab';
 import { ModaleConfigFiscale } from '../components/ModaleConfigFiscale';
@@ -2236,6 +2236,8 @@ function TabPrivacy({ registraSalva }: { registraSalva?: (fn: () => void, salvan
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [messaggio, setMessaggio] = useState<{ tipo: 'ok' | 'errore'; testo: string } | null>(null);
+  const [showPubblicaVersione, setShowPubblicaVersione] = useState(false);
+  const [tipoBump, setTipoBump] = useState<'minor' | 'major'>('minor');
 
   useEffect(() => {
     async function carica() {
@@ -2251,6 +2253,33 @@ function TabPrivacy({ registraSalva }: { registraSalva?: (fn: () => void, salvan
     }
     carica();
   }, []);
+
+  async function pubblicaNuovaVersione() {
+    setSalvando(true);
+    setMessaggio(null);
+    try {
+      const nuovaVersione = incrementaVersione(config.versione || '1.0', tipoBump === 'major');
+      const configAggiornata: ConfigPrivacy = {
+        ...config,
+        versione: nuovaVersione,
+        dataVersione: new Date().toISOString(),
+      };
+      await salvaPrivacy(configAggiornata);
+      invalidaCachePrivacy();
+      setConfig(configAggiornata);
+      setMessaggio({
+        tipo: 'ok',
+        testo: `✅ Nuova versione ${nuovaVersione} pubblicata. I clienti con privacy obsoleta dovranno rifirmare.`,
+      });
+      setShowPubblicaVersione(false);
+      setTimeout(() => setMessaggio(null), 5000);
+    } catch (err) {
+      console.error('Errore pubblicazione versione:', err);
+      setMessaggio({ tipo: 'errore', testo: 'Errore nella pubblicazione. Riprova.' });
+    } finally {
+      setSalvando(false);
+    }
+  }
 
   const salva = useCallback(async () => {
     setSalvando(true);
@@ -2314,6 +2343,30 @@ function TabPrivacy({ registraSalva }: { registraSalva?: (fn: () => void, salvan
         title="Informativa privacy"
         subtitle="Testo che i clienti leggono e firmano sull'iPad. Il punto 7 (Titolare) si compila automaticamente con i dati aziendali."
       >
+        {/* Badge versione + pulsante pubblica nuova versione */}
+        <div className="mb-4 p-3 rounded-apple bg-blue-50 border border-blue-200 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide">
+              📄 Versione corrente
+            </p>
+            <p className="text-lg font-bold text-blue-900 mt-0.5">
+              v{config.versione || '1.0'}
+            </p>
+            {config.dataVersione && (
+              <p className="text-[10px] text-blue-700 mt-0.5">
+                Ultimo aggiornamento sostanziale: {new Date(config.dataVersione).toLocaleString('it-IT')}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowPubblicaVersione(true)}
+            className="px-4 py-2.5 bg-blue-600 text-white rounded-apple text-xs font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            🚀 Pubblica nuova versione
+          </button>
+        </div>
+
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="block text-xs font-medium text-apple-darkgray">
@@ -2338,6 +2391,104 @@ function TabPrivacy({ registraSalva }: { registraSalva?: (fn: () => void, salvan
           </p>
         </div>
       </Card>
+
+      {/* Modale Pubblica nuova versione */}
+      {showPubblicaVersione && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[95]"
+          onClick={() => setShowPubblicaVersione(false)}
+        >
+          <div
+            className="bg-white rounded-apple shadow-apple-lg max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-blue-100 flex items-center justify-center text-2xl">
+                🚀
+              </div>
+              <h2 className="text-lg font-bold text-apple-darkgray mb-2">
+                Pubblica nuova versione?
+              </h2>
+              <p className="text-xs text-apple-gray leading-relaxed">
+                Stai per pubblicare una <strong>nuova versione</strong> dell'informativa privacy.
+                <br />
+                I clienti che hanno firmato una versione precedente dovranno <strong>rifirmare</strong>.
+              </p>
+            </div>
+
+            <div className="space-y-2 mb-5">
+              <button
+                type="button"
+                onClick={() => setTipoBump('minor')}
+                className={`w-full text-left p-3 rounded-apple border-2 transition-all ${
+                  tipoBump === 'minor'
+                    ? 'bg-blue-50 border-blue-500 shadow-sm'
+                    : 'bg-white border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-apple-darkgray">
+                      📝 Aggiornamento minore
+                    </p>
+                    <p className="text-xs text-apple-gray mt-0.5">
+                      v{config.versione || '1.0'} → v{incrementaVersione(config.versione || '1.0', false)}
+                    </p>
+                    <p className="text-[10px] text-apple-gray mt-1">
+                      Modifiche minori, refusi, chiarimenti
+                    </p>
+                  </div>
+                  {tipoBump === 'minor' && <span className="text-blue-500 text-lg">✓</span>}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTipoBump('major')}
+                className={`w-full text-left p-3 rounded-apple border-2 transition-all ${
+                  tipoBump === 'major'
+                    ? 'bg-amber-50 border-amber-500 shadow-sm'
+                    : 'bg-white border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-apple-darkgray">
+                      🚨 Aggiornamento sostanziale
+                    </p>
+                    <p className="text-xs text-apple-gray mt-0.5">
+                      v{config.versione || '1.0'} → v{incrementaVersione(config.versione || '1.0', true)}
+                    </p>
+                    <p className="text-[10px] text-apple-gray mt-1">
+                      Nuovi trattamenti dati, finalità, chiamate AI, ecc.
+                    </p>
+                  </div>
+                  {tipoBump === 'major' && <span className="text-amber-500 text-lg">✓</span>}
+                </div>
+              </button>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowPubblicaVersione(false)}
+                disabled={salvando}
+                className="flex-1 px-4 py-2.5 bg-gray-100 text-apple-darkgray rounded-apple font-medium text-sm hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={pubblicaNuovaVersione}
+                disabled={salvando}
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-apple font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {salvando ? '⏳...' : '🚀 Pubblica'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Card
         title="Firma digitale"

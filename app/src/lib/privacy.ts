@@ -10,6 +10,8 @@ export interface ConfigPrivacy {
   conservaPdfFirmato: boolean;
   giorniConservazione: number;
   avvisaScadenza: boolean;
+  versione: string;         // es. "1.0", "1.1", "2.0"
+  dataVersione?: string;    // ISO date dell'ultimo aggiornamento sostanziale
 }
 
 export const INFORMATIVA_DEFAULT = `Gentile Cliente,
@@ -46,6 +48,7 @@ export const PRIVACY_DEFAULT: ConfigPrivacy = {
   conservaPdfFirmato: true,
   giorniConservazione: 3650,
   avvisaScadenza: false,
+  versione: '1.0',
 };
 
 let cache: ConfigPrivacy | null = null;
@@ -64,6 +67,8 @@ function adatta(raw: unknown): ConfigPrivacy {
     giorniConservazione:
       typeof r.giorniConservazione === 'number' ? r.giorniConservazione : 3650,
     avvisaScadenza: r.avvisaScadenza === true,
+    versione: typeof r.versione === 'string' && r.versione.trim() ? r.versione : '1.0',
+    dataVersione: typeof r.dataVersione === 'string' ? r.dataVersione : undefined,
   };
 }
 
@@ -122,4 +127,30 @@ export async function salvaPrivacy(config: ConfigPrivacy): Promise<void> {
     );
   if (error) throw error;
   cache = config;
+}
+
+/**
+ * Incrementa la versione (es. "1.0" → "1.1" → "2.0").
+ * Se `maggiore = true` → bump major (1.x → 2.0)
+ * Altrimenti → bump minor (1.0 → 1.1)
+ */
+export function incrementaVersione(versioneCorrente: string, maggiore = false): string {
+  const parti = versioneCorrente.split('.').map((n) => parseInt(n, 10) || 0);
+  const major = parti[0] || 1;
+  const minor = parti[1] || 0;
+  if (maggiore) {
+    return `${major + 1}.0`;
+  }
+  return `${major}.${minor + 1}`;
+}
+
+/**
+ * Verifica se la versione firmata dal cliente è obsoleta rispetto alla corrente.
+ */
+export function isPrivacyObsoleta(
+  versioneFirmata: string | null | undefined,
+  versioneCorrente: string
+): boolean {
+  if (!versioneFirmata) return false; // mai firmata → non è "obsoleta" (è "non firmata")
+  return versioneFirmata !== versioneCorrente;
 }
