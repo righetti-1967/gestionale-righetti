@@ -70,7 +70,7 @@ interface DatiAziendali {
 const SEDE_VUOTA: Sede = { indirizzo: '', cap: '', citta: '', provincia: '' };
 
 const AZIENDA_DEFAULT: DatiAziendali = {
-  ragioneSociale: 'Righetti Since 1967',
+  ragioneSociale: '',
   nomeStudio: '',
   partitaIva: '',
   codiceFiscale: '',
@@ -487,7 +487,7 @@ function TabComunicazioni({ registraSalva }: { registraSalva: (fn: () => void, s
         secure: emailConfig.secure,
         username: emailConfig.username?.trim() || undefined,
         password: emailConfig.password?.trim() || undefined,
-        from_name: emailConfig.fromName?.trim() || 'Studio Righetti Since 1967',
+        from_name: emailConfig.fromName?.trim() || 'Studio',
         destinatario: testEmailDestinatario.trim(),
       });
       setEsitoTestEmail({ tipo: 'ok', testo: res.messaggio });
@@ -1210,7 +1210,7 @@ function TabAzienda({ registraSalva }: { registraSalva?: (fn: () => void, salvan
               label="Nome Studio"
               value={dati.nomeStudio}
               onChange={(v) => aggiorna('nomeStudio', v)}
-              placeholder="Es. Studio Righetti Since 1967"
+              placeholder="Es. Studio Rossi"
               help="Usato nelle email e comunicazioni ai clienti"
             />
           </div>
