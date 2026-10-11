@@ -33,6 +33,13 @@ export interface OrarioGiorno {
   fasce: Fascia[];
 }
 
+export interface ChiusuraStraordinaria {
+  id: string;           // "ch_xxx"
+  dataInizio: string;   // "2026-12-24"
+  dataFine: string;     // "2027-01-06"
+  motivo?: string;      // "Ferie Natalizie"
+}
+
 export interface ConfigAgenda {
   // Orari globali (backward compat + fallback)
   oraApertura: string;           // "08:30"
@@ -59,6 +66,9 @@ export interface ConfigAgenda {
 
   // Mapping: servizio_id (string) → categoria_id (string)
   servizioCategoria: Record<string, string>;
+
+  // Chiusure straordinarie (ferie, festività, ecc.)
+  chiusureStraordinarie?: ChiusuraStraordinaria[];
   coloriTipi: {
     percorso: string;
     checkup_nuovo: string;
@@ -121,6 +131,31 @@ export function getOrariOperatoreGiorno(
   }
 
   return op.orariGiorni?.[giornoSettimana] || fallbackGlobali;
+}
+
+/**
+ * Ritorna la chiusura straordinaria attiva in una data specifica (se esiste).
+ */
+export function getChiusuraInData(
+  config: ConfigAgenda,
+  dataISO: string
+): ChiusuraStraordinaria | null {
+  if (!config.chiusureStraordinarie || config.chiusureStraordinarie.length === 0) {
+    return null;
+  }
+  for (const c of config.chiusureStraordinarie) {
+    if (dataISO >= c.dataInizio && dataISO <= c.dataFine) {
+      return c;
+    }
+  }
+  return null;
+}
+
+/**
+ * Ritorna true se la data è dentro una chiusura straordinaria.
+ */
+export function isDataChiusa(config: ConfigAgenda, dataISO: string): boolean {
+  return getChiusuraInData(config, dataISO) !== null;
 }
 
 /**
@@ -226,6 +261,18 @@ function adatta(raw: unknown): ConfigAgenda {
     generico: typeof r.coloriTipi?.generico === 'string' ? r.coloriTipi.generico : 'gray',
   };
 
+  // Parsing chiusureStraordinarie
+  const chiusureStraordinarie: ChiusuraStraordinaria[] = Array.isArray(r.chiusureStraordinarie)
+    ? r.chiusureStraordinarie
+        .filter((c: any) => c && typeof c.dataInizio === 'string' && typeof c.dataFine === 'string')
+        .map((c: any) => ({
+          id: String(c.id || `ch_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
+          dataInizio: c.dataInizio,
+          dataFine: c.dataFine,
+          motivo: typeof c.motivo === 'string' ? c.motivo : undefined,
+        }))
+    : [];
+
   const oraAperturaFinale = typeof r.oraApertura === 'string' && r.oraApertura.match(/^\d{2}:\d{2}$/)
     ? r.oraApertura
     : AGENDA_DEFAULT.oraApertura;
@@ -271,6 +318,7 @@ function adatta(raw: unknown): ConfigAgenda {
     oraChiusura: oraChiusuraFinale,
     orariGiorni,
     giorniLavorativi: giorniFinali,
+    chiusureStraordinarie,
     granularitaMinuti: granularita,
     operatori,
     operatoriVisibili: operatoriVisibili.length > 0 ? operatoriVisibili : [operatori[0].id],

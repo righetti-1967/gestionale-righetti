@@ -21,6 +21,7 @@ import {
   salvaAgendaConfig,
   invalidaCacheAgendaConfig,
   AGENDA_DEFAULT,
+  type ChiusuraStraordinaria,
   generaIdCategoria,
   generaIdOperatore,
   type ConfigAgenda,
@@ -2545,6 +2546,14 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
   const [nuovoOpRuolo, setNuovoOpRuolo] = useState('');
   const [nuovoOpColore, setNuovoOpColore] = useState('blue');
 
+  // Modale chiusura straordinaria
+  const [chiusuraModale, setChiusuraModale] = useState<{
+    id?: string;
+    dataInizio: string;
+    dataFine: string;
+    motivo: string;
+  } | null>(null);
+
   // Modale orari giorno
   const [giornoModale, setGiornoModale] = useState<number | null>(null);
   const [fasceModale, setFasceModale] = useState<Fascia[]>([]);
@@ -2768,6 +2777,64 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
       return { ...c, orariGiorni: nuovi, giorniLavorativi: giorni };
     });
     chiudiModaleGiorno();
+  }
+
+  // === Chiusure straordinarie ===
+  function apriNuovaChiusura() {
+    setChiusuraModale({
+      dataInizio: new Date().toISOString().split('T')[0],
+      dataFine: new Date().toISOString().split('T')[0],
+      motivo: '',
+    });
+  }
+
+  function apriModificaChiusura(c: ChiusuraStraordinaria) {
+    setChiusuraModale({
+      id: c.id,
+      dataInizio: c.dataInizio,
+      dataFine: c.dataFine,
+      motivo: c.motivo || '',
+    });
+  }
+
+  function salvaChiusura() {
+    if (!chiusuraModale) return;
+    if (!chiusuraModale.dataInizio || !chiusuraModale.dataFine) {
+      alert('Inserisci data inizio e data fine.');
+      return;
+    }
+    if (chiusuraModale.dataInizio > chiusuraModale.dataFine) {
+      alert('La data di inizio deve essere precedente o uguale alla data di fine.');
+      return;
+    }
+
+    setConfig((c) => {
+      const chiusure = [...(c.chiusureStraordinarie || [])];
+      const nuova: ChiusuraStraordinaria = {
+        id: chiusuraModale.id || `ch_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        dataInizio: chiusuraModale.dataInizio,
+        dataFine: chiusuraModale.dataFine,
+        motivo: chiusuraModale.motivo.trim() || undefined,
+      };
+      if (chiusuraModale.id) {
+        const idx = chiusure.findIndex((x) => x.id === chiusuraModale.id);
+        if (idx >= 0) chiusure[idx] = nuova;
+      } else {
+        chiusure.push(nuova);
+      }
+      // Ordina per dataInizio
+      chiusure.sort((a, b) => a.dataInizio.localeCompare(b.dataInizio));
+      return { ...c, chiusureStraordinarie: chiusure };
+    });
+    setChiusuraModale(null);
+  }
+
+  function eliminaChiusura(id: string) {
+    if (!confirm('Eliminare questa chiusura straordinaria?')) return;
+    setConfig((c) => ({
+      ...c,
+      chiusureStraordinarie: (c.chiusureStraordinarie || []).filter((x) => x.id !== id),
+    }));
   }
 
   // === Orari per operatore ===
@@ -3103,6 +3170,94 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
           })}
         </div>
       </Card>
+
+      {/* Modale Chiusura Straordinaria */}
+      {chiusuraModale !== null && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[90]"
+          onClick={() => setChiusuraModale(null)}
+        >
+          <div
+            className="bg-white rounded-apple shadow-apple-lg max-w-sm w-full p-5 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-apple-darkgray">
+                {chiusuraModale.id ? '✏️ Modifica chiusura' : '🏖️ Nuova chiusura'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setChiusuraModale(null)}
+                className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-apple-gray text-xs flex items-center justify-center transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                  Data inizio
+                </label>
+                <input
+                  type="date"
+                  value={chiusuraModale.dataInizio}
+                  onChange={(e) =>
+                    setChiusuraModale({ ...chiusuraModale, dataInizio: e.target.value })
+                  }
+                  className="w-full px-3 py-2.5 rounded-apple bg-gray-50 border border-gray-200 text-sm text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                  Data fine
+                </label>
+                <input
+                  type="date"
+                  value={chiusuraModale.dataFine}
+                  onChange={(e) =>
+                    setChiusuraModale({ ...chiusuraModale, dataFine: e.target.value })
+                  }
+                  className="w-full px-3 py-2.5 rounded-apple bg-gray-50 border border-gray-200 text-sm text-apple-darkgray focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-apple-gray uppercase tracking-wide mb-1.5">
+                  Motivo (opzionale)
+                </label>
+                <input
+                  type="text"
+                  value={chiusuraModale.motivo}
+                  onChange={(e) =>
+                    setChiusuraModale({ ...chiusuraModale, motivo: e.target.value })
+                  }
+                  placeholder="Es. Ferie Natalizie, Ferragosto..."
+                  className="w-full px-3 py-2.5 rounded-apple bg-gray-50 border border-gray-200 text-sm text-apple-darkgray placeholder:text-apple-gray/60 focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-4 mt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setChiusuraModale(null)}
+                className="flex-1 px-4 py-2.5 rounded-apple bg-gray-100 text-apple-darkgray text-sm font-medium hover:bg-gray-200 transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={salvaChiusura}
+                className="flex-1 px-4 py-2.5 rounded-apple bg-apple-blue text-white text-sm font-semibold hover:bg-blue-600 transition-colors shadow-apple"
+              >
+                Salva
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modale orari giorno */}
       {giornoModale !== null && (
@@ -3662,6 +3817,101 @@ function TabAgenda({ registraSalva }: { registraSalva?: (fn: () => void, salvand
               );
             })}
           </div>
+        </div>
+      </Card>
+
+      <Card
+        title="🏖️ Chiusure Straordinarie"
+        subtitle="Configura ferie, festività e chiusure dello studio."
+      >
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={apriNuovaChiusura}
+            className="w-full px-4 py-2.5 bg-apple-blue text-white rounded-apple text-sm font-medium hover:bg-blue-600 transition-colors shadow-apple"
+          >
+            + Aggiungi chiusura
+          </button>
+
+          {(config.chiusureStraordinarie || []).length === 0 ? (
+            <p className="text-xs text-apple-gray italic text-center py-4">
+              Nessuna chiusura configurata.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {(config.chiusureStraordinarie || []).map((c) => {
+                const oggi = new Date().toISOString().split('T')[0];
+                const inCorso = oggi >= c.dataInizio && oggi <= c.dataFine;
+                const futura = c.dataInizio > oggi;
+                const passata = c.dataFine < oggi;
+
+                const fmt = (d: string) =>
+                  new Date(d + 'T00:00:00').toLocaleDateString('it-IT', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                  });
+
+                const stessaData = c.dataInizio === c.dataFine;
+
+                return (
+                  <div
+                    key={c.id}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-apple border ${
+                      inCorso
+                        ? 'bg-amber-50 border-amber-300'
+                        : passata
+                          ? 'bg-gray-50 border-gray-200 opacity-60'
+                          : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-apple-darkgray">
+                          📅 {stessaData ? fmt(c.dataInizio) : `${fmt(c.dataInizio)} → ${fmt(c.dataFine)}`}
+                        </span>
+                        {inCorso && (
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500 text-white">
+                            In corso
+                          </span>
+                        )}
+                        {futura && (
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                            Programmata
+                          </span>
+                        )}
+                        {passata && (
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">
+                            Passata
+                          </span>
+                        )}
+                      </div>
+                      {c.motivo && (
+                        <p className="text-xs text-apple-gray mt-1">{c.motivo}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => apriModificaChiusura(c)}
+                        className="px-3 py-1.5 bg-blue-50 text-apple-blue rounded-apple text-xs font-medium hover:bg-blue-100 transition-colors"
+                      >
+                        ✏️ Modifica
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => eliminaChiusura(c.id)}
+                        className="w-8 h-8 rounded-apple flex items-center justify-center text-apple-gray hover:text-red-500 hover:bg-red-50 transition-colors"
+                        title="Elimina"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </Card>
 
