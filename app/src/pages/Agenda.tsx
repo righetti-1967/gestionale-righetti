@@ -298,11 +298,49 @@ export function Agenda({
           caricaPending();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Realtime Agenda] Status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
+  }, [configCaricata, range.inizio, range.fine]);
+
+  // 🔄 Auto-refresh quando torni su Agenda (focus, sblocco schermo, cambio tab)
+  useEffect(() => {
+    if (!configCaricata) return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Agenda] visibilitychange → refresh');
+        ricarica(true);
+        caricaPending();
+      }
+    };
+    const handleFocus = () => {
+      console.log('[Agenda] focus → refresh');
+      ricarica(true);
+      caricaPending();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [configCaricata, range.inizio, range.fine]);
+
+  // ⏰ Fallback polling ogni 30 sec (mobile, se Realtime fallisce)
+  useEffect(() => {
+    if (!configCaricata) return;
+    const interval = setInterval(() => {
+      console.log('[Agenda] polling fallback 30s');
+      ricarica(true);
+      caricaPending();
+    }, 30000);
+    return () => clearInterval(interval);
   }, [configCaricata, range.inizio, range.fine]);
 
   const giorniSettimana = useMemo(() => {
