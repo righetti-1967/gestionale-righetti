@@ -3,7 +3,7 @@ import { useDatiAziendali } from '../lib/useDatiAziendali';
 import { useAuth } from '../lib/auth';
 import { formatEuro } from '../lib/fatture';
 import type { Scontrino } from '../lib/scontrini';
-import { annullaScontrino } from '../lib/scontrini';
+import { annullaScontrino, getFigliDiMadre } from '../lib/scontrini';
 import { generaPdfScontrino } from '../lib/pdfScontrino';
 import {
   inviaScontrinoEmail,
@@ -36,6 +36,9 @@ export function StampaScontrino({ scontrino, onClose, onAnnullato }: StampaScont
   const [showAnnulla, setShowAnnulla] = useState(false);
   const [passwordAnnullo, setPasswordAnnullo] = useState('');
   const [motivoAnnullo, setMotivoAnnullo] = useState('');
+  const [figliCollegati, setFigliCollegati] = useState<Scontrino[]>([]);
+  const [figliSelezionati, setFigliSelezionati] = useState<Set<number>>(new Set());
+  const [stepAnnullo, setStepAnnullo] = useState<'figli' | 'madre'>('figli');
   const [ripristinoMagazzino, setRipristinoMagazzino] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [annullando, setAnnullando] = useState(false);
@@ -172,6 +175,90 @@ export function StampaScontrino({ scontrino, onClose, onAnnullato }: StampaScont
       });
     } finally {
       setInviandoStampante(false);
+    }
+  }
+
+  async function caricaFigliEInizia() {
+    try {
+      // Solo per MADRE: carica figli attivi
+      if (scontrino.tipo === 'madre') {
+        const figli = await getFigliDiMadre(scontrino.id);
+        setFigliCollegati(figli);
+        setFigliSelezionati(new Set(figli.map((f) => f.id)));
+        setStepAnnullo(figli.length > 0 ? 'figli' : 'madre');
+      } else {
+        setFigliCollegati([]);
+        setFigliSelezionati(new Set());
+        setStepAnnullo('madre');
+      }
+      setShowAnnulla(true);
+    } catch (err) {
+      console.error('Errore caricamento figli:', err);
+      alert('Errore caricamento figli collegati');
+    }
+  }
+
+  function toggleFiglio(id: number) {
+    setFigliSelezionati((prev) => {
+      const nuovo = new Set(prev);
+      if (nuovo.has(id)) nuovo.delete(id);
+      else nuovo.add(id);
+      return nuovo;
+    });
+  }
+
+  function toggleTuttiFigli() {
+    if (figliSelezionati.size === figliCollegati.length) {
+      setFigliSelezionati(new Set());
+    } else {
+      setFigliSelezionati(new Set(figliCollegati.map((f) => f.id)));
+    }
+  }
+
+  async function handleAnnullaFigliSelezionati() {
+    if (figliSelezionati.size === 0) {
+      alert('Seleziona almeno un figlio da annullare');
+      return;
+    }
+    if (motivoAnnullo.trim().length < 10) {
+      alert('Inserisci un motivo (minimo 10 caratteri)');
+      return;
+    }
+
+    try {
+      setAnnullando(true);
+      setErroreAnnullo(null);
+
+      setVerificando(true);
+      const ok = await verificaPassword(passwordAnnullo.trim());
+      if (!ok) {
+        setErroreAnnullo('Password gestionale non corretta');
+        return;
+      }
+      setVerificando(false);
+
+      const daAnnullare = figliCollegati.filter((f) => figliSelezionati.has(f.id));
+      for (const figlio of daAnnullare) {
+        try {
+          await annullaScontrino({
+            id: figlio.id,
+            motivo: motivoAnnullo.trim(),
+            ripristinoMagazzino: false,
+            annullatoDa: user?.email || 'utente',
+          });
+        } catch (err: any) {
+          console.error('Errore annullo figlio', figlio.id, err);
+          setErroreAnnullo(`Errore annullo ${figlio.numero_scontrino}: ${err.message}`);
+          return;
+        }
+      }
+
+      setStepAnnullo('madre');
+    } catch (err: any) {
+      setErroreAnnullo(err?.message || 'Errore annullo figli');
+    } finally {
+      setAnnullando(false);
+      setVerificando(false);
     }
   }
 
@@ -523,7 +610,7 @@ export function StampaScontrino({ scontrino, onClose, onAnnullato }: StampaScont
 
           {!isAnnullato && (
             <button
-              onClick={() => setShowAnnulla(true)}
+              onClick={caricaFigliEInizia}
               className="px-4 py-2.5 bg-red-600 text-white rounded-apple font-semibold text-xs shadow-apple hover:bg-red-700 transition-colors"
               title="Annulla questo documento (richiede password)"
             >
@@ -552,13 +639,64 @@ export function StampaScontrino({ scontrino, onClose, onAnnullato }: StampaScont
                 ⚠️
               </div>
               <h2 className="text-lg font-bold text-apple-darkgray mb-2">
-                Annulla documento?
+                {stepAnnullo === 'figli'
+                  ? `Annullare prima i ${figliCollegati.length} figli`
+                  : 'Annullare documento?'}
               </h2>
               <p className="text-xs text-apple-gray">
-                Stai per annullare <strong>{scontrino.numero_scontrino}</strong>.
-                L'operazione è <strong>tracciata</strong> e reversibile solo dall'assistenza.
+                {stepAnnullo === 'figli'
+                  ? 'Lo scontrino madre ha figli attivi collegati. Devi annullarli prima di procedere.'
+                  : <>Stai per annullare <strong>{scontrino.numero_scontrino}</strong>. L'operazione è <strong>tracciata</strong> e reversibile solo dall'assistenza.</>}
               </p>
             </div>
+
+            {stepAnnullo === 'figli' && figliCollegati.length > 0 && (
+              <div className="mb-4 border border-gray-200 rounded-apple overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
+                  <span className="text-xs font-semibold text-apple-gray uppercase">
+                    Figli collegati ({figliCollegati.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={toggleTuttiFigli}
+                    className="text-xs text-apple-blue hover:underline font-medium"
+                  >
+                    {figliSelezionati.size === figliCollegati.length ? '☐ Deseleziona tutti' : '☑ Seleziona tutti'}
+                  </button>
+                </div>
+                <div className="max-h-48 overflow-y-auto divide-y divide-gray-100">
+                  {figliCollegati.map((figlio) => {
+                    const sel = figliSelezionati.has(figlio.id);
+                    const dataFmt = figlio.data_emissione
+                      ? new Date(figlio.data_emissione).toLocaleDateString('it-IT')
+                      : '—';
+                    return (
+                      <label
+                        key={figlio.id}
+                        className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
+                          sel ? 'bg-purple-50' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={sel}
+                          onChange={() => toggleFiglio(figlio.id)}
+                          className="w-4 h-4 accent-purple-600"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-apple-darkgray">
+                            {figlio.numero_scontrino}
+                          </p>
+                          <p className="text-xs text-apple-gray">
+                            {dataFmt} · €{Number(figlio.totale_lordo || 0).toFixed(2)}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div>
@@ -622,19 +760,40 @@ export function StampaScontrino({ scontrino, onClose, onAnnullato }: StampaScont
                   setPasswordAnnullo('');
                   setMotivoAnnullo('');
                   setRipristinoMagazzino(false);
+                  setStepAnnullo('figli');
                 }}
                 disabled={annullando || verificando}
                 className="flex-1 px-4 py-2.5 bg-gray-100 text-apple-darkgray rounded-apple font-medium text-sm hover:bg-gray-200 transition-colors disabled:opacity-50"
               >
                 Annulla
               </button>
-              <button
-                onClick={handleAnnulla}
-                disabled={annullando || verificando || motivoAnnullo.trim().length < 10 || !passwordAnnullo.trim()}
+              {stepAnnullo === 'figli' ? (
+                <button
+                  onClick={handleAnnullaFigliSelezionati}
+                  disabled={
+                    annullando ||
+                    verificando ||
+                    figliSelezionati.size === 0 ||
+                    motivoAnnullo.trim().length < 10 ||
+                    !passwordAnnullo.trim()
+                  }
+                  className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-apple font-semibold text-sm hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {verificando
+                    ? '🔐 Verifica...'
+                    : annullando
+                      ? '⏳ Annullo figli...'
+                      : `📦 Annulla ${figliSelezionati.size} figli e procedi`}
+                </button>
+              ) : (
+                <button
+                  onClick={handleAnnulla}
+                  disabled={annullando || verificando}
                 className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-apple font-medium text-sm hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {verificando ? '🔐 Verifica...' : annullando ? '⏳ Annullo...' : '🗑️ Annulla documento'}
+                {annullando ? '⏳ Annullo...' : '🗑️ Confermo annullo madre'}
               </button>
+              )}
             </div>
           </div>
         </div>
