@@ -3,6 +3,7 @@ import { getFatture } from "../lib/fatture";
 import { getScontrini, type Scontrino } from "../lib/scontrini";
 import { useDatiAziendali } from "../lib/useDatiAziendali";
 import { getClienti } from "../lib/clienti";
+import { caricaPrivacy, isPrivacyObsoleta } from "../lib/privacy";
 import { getTuttiPercorsi } from "../lib/percorsi";
 import { getProdotti } from "../lib/prodotti";
 import { getTuttiScarichi } from "../lib/scarichi";
@@ -45,6 +46,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const [proformaInAttesa, setProformaInAttesa] = useState(0);
   const [proformaTotale, setProformaTotale] = useState(0);
   const [clientiTotali, setClientiTotali] = useState(0);
+  const [clientiPrivacyObsoleta, setClientiPrivacyObsoleta] = useState(0);
   const [percorsiAttivi, setPercorsiAttivi] = useState(0);
   const [prodottiSottoScorta, setProdottiSottoScorta] = useState(0);
   const [appuntamentiPending, setAppuntamentiPending] = useState(0);
@@ -149,7 +151,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         tra90Giorni.setDate(tra90Giorni.getDate() + 90);
         const dataFine90 = tra90Giorni.toISOString().split('T')[0];
 
-        const [fatture, clienti, percorsi, prodotti, scarichi, appuntamenti, scontriniList] = await Promise.all([
+        const [fatture, clienti, percorsi, prodotti, scarichi, appuntamenti, scontriniList, privacyConfig] = await Promise.all([
           getFatture().catch(() => []),
           getClienti(),
           getTuttiPercorsi(),
@@ -157,6 +159,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           getTuttiScarichi().catch(() => []),
           getAppuntamenti(oggiStringa, dataFine90),
           getScontrini().catch(() => []),
+          caricaPrivacy().catch(() => null),
         ]);
 
         setScontrini(scontriniList.filter((s) => !s.annullato && s.tipo === 'madre'));
@@ -175,6 +178,14 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
         // 3) Clienti totali
         setClientiTotali(clienti.length);
+
+        // 3b) Clienti con privacy obsoleta (da rifirmare)
+        const versioneCorrente = privacyConfig?.versione || '1.0';
+        const privacyObsoletaCount = clienti.filter((c) => {
+          const versioneFirmata = (c as any).privacy_versione_firmata;
+          return c.privacy_firmata && isPrivacyObsoleta(versioneFirmata, versioneCorrente);
+        }).length;
+        setClientiPrivacyObsoleta(privacyObsoletaCount);
 
         // 4) Percorsi attivi (non terminati, non bloccati)
         // Regola: un percorso è attivo finché non è terminato/bloccato.
@@ -585,6 +596,20 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </div>
           <p className="text-xs text-apple-gray mb-1">Clienti Totali</p>
           <p className="text-xl font-bold text-apple-darkgray">{clientiTotali}</p>
+          {clientiPrivacyObsoleta > 0 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                localStorage.setItem('clienti_filtro', 'privacy_obsoleta');
+                onNavigate?.('clienti');
+              }}
+              className="mt-2 w-full px-2 py-1 rounded-apple bg-amber-100 hover:bg-amber-200 border border-amber-300 text-[10px] font-semibold text-amber-800 transition-colors flex items-center justify-center gap-1"
+              title="Vedi i clienti con privacy da rifirmare"
+            >
+              ⚠️ {clientiPrivacyObsoleta} da rifirmare
+            </button>
+          )}
         </button>
 
         {/* Card Percorsi Attivi */}

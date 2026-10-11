@@ -161,7 +161,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
   } | null>(null);
 
   const [showAnteprimaPrivacy, setShowAnteprimaPrivacy] = useState(false);
-  const [filtroClienti, setFiltroClienti] = useState<'pending' | 'rebooking' | null>(null);
+  const [filtroClienti, setFiltroClienti] = useState<'pending' | 'rebooking' | 'privacy_obsoleta' | null>(null);
   const [clientiIdsFiltrati, setClientiIdsFiltrati] = useState<Set<number> | null>(null);
   const [versionePrivacyCorrente, setVersionePrivacyCorrente] = useState<string>(() => {
     const cfg = getPrivacySync();
@@ -201,7 +201,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
 
   useEffect(() => {
     const filtro = localStorage.getItem('clienti_filtro');
-    if (filtro === 'pending' || filtro === 'rebooking') {
+    if (filtro === 'pending' || filtro === 'rebooking' || filtro === 'privacy_obsoleta') {
       setFiltroClienti(filtro);
       localStorage.removeItem('clienti_filtro');
     }
@@ -758,9 +758,20 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
     );
   }
 
-  const clientiVisualizzati = clientiIdsFiltrati
-    ? clienti.filter((c) => clientiIdsFiltrati.has(c.id))
-    : clienti;
+  const clientiVisualizzati = (() => {
+    // Se filtro privacy obsoleta → filtra clienti con privacy vecchia
+    if (filtroClienti === 'privacy_obsoleta') {
+      return clienti.filter((c) => {
+        const versioneFirmata = (c as any).privacy_versione_firmata;
+        return c.privacy_firmata && isPrivacyObsoleta(versioneFirmata, versionePrivacyCorrente);
+      });
+    }
+    // Altri filtri (pending/rebooking) → usa clientiIdsFiltrati
+    if (clientiIdsFiltrati) {
+      return clienti.filter((c) => clientiIdsFiltrati.has(c.id));
+    }
+    return clienti;
+  })();
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
