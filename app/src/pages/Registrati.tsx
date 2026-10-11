@@ -111,7 +111,9 @@ export function Registrati() {
             <h1 className="text-3xl font-bold text-apple-darkgray tracking-tight">
               Gestionale Studio
             </h1>
-            <p className="text-sm text-apple-gray mt-1">Crea il tuo account</p>
+            <p className="text-sm text-apple-gray mt-1">
+              Prova il Gestionale gratis per 15 giorni. Nessuna carta di credito richiesta.
+            </p>
           </div>
 
           {!successo ? (
