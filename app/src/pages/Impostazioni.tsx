@@ -2226,6 +2226,32 @@ function TabProfilo() {
           </button>
         </div>
       </Card>
+
+      {/* CARD: MANUALE UTENTE */}
+      <Card
+        title="📖 Manuale Utente"
+        subtitle="Guida completa a tutte le funzionalità del Gestionale."
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-apple-gray leading-relaxed">
+            Il manuale contiene tutte le istruzioni operative: setup iniziale, gestione clienti,
+            agenda, percorsi, fatture, cassa fiscale, magazzino, automazioni, integrazioni,
+            App Cliente e sicurezza.
+          </p>
+          <a
+            href="/manuale/manuale-gestionale.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            download="Manuale_Gestionale_Righetti_1967.pdf"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-apple-blue text-white rounded-apple font-medium text-sm hover:bg-blue-600 transition-colors shadow-apple"
+          >
+            📥 Scarica Manuale PDF
+          </a>
+          <p className="text-[10px] text-apple-gray italic">
+            Ultimo aggiornamento: 11/10/2026 — Se il file non si scarica, contatta l'assistenza.
+          </p>
+        </div>
+      </Card>
     </>
   );
 }
