@@ -2064,6 +2064,14 @@ export function CassaFiscale() {
         <StampaScontrino
           scontrino={scontrinoAperto}
           onClose={() => setScontrinoAperto(null)}
+          onAnnullato={async () => {
+            try {
+              const lista = await getScontrini();
+              setScontrini(lista);
+            } catch (err) {
+              console.warn('Errore ricarica scontrini dopo annullo:', err);
+            }
+          }}
         />
       )}
 
