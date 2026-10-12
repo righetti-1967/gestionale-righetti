@@ -29,8 +29,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Controlla se l'utente e' bloccato/eliminato e in tal caso lo disconnette
+  async function controllaBlocco(u: User | null): Promise<boolean> {
+    if (!u) return false;
+    if (u.user_metadata?.bloccato || u.user_metadata?.eliminato) {
+      try { await supabase.auth.signOut(); } catch (e) { console.error(e); }
+      setUser(null);
+      setSession(null);
+      return true;
+    }
+    return false;
+  }
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const bloccato = await controllaBlocco(session.user);
+        if (bloccato) {
+          setLoading(false);
+          return;
+        }
+      }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -38,7 +57,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const bloccato = await controllaBlocco(session.user);
+        if (bloccato) {
+          setLoading(false);
+          return;
+        }
+      }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -96,6 +122,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return { error: messaggio };
     }
+
+    // Controlla se l'utente e' bloccato o eliminato
+    const { data: { user: u } } = await supabase.auth.getUser();
+    if (u?.user_metadata?.bloccato || u?.user_metadata?.eliminato) {
+      try { await supabase.auth.signOut(); } catch (e) { console.error(e); }
+      const motivo = u.user_metadata?.motivo_blocco;
+      const msg = u.user_metadata?.eliminato
+        ? 'Account eliminato. Contatta il supporto.'
+        : `Account bloccato${motivo ? ': ' + motivo : ''}. Contatta il supporto.`;
+      return { error: msg };
+    }
+
     return { error: null };
   }
 
