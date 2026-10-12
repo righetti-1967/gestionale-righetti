@@ -25,6 +25,12 @@ export interface AdminUtenteLicenza {
   giorni_rimasti: number;
   is_scaduto: boolean;
   is_admin: boolean;
+  bloccato?: boolean
+  bloccato_il?: string | null
+  motivo_blocco?: string | null
+  eliminato?: boolean
+  eliminato_il?: string | null
+  motivo_eliminazione?: string | null
 }
 
 export interface PopolaDemoResponse {
@@ -295,4 +301,63 @@ export async function inviaEmailConConfig(payload: {
     allegato_base64: payload.allegato_base64,
     allegato_nome: payload.allegato_nome,
   });
+}
+
+// ============================================================================
+// BLOCCO / SBLOCCO / ELIMINAZIONE UTENTI (admin only)
+// ============================================================================
+export async function bloccaUtente(
+  adminEmail: string,
+  userId: string,
+  motivo?: string
+): Promise<void> {
+  const res = await fetch(
+    `${FASTAPI_URL}/api/licenze/blocca?admin_email=${encodeURIComponent(adminEmail)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, motivo: motivo || null }),
+    }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Errore blocco' }))
+    throw new Error(err.detail || 'Errore blocco')
+  }
+}
+
+export async function sbloccaUtente(
+  adminEmail: string,
+  userId: string
+): Promise<void> {
+  const res = await fetch(
+    `${FASTAPI_URL}/api/licenze/sblocca?admin_email=${encodeURIComponent(adminEmail)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId }),
+    }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Errore sblocco' }))
+    throw new Error(err.detail || 'Errore sblocco')
+  }
+}
+
+export async function eliminaUtente(
+  adminEmail: string,
+  userId: string,
+  motivo?: string
+): Promise<void> {
+  const res = await fetch(
+    `${FASTAPI_URL}/api/licenze/elimina?admin_email=${encodeURIComponent(adminEmail)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, motivo: motivo || null }),
+    }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Errore eliminazione' }))
+    throw new Error(err.detail || 'Errore eliminazione')
+  }
 }

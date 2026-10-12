@@ -10,6 +10,9 @@ import {
   prorogaDemoUtente,
   sbloccaUtenteReale,
   popolaDemoUtente,
+  bloccaUtente,
+  sbloccaUtente,
+  eliminaUtente,
   type AdminUtenteLicenza,
 } from '../lib/api';
 import { invalidaCacheDatiAziendali, caricaDatiAziendali, salvaDatiAziendali } from '../lib/datiAziendali';
@@ -4468,6 +4471,54 @@ function TabLicenze({ adminEmail }: { adminEmail: string }) {
     }
   }
 
+  async function handleBlocca(u: AdminUtenteLicenza) {
+    const motivo = window.prompt(`Bloccare l'utente ${u.email}?\n\nIl login verra rifiutato.\n\nMotivo (opzionale):`, "")
+    if (motivo === null) return
+    setAzioneInCorso(u.id)
+    setMessaggio(null)
+    try {
+      await bloccaUtente(adminEmail, u.id, motivo || undefined)
+      setMessaggio({ tipo: 'ok', testo: `Utente ${u.email} bloccato` })
+      await carica()
+    } catch (e: any) {
+      setMessaggio({ tipo: 'err', testo: e.message || 'Errore blocco' })
+    } finally {
+      setAzioneInCorso(null)
+    }
+  }
+
+  async function handleSblocca(u: AdminUtenteLicenza) {
+    if (!window.confirm(`Sbloccare l'utente ${u.email}?`)) return
+    setAzioneInCorso(u.id)
+    setMessaggio(null)
+    try {
+      await sbloccaUtente(adminEmail, u.id)
+      setMessaggio({ tipo: 'ok', testo: `Utente ${u.email} sbloccato` })
+      await carica()
+    } catch (e: any) {
+      setMessaggio({ tipo: 'err', testo: e.message || 'Errore sblocco' })
+    } finally {
+      setAzioneInCorso(null)
+    }
+  }
+
+  async function handleElimina(u: AdminUtenteLicenza) {
+    if (!window.confirm(`ELIMINARE l'utente ${u.email}?\n\nL'azione e soft delete (recuperabile manualmente).\n\nConfermi?`)) return
+    const motivo = window.prompt(`Motivo eliminazione (opzionale):`, "")
+    if (motivo === null) return
+    setAzioneInCorso(u.id)
+    setMessaggio(null)
+    try {
+      await eliminaUtente(adminEmail, u.id, motivo || undefined)
+      setMessaggio({ tipo: 'ok', testo: `Utente ${u.email} eliminato` })
+      await carica()
+    } catch (e: any) {
+      setMessaggio({ tipo: 'err', testo: e.message || 'Errore eliminazione' })
+    } finally {
+      setAzioneInCorso(null)
+    }
+  }
+
   const utentiFiltrati = utenti.filter((u) => {
     if (filtro === 'demo') return u.ruolo === 'demo';
     if (filtro === 'reale') return u.ruolo === 'reale' || u.ruolo === 'admin';
@@ -4611,6 +4662,35 @@ function TabLicenze({ adminEmail }: { adminEmail: string }) {
                         </button>
                       ) : (
                         <span className="text-xs text-apple-gray italic">Licenza attiva</span>
+                      )}
+                      {u.bloccato ? (
+                        <button
+                          onClick={() => handleSblocca(u)}
+                          disabled={busy}
+                          className="px-2.5 py-1.5 rounded-apple bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-semibold transition-colors disabled:opacity-50"
+                          title="Rimuovi il blocco"
+                        >
+                          🔓 Sblocca
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleBlocca(u)}
+                          disabled={busy}
+                          className="px-2.5 py-1.5 rounded-apple bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold transition-colors disabled:opacity-50"
+                          title="Blocca l'accesso"
+                        >
+                          🚫 Blocca
+                        </button>
+                      )}
+                      {!u.eliminato && (
+                        <button
+                          onClick={() => handleElimina(u)}
+                          disabled={busy}
+                          className="px-2.5 py-1.5 rounded-apple bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-semibold transition-colors disabled:opacity-50"
+                          title="Elimina (soft)"
+                        >
+                          🗑️ Elimina
+                        </button>
                       )}
                     </div>
                   )}
