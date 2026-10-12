@@ -36,6 +36,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try { await supabase.auth.signOut(); } catch (e) { console.error(e); }
       setUser(null);
       setSession(null);
+      // Salva messaggio per la pagina /login
+      const motivo = u.user_metadata?.motivo_blocco;
+      const msg = u.user_metadata?.eliminato
+        ? 'Account eliminato. Per assistenza contatta luca.trainer@icloud.com'
+        : `Account bloccato${motivo ? ': ' + motivo : ''}. Per assistenza contatta luca.trainer@icloud.com`;
+      try { sessionStorage.setItem('tricolab_login_error', msg); } catch {}
       return true;
     }
     return false;
@@ -129,8 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try { await supabase.auth.signOut(); } catch (e) { console.error(e); }
       const motivo = u.user_metadata?.motivo_blocco;
       const msg = u.user_metadata?.eliminato
-        ? 'Account eliminato. Contatta il supporto.'
-        : `Account bloccato${motivo ? ': ' + motivo : ''}. Contatta il supporto.`;
+        ? 'Account eliminato. Per assistenza contatta luca.trainer@icloud.com'
+        : `Account bloccato${motivo ? ': ' + motivo : ''}. Per assistenza contatta luca.trainer@icloud.com`;
       return { error: msg };
     }
 

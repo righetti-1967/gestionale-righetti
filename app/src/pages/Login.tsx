@@ -8,6 +8,15 @@ export function Login() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
+
+  // Leggi messaggio errore da sessionStorage (impostato da AuthContext in caso di blocco)
+  useEffect(() => {
+    const err = sessionStorage.getItem('tricolab_login_error')
+    if (err) {
+      setErrore(err)
+      sessionStorage.removeItem('tricolab_login_error')
+    }
+  }, [])
   const [password, setPassword] = useState('');
   const [errore, setErrore] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
