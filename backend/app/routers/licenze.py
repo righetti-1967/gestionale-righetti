@@ -1,5 +1,7 @@
 """Router Licenze & Utenti DEMO (admin only)."""
 import logging
+import httpx
+from app.config import settings
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -45,6 +47,32 @@ def _verifica_admin(admin_email: Optional[str]):
         raise HTTPException(status_code=403, detail="Accesso riservato all'amministratore")
 
 
+
+
+
+async def _aggiorna_user_meta(user_id: str, meta: dict) -> None:
+    """Aggiorna user_metadata E raw_user_meta_data via SQL diretto (RPC).
+
+    Necessario perche' GoTrue admin API non rimuove mai chiavi da raw_user_meta_data.
+    """
+    url = f"{settings.supabase_url}/rest/v1/rpc/aggiorna_meta_utente"
+    headers = {
+        "apikey": settings.supabase_service_key,
+        "Authorization": f"Bearer {settings.supabase_service_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "p_user_id": user_id,
+        "p_meta": meta,
+    }
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        r = await client.post(url, headers=headers, json=payload)
+        if r.status_code >= 400:
+            logger.error(f"Errore aggiornamento meta (SQL): {r.status_code} {r.text}")
+            r.raise_for_status()
+    logger.info(f"✅ Meta aggiornati via SQL per {user_id}: {len(meta)} campi")
+
+
 @router.get("/utenti")
 async def lista_utenti(admin_email: str = Query(..., description="Email admin")):
     """Elenca utenti registrati con stato licenza."""
@@ -60,7 +88,13 @@ async def lista_utenti(admin_email: str = Query(..., description="Email admin"))
 
         for u in utenti_raw:
             u_dict = u if isinstance(u, dict) else u.__dict__
-            raw_meta = u_dict.get("user_metadata") or u_dict.get("raw_user_meta_data") or {}
+            um_raw = u_dict.get("user_metadata")
+            um_dict = um_raw if isinstance(um_raw, dict) else (getattr(um_raw, "__dict__", None) or {})
+            raw_raw = u_dict.get("raw_user_meta_data")
+            raw_dict = raw_raw if isinstance(raw_raw, dict) else (getattr(raw_raw, "__dict__", None) or {})
+            # user_metadata e' aggiornato dall'API admin; raw_user_meta_data e' una copia
+            # fotografica aggiornata solo al login OAuth -> leggiamo SOLO user_metadata.
+            raw_meta = um_dict if um_dict else (raw_dict or {})
             app_meta = u_dict.get("app_metadata") or u_dict.get("raw_app_meta_data") or {}
 
             email = u_dict.get("email") or ""
@@ -156,7 +190,7 @@ async def proroga_demo(req: ProrogaRequest, admin_email: str = Query(...)):
         meta["ruolo"] = "demo"
         meta["demo_scadenza"] = nuova_scadenza
 
-        supabase.auth.admin.update_user_by_id(req.user_id, {"user_metadata": meta})
+        await _aggiorna_user_meta(req.user_id, meta)
         logger.info(f"Proroga demo utente {req.user_id} impostata al {nuova_scadenza}")
         return {"success": True, "demo_scadenza": nuova_scadenza}
     except HTTPException:
@@ -183,7 +217,7 @@ async def sblocca_reale(req: SbloccaRealeRequest, admin_email: str = Query(...))
         meta["ruolo"] = "reale"
         meta.pop("demo_scadenza", None)
 
-        supabase.auth.admin.update_user_by_id(req.user_id, {"user_metadata": meta})
+        await _aggiorna_user_meta(req.user_id, meta)
 
         if req.azzera_dati_demo:
             try:
@@ -276,7 +310,7 @@ async def blocca_utente(req: BloccaRequest, admin_email: str = Query(...)):
         if req.motivo:
             meta["motivo_blocco"] = req.motivo
 
-        supabase.auth.admin.update_user_by_id(req.user_id, {"user_metadata": meta})
+        await _aggiorna_user_meta(req.user_id, meta)
         logger.info(f"Utente {req.user_id} ({user_email}) bloccato dall'admin {admin_email}")
         return {"success": True, "message": f"Utente {user_email} bloccato"}
     except HTTPException:
@@ -301,7 +335,7 @@ async def sblocca_utente(req: SbloccaRequest, admin_email: str = Query(...)):
         meta.pop("bloccato_il", None)
         meta.pop("motivo_blocco", None)
 
-        supabase.auth.admin.update_user_by_id(req.user_id, {"user_metadata": meta})
+        await _aggiorna_user_meta(req.user_id, meta)
         logger.info(f"Utente {req.user_id} ({user_email}) sbloccato dall'admin {admin_email}")
         return {"success": True, "message": f"Utente {user_email} sbloccato"}
     except HTTPException:
@@ -331,7 +365,7 @@ async def elimina_utente(req: EliminaRequest, admin_email: str = Query(...)):
         if req.motivo:
             meta["motivo_eliminazione"] = req.motivo
 
-        supabase.auth.admin.update_user_by_id(req.user_id, {"user_metadata": meta})
+        await _aggiorna_user_meta(req.user_id, meta)
         logger.info(f"Utente {req.user_id} ({user_email}) soft-eliminato dall'admin {admin_email}")
         return {"success": True, "message": f"Utente {user_email} eliminato (soft delete)"}
     except HTTPException:
