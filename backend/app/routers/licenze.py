@@ -108,6 +108,13 @@ async def lista_utenti(admin_email: str = Query(..., description="Email admin"))
                 "demo_scadenza": scadenza_dt.isoformat() if scadenza_dt else None,
                 "giorni_rimasti": giorni_rimasti,
                 "is_scaduto": is_scaduto,
+                "bloccato": bool(raw_meta.get("bloccato")),
+                "bloccato_il": raw_meta.get("bloccato_il"),
+                "motivo_blocco": raw_meta.get("motivo_blocco"),
+                "eliminato": bool(raw_meta.get("eliminato")),
+                "eliminato_il": raw_meta.get("eliminato_il"),
+                "motivo_eliminazione": raw_meta.get("motivo_eliminazione"),
+
                 "is_admin": is_righetti,
             })
 
@@ -228,3 +235,107 @@ async def popola_demo(req: PopolaDemoRequest, admin_email: str = Query(...)):
         logger.exception("Errore popolamento demo")
         raise HTTPException(status_code=500, detail=f"Errore popolamento: {e}")
 
+
+# ... codici nuovi endpoint ...
+
+
+# ============================================================================
+# BLOCCO / SBLOCCO / ELIMINAZIONE UTENTI
+# ============================================================================
+
+class BloccaRequest(BaseModel):
+    user_id: str
+    motivo: Optional[str] = None
+
+
+class SbloccaRequest(BaseModel):
+    user_id: str
+
+
+class EliminaRequest(BaseModel):
+    user_id: str
+    motivo: Optional[str] = None
+
+
+@router.post("/blocca")
+async def blocca_utente(req: BloccaRequest, admin_email: str = Query(...)):
+    """Blocca un utente. Il login verrà rifiutato finché non viene sbloccato."""
+    _verifica_admin(admin_email)
+    try:
+        supabase = get_supabase()
+        u = supabase.auth.admin.get_user_by_id(req.user_id)
+        u_dict = u.user if hasattr(u, "user") else u
+        user_email = getattr(u_dict, "email", "") or ""
+
+        if user_email.lower() == ADMIN_EMAIL.lower():
+            raise HTTPException(status_code=400, detail="Non puoi bloccare l'account admin")
+
+        meta = (getattr(u_dict, "user_metadata", None) or getattr(u_dict, "raw_user_meta_data", None) or {}).copy()
+        meta["bloccato"] = True
+        meta["bloccato_il"] = datetime.now(timezone.utc).isoformat()
+        if req.motivo:
+            meta["motivo_blocco"] = req.motivo
+
+        supabase.auth.admin.update_user_by_id(req.user_id, {"user_metadata": meta})
+        logger.info(f"Utente {req.user_id} ({user_email}) bloccato dall'admin {admin_email}")
+        return {"success": True, "message": f"Utente {user_email} bloccato"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Errore blocco utente")
+        raise HTTPException(status_code=500, detail=f"Errore blocco: {e}")
+
+
+@router.post("/sblocca")
+async def sblocca_utente(req: SbloccaRequest, admin_email: str = Query(...)):
+    """Rimuove il blocco da un utente."""
+    _verifica_admin(admin_email)
+    try:
+        supabase = get_supabase()
+        u = supabase.auth.admin.get_user_by_id(req.user_id)
+        u_dict = u.user if hasattr(u, "user") else u
+        user_email = getattr(u_dict, "email", "") or ""
+
+        meta = (getattr(u_dict, "user_metadata", None) or getattr(u_dict, "raw_user_meta_data", None) or {}).copy()
+        meta.pop("bloccato", None)
+        meta.pop("bloccato_il", None)
+        meta.pop("motivo_blocco", None)
+
+        supabase.auth.admin.update_user_by_id(req.user_id, {"user_metadata": meta})
+        logger.info(f"Utente {req.user_id} ({user_email}) sbloccato dall'admin {admin_email}")
+        return {"success": True, "message": f"Utente {user_email} sbloccato"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Errore sblocco utente")
+        raise HTTPException(status_code=500, detail=f"Errore sblocco: {e}")
+
+
+@router.post("/elimina")
+async def elimina_utente(req: EliminaRequest, admin_email: str = Query(...)):
+    """Soft delete: marca come eliminato (impedisce login, mantiene dati nel DB)."""
+    _verifica_admin(admin_email)
+    try:
+        supabase = get_supabase()
+        u = supabase.auth.admin.get_user_by_id(req.user_id)
+        u_dict = u.user if hasattr(u, "user") else u
+        user_email = getattr(u_dict, "email", "") or ""
+
+        if user_email.lower() == ADMIN_EMAIL.lower():
+            raise HTTPException(status_code=400, detail="Non puoi eliminare l'account admin")
+
+        meta = (getattr(u_dict, "user_metadata", None) or getattr(u_dict, "raw_user_meta_data", None) or {}).copy()
+        meta["eliminato"] = True
+        meta["eliminato_il"] = datetime.now(timezone.utc).isoformat()
+        meta["bloccato"] = True  # blocca anche l'accesso
+        if req.motivo:
+            meta["motivo_eliminazione"] = req.motivo
+
+        supabase.auth.admin.update_user_by_id(req.user_id, {"user_metadata": meta})
+        logger.info(f"Utente {req.user_id} ({user_email}) soft-eliminato dall'admin {admin_email}")
+        return {"success": True, "message": f"Utente {user_email} eliminato (soft delete)"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Errore eliminazione utente")
+        raise HTTPException(status_code=500, detail=f"Errore eliminazione: {e}")
