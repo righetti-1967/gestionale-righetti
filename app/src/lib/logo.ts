@@ -18,6 +18,9 @@ const RIGHETTI_EMAIL = 'righetti@righetti.club';
 // - Altri utenti loggati: '{user_id}/logo.png'
 // - Non loggato: 'logo.png' (fallback)
 let _logoPathCache: string = 'logo.png';
+// Flag: indica se il file custom dell'utente esiste DAVVERO nel bucket Supabase.
+// Evita 404/placeholder rotto quando l'utente non ha ancora caricato un logo.
+let _logoCustomEsiste: boolean = false;
 // Timestamp cache-buster fisso (evita loop di re-render)
 let _cacheBuster: number = Date.now();
 
@@ -39,8 +42,23 @@ export async function initLogoPath(): Promise<void> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     _logoPathCache = calcolaLogoPath(user);
+
+    // Se non è Righetti, verifica se il file custom esiste davvero nel bucket
+    const isRighetti = user?.email?.toLowerCase().trim() === RIGHETTI_EMAIL;
+    if (!isRighetti && _logoPathCache !== 'logo.png') {
+      const parts = _logoPathCache.split('/');
+      const fileName = parts.pop() || 'logo.png';
+      const folder = parts.join('/');
+      const { data, error } = await supabase.storage.from(BUCKET).list(folder, {
+        search: fileName,
+      });
+      _logoCustomEsiste = !error && (data || []).some((f) => f.name === fileName);
+    } else {
+      _logoCustomEsiste = false;
+    }
   } catch {
     _logoPathCache = 'logo.png';
+    _logoCustomEsiste = false;
   }
 }
 
@@ -72,8 +90,8 @@ export function getLogoUrl(cacheBuster = true, userEmail?: string | null): strin
     return `${baseUrl}?v=${_cacheBuster}`;
   }
 
-  // Se utente DEMO / altro salone: usa il suo logo se caricato
-  if (_logoPathCache && _logoPathCache !== "logo.png") {
+  // Se utente DEMO / altro salone: usa il suo logo SOLO se esiste davvero
+  if (_logoCustomEsiste && _logoPathCache && _logoPathCache !== "logo.png") {
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(_logoPathCache);
     if (data?.publicUrl) {
       return `${data.publicUrl}?v=${_cacheBuster}`;
