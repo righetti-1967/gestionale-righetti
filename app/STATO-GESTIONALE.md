@@ -592,3 +592,37 @@ FINE AGGIUNTA
 **Prossimo task in backlog:**
 - Motore Cron Automazioni (runner deployato ma chiamata da cron restituisce 400 — manca supporto `mode: cron` nel runner)
 - Chiamate AI Voice (Vapi.ai + Twilio)
+
+---
+
+## ✅ COMPLETATO — 13 ottobre 2026 (sera)
+
+### 🖨️ Pulsanti Agenda — Anteprima + Stampa A4
+
+- Aggiunti 2 pulsanti nella modale "Cerca cliente" → lista appuntamenti
+- **Anteprima**: modale con storico dal piu' recente, badge stato colorati
+- **Stampa A4**: window.print() con CSS @media print dedicato
+- File: src/components/AnteprimaStampaAppuntamenti.tsx (nuovo)
+- Modifiche: RicercaClienteAgenda.tsx, index.css
+
+### ⏰ Motore Cron Automazioni
+
+- Fixato supporto mode: cron nel runner
+- Il cron (ogni 15 min) ora esegue correttamente le automazioni attive
+- Modalita simulazione: genera log in automazioni_log senza inviare nulla
+- Modalita automatico: predisposto per invio reale (da completare in futuro)
+
+### 🗑️ Hard delete cliente
+
+- `eliminaCliente` ora fa HARD DELETE (non piu' soft-delete)
+- Blocca l'eliminazione se ci sono fatture, scontrini o scarichi_seduta
+- Cascade automatico su: appuntamenti, client_users, percorsi, note, portale
+- Account auth.users resta (cliente puo' loggare ma vede vuoto)
+
+### 🎨 Fix UI / Brand
+
+- Favicon GS: solo bordo blu su trasparente (allineato a TG TricoAI)
+- Placeholder form: rimossi dati Righetti, ora neutri (Studio Tricologico Rossi, IT00000000000, Mario Rossi)
+- Logo demo: fallback su /favicon.svg statico, no piu' 404
+
+_Ultimo aggiornamento: 13 ottobre 2026 sera_
