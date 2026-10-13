@@ -1,4 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#007AFF"/>
-  <text x="256" y="340" font-family="-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif" font-size="220" font-weight="700" fill="#FFFFFF" text-anchor="middle" letter-spacing="-12">GS</text>
+  <rect width="512" height="512" rx="96" fill="none" stroke="#007AFF" stroke-width="16"/>
+  <text x="256" y="340" font-family="-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif" font-size="220" font-weight="700" fill="#007AFF" text-anchor="middle" letter-spacing="-12">GS</text>
 </svg>
