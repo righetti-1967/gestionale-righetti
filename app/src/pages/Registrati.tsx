@@ -188,7 +188,7 @@ export function Registrati() {
                     value={azienda}
                     onChange={(e) => setAzienda(e.target.value)}
                     required
-                    placeholder="Es. Studio Rossi"
+                    placeholder="Es. Studio Tricologico"
                     disabled={loading || loadingGoogle}
                     className="w-full px-3.5 py-2 rounded-apple bg-apple-lightgray border border-transparent text-apple-darkgray placeholder:text-apple-gray text-sm focus:outline-none focus:bg-white focus:border-apple-blue transition-all"
                   />

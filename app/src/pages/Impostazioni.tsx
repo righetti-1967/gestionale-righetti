@@ -1206,20 +1206,20 @@ function TabAzienda({ registraSalva }: { registraSalva?: (fn: () => void, salvan
               label="Ragione sociale"
               value={dati.ragioneSociale}
               onChange={(v) => aggiorna('ragioneSociale', v)}
-              placeholder="Es. Righetti Consulting S.r.l."
+              placeholder="Es. Studio Tricologico Rossi"
               help="Compare su fatture, DDT e documenti fiscali"
             />
             <Campo
               label="Nome Studio"
               value={dati.nomeStudio}
               onChange={(v) => aggiorna('nomeStudio', v)}
-              placeholder="Es. Studio Rossi"
+              placeholder="Es. Studio Tricologico"
               help="Usato nelle email e comunicazioni ai clienti"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Campo label="Partita IVA" value={dati.partitaIva} onChange={(v) => aggiorna('partitaIva', v)} placeholder="IT12345678901" />
+            <Campo label="Partita IVA" value={dati.partitaIva} onChange={(v) => aggiorna('partitaIva', v)} placeholder="IT00000000000" />
             <Campo label="Codice Fiscale" value={dati.codiceFiscale} onChange={(v) => aggiorna('codiceFiscale', v)} placeholder="RSSLCU80A01H501Z" />
           </div>
         </div>
@@ -2094,7 +2094,7 @@ function TabProfilo() {
                   type="text"
                   value={modificaNome}
                   onChange={(e) => setModificaNome(e.target.value)}
-                  placeholder="Es. Luca Righetti"
+                  placeholder="Es. Mario Rossi"
                   className="w-full px-3 py-2 rounded-apple bg-white border border-gray-200 text-sm text-apple-darkgray focus:outline-none focus:border-apple-blue transition-all"
                 />
               </div>
