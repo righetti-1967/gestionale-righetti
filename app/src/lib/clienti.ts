@@ -175,31 +175,43 @@ export async function aggiornaCliente(
 }
 
 /**
- * Elimina un cliente
+ * Hard-delete di un cliente.
+ * Blocca se ci sono fatture, scontrini o scarichi di seduta collegati.
+ * Elimina in cascata: appuntamenti, percorsi, note, portale, ecc.
  */
-/**
- * Soft-delete di un cliente (marca cancellato_at, NON elimina il record).
- * Il record resta nel DB per storico fatture/scontrini, ma non appare più in liste/ricerche.
- */
-export async function eliminaCliente(id: number, motivo: string): Promise<void> {
+export async function eliminaCliente(id: number, _motivo: string): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Non autenticato');
 
-  const motivoPulito = (motivo || '').trim();
-  if (motivoPulito.length < 10) {
-    throw new Error('Motivo obbligatorio (minimo 10 caratteri)');
+  // 1. Conta documenti fiscali collegati
+  const [rFatt, rScar, rScarichi] = await Promise.all([
+    supabase.from('fatture').select('*', { count: 'exact', head: true }).eq('cliente_id', id),
+    supabase.from('scontrini').select('*', { count: 'exact', head: true }).eq('cliente_id', id),
+    supabase.from('scarichi_seduta').select('*', { count: 'exact', head: true }).eq('cliente_id', id),
+  ]);
+
+  const numFatt = rFatt.count ?? 0;
+  const numScar = rScar.count ?? 0;
+  const numScarichi = rScarichi.count ?? 0;
+
+  // 2. Se ci sono documenti -> BLOCCA
+  if (numFatt > 0 || numScar > 0 || numScarichi > 0) {
+    const dettagli: string[] = [];
+    if (numFatt > 0) dettagli.push(`${numFatt} fattur${numFatt === 1 ? 'a' : 'e'}`);
+    if (numScar > 0) dettagli.push(`${numScar} scontrin${numScar === 1 ? 'o' : 'i'}`);
+    if (numScarichi > 0) dettagli.push(`${numScarichi} scaric${numScarichi === 1 ? 'o' : 'hi'} di seduta`);
+
+    throw new Error(
+      `Impossibile eliminare il cliente: ha ${dettagli.join(', ')} collegati.\n\n` +
+      `Elimina prima i documenti dalla sezione Fatture o Cassa Fiscale.`
+    );
   }
 
+  // 3. Hard delete (cascata su appuntamenti, percorsi, note, portale, ecc.)
   const { error } = await supabase
     .from('clienti')
-    .update({
-      cancellato_at: new Date().toISOString(),
-      cancellato_da: user.id,
-      cancellato_motivo: motivoPulito,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', id)
-    .eq('user_id', user.id);
+    .delete()
+    .eq('id', id);
 
   if (error) {
     console.error('❌ Errore nella cancellazione:', error);

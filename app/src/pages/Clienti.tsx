@@ -661,7 +661,7 @@ export function Clienti({ onNavigate }: { onNavigate?: (page: string) => void })
       setMotivoEliminazione('');
       setClienteSelezionato(null);
       caricaClienti();
-      setToastMessage('Cliente cancellato (soft-delete, recuperabile)');
+      setToastMessage('✅ Cliente eliminato definitivamente');
       setToastTipo('success');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
