@@ -5,6 +5,7 @@ import {
   getAppuntamentiCliente,
   type Appuntamento,
 } from '../lib/appuntamenti';
+import { AnteprimaStampaAppuntamenti } from './AnteprimaStampaAppuntamenti';
 
 interface RicercaClienteAgendaProps {
   onVaiAAppuntamento: (data: string, appuntamentoId: number) => void;
@@ -43,6 +44,8 @@ export function RicercaClienteAgenda({ onVaiAAppuntamento }: RicercaClienteAgend
   const [popoverAperto, setPopoverAperto] = useState(false);
 
   const [clienteSelezionato, setClienteSelezionato] = useState<Cliente | null>(null);
+  const [anteprimaAperta, setAnteprimaAperta] = useState(false);
+  const [autoPrint, setAutoPrint] = useState(false);
   const [appuntamenti, setAppuntamenti] = useState<Appuntamento[]>([]);
   const [loadingAppuntamenti, setLoadingAppuntamenti] = useState(false);
 
@@ -247,8 +250,8 @@ export function RicercaClienteAgenda({ onVaiAAppuntamento }: RicercaClienteAgend
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="px-5 py-4 border-b border-gray-200/60 flex items-start justify-between">
-              <div className="min-w-0">
+            <div className="px-5 py-4 border-b border-gray-200/60 flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <h3 className="text-base font-bold text-apple-darkgray truncate">
                   👤 {clienteSelezionato.nome_cognome}
                 </h3>
@@ -261,16 +264,42 @@ export function RicercaClienteAgenda({ onVaiAAppuntamento }: RicercaClienteAgend
                   )}
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  setClienteSelezionato(null);
-                  setQuery('');
-                  setAppuntamenti([]);
-                }}
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-apple-gray transition-colors shrink-0 ml-3"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAutoPrint(false);
+                    setAnteprimaAperta(true);
+                  }}
+                  disabled={appuntamenti.length === 0}
+                  title="Anteprima appuntamenti dal più recente"
+                  className="px-3 py-1.5 rounded-apple text-xs font-medium bg-gray-100 text-apple-darkgray hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                >
+                  👁️ <span className="hidden sm:inline">Anteprima</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAutoPrint(true);
+                    setAnteprimaAperta(true);
+                  }}
+                  disabled={appuntamenti.length === 0}
+                  title="Stampa A4 appuntamenti"
+                  className="px-3 py-1.5 rounded-apple text-xs font-medium bg-apple-blue text-white hover:bg-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                >
+                  🖨️ <span className="hidden sm:inline">Stampa A4</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setClienteSelezionato(null);
+                    setQuery('');
+                    setAppuntamenti([]);
+                  }}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-apple-gray transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Lista appuntamenti */}
@@ -338,6 +367,19 @@ export function RicercaClienteAgenda({ onVaiAAppuntamento }: RicercaClienteAgend
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modale Anteprima / Stampa A4 */}
+      {anteprimaAperta && clienteSelezionato && (
+        <AnteprimaStampaAppuntamenti
+          cliente={clienteSelezionato}
+          appuntamenti={appuntamenti}
+          autoPrint={autoPrint}
+          onClose={() => {
+            setAnteprimaAperta(false);
+            setAutoPrint(false);
+          }}
+        />
       )}
     </>
   );

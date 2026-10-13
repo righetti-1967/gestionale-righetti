@@ -32,3 +32,118 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   margin-left: auto;
   cursor: pointer;
 }
+
+/* ============================================================
+   ANTEPRIMA + STAMPA A4 APPUNTAMENTI CLIENTE
+   ============================================================ */
+
+.anteprima-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 20px;
+}
+
+.anteprima-container {
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.anteprima-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #F2F2F7;
+  border-bottom: 1px solid #E5E5EA;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.foglio-a4 {
+  padding: 40px 32px;
+  background: white;
+  color: #1C1C1E;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.foglio-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #1C1C1E;
+  margin-bottom: 20px;
+}
+
+.foglio-titolo { font-size: 22px; font-weight: 700; margin: 0 0 2px 0; color: #1C1C1E; }
+.foglio-sottotitolo { font-size: 13px; color: #8E8E93; margin: 0; }
+.foglio-meta { text-align: right; font-size: 12px; color: #8E8E93; }
+.foglio-meta p { margin: 2px 0; }
+
+.foglio-cliente { background: #F2F2F7; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }
+.foglio-cliente-nome { font-size: 16px; font-weight: 700; margin: 0 0 4px 0; color: #1C1C1E; }
+.foglio-cliente-contatti { display: flex; gap: 16px; font-size: 12px; color: #8E8E93; }
+
+.foglio-tabella { width: 100%; border-collapse: collapse; font-size: 12px; }
+.foglio-tabella thead th {
+  background: #1C1C1E; color: white; text-align: left;
+  padding: 8px 10px; font-weight: 600; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+.foglio-tabella tbody td {
+  padding: 8px 10px; border-bottom: 1px solid #E5E5EA; vertical-align: top;
+}
+.foglio-tabella tbody tr:nth-child(even) { background: #FAFAFA; }
+.foglio-data { font-weight: 600; white-space: nowrap; }
+.foglio-ora { white-space: nowrap; color: #8E8E93; }
+.foglio-titolo-cell { font-weight: 500; }
+.foglio-note { font-weight: 400; color: #8E8E93; font-style: italic; font-size: 11px; }
+.foglio-tipo { white-space: nowrap; }
+
+.foglio-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 10.5px; font-weight: 600; white-space: nowrap; border: 1px solid;
+}
+.stato-completato   { background: #E8F5E9; color: #2E7D32; border-color: #A5D6A7; }
+.stato-confermato   { background: #E3F2FD; color: #1565C0; border-color: #90CAF9; }
+.stato-prenotato    { background: #F5F5F5; color: #424242; border-color: #BDBDBD; }
+.stato-pending      { background: #FFF8E1; color: #F57F17; border-color: #FFE082; }
+.stato-rebooking    { background: #FFF3E0; color: #E65100; border-color: #FFCC80; }
+.stato-disdetta     { background: #FFFDE7; color: #F9A825; border-color: #FFF176; }
+.stato-definitiva   { background: #FFEBEE; color: #C62828; border-color: #EF9A9A; }
+.stato-spostamento  { background: #E1F5FE; color: #0277BD; border-color: #81D4FA; }
+
+.foglio-footer {
+  margin-top: 24px; padding-top: 12px;
+  border-top: 1px solid #E5E5EA; text-align: center;
+  font-size: 10px; color: #8E8E93;
+}
+.foglio-vuoto { text-align: center; padding: 40px 0; color: #8E8E93; font-style: italic; }
+
+@media print {
+  @page { size: A4 portrait; margin: 12mm; }
+  body * { visibility: hidden; }
+  .anteprima-overlay, .anteprima-overlay * { visibility: visible; }
+  .anteprima-overlay { position: absolute; inset: 0; background: white; padding: 0; overflow: visible; }
+  .anteprima-container { max-width: none; width: 100%; box-shadow: none; border-radius: 0; }
+  .no-print, .anteprima-toolbar { display: none !important; }
+  .foglio-a4 { padding: 0; font-size: 11px; }
+  .foglio-tabella tbody tr { page-break-inside: avoid; }
+  .foglio-tabella thead { display: table-header-group; }
+  .foglio-header { page-break-after: avoid; }
+  .foglio-cliente { page-break-after: avoid; }
+}
