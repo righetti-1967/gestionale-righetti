@@ -81,11 +81,7 @@ export function getLogoUrl(cacheBuster = true, userEmail?: string | null): strin
   }
 
   // Se non e' Righetti e non ha caricato un logo: icona neutra 'GS' (MAI Righetti)
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl('favicon.svg');
-  if (data?.publicUrl) {
-    return `${data.publicUrl}?v=${_cacheBuster}`;
-  }
-  // Fallback estremo: file statico pubblico
+  // Usa il file statico /favicon.svg (sempre presente nel build, niente 404)
   return LOGO_DEFAULT;
 }
 

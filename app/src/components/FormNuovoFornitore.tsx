@@ -174,7 +174,7 @@ export function FormNuovoFornitore({
                   type="text"
                   value={partitaIva}
                   onChange={(e) => setPartitaIva(e.target.value)}
-                  placeholder="IT12345678901"
+                  placeholder="IT00000000000"
                   className="w-full px-4 py-3 bg-white border border-gray-200 rounded-apple text-sm text-apple-darkgray placeholder:text-apple-gray/60 focus:outline-none focus:ring-2 focus:ring-apple-blue/30 focus:border-apple-blue transition-all"
                 />
               </div>
