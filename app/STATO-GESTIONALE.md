@@ -551,3 +551,44 @@ Tempo stimato
 2-3 ore (sessione dedicata)
 
 FINE AGGIUNTA
+
+---
+
+## ✅ COMPLETATO — 13 ottobre 2026
+
+### 🔒 RLS policy `_all` sistemate
+
+**Cosa è stato fatto:**
+- Rimosse le policy permissive `USING(true)` su **13 tabelle**
+- Sostituite con `is_staff() AND auth.uid() = user_id`
+- Tabelle: clienti, fatture, appuntamenti, impostazioni, fornitori, movimenti_magazzino, ordini_fornitore, percorsi, prodotti, reset_codici, righe_ordine_fornitore, scarichi_seduta, servizi
+
+**Ruoli utenti (in `app_metadata.ruolo`):**
+- `righetti@righetti.club` → `admin`
+- `lucatrainer13@gmail.com` → `demo`
+- `lostilerhs@gmail.com` → `webapp` (cliente App Cliente)
+
+**Modifiche tecniche:**
+- `is_staff()` ora legge `app_metadata.ruolo` (non modificabile dall'utente)
+- Fallback su `user_metadata`, default `webapp` per nuovi utenti
+- Solo `admin` e `demo` hanno `is_staff() = TRUE`
+
+**Backup:**
+- Tabella `_backup_policies_20261013` con 97 policy originali
+
+**App Cliente:**
+- Non impattata (usa solo RPC `get_my_*` tutte `SECURITY DEFINER`)
+- Testata: Home, Appuntamenti, Documenti, Schede, Percorsi → OK
+
+**Test superati:**
+- Gestionale: tutte le pagine funzionano
+- App Cliente: tutte le pagine funzionano
+- Sicurezza: cliente `webapp` non vede dati di altri clienti
+
+**Da fare in futuro (bassa priorità):**
+- Verificare le altre 10 tabelle: `scontrini`, `testi_template`, `schede_tricologiche`, `automazioni`, `automazioni_log`, `bozze`, `chiusure_cassa`, `config_fiscale`, `cura_domiciliare`, `integrazioni_log`, `push_automazioni_config`
+- `sessioni_firma*` e `client_users` già OK (policy specifiche)
+
+**Prossimo task in backlog:**
+- Motore Cron Automazioni (runner deployato ma chiamata da cron restituisce 400 — manca supporto `mode: cron` nel runner)
+- Chiamate AI Voice (Vapi.ai + Twilio)
