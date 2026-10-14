@@ -15,6 +15,23 @@ import { generaPdfReportCliente, generaPdfReportAggregato } from '../lib/pdfAnal
 import { formatEuro } from '../lib/fatture';
 import { Toast, type ToastTipo } from '../components/Toast';
 
+// ============================================================
+// HELPER: formattazione date in italiano
+// ============================================================
+function formatDataIT(iso: string): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('it-IT', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return iso;
+  }
+}
+
 type Tab = 'singolo' | 'aggregato';
 type PresetPeriodo = 'settimana' | 'mese' | 'anno' | 'custom';
 
@@ -294,7 +311,7 @@ export function Analytics() {
               </div>
             )}
             <p className="mt-3 text-xs text-apple-gray">
-              Periodo: <strong>{dataInizio}</strong> → <strong>{dataFine}</strong>
+              Periodo: <strong>{formatDataIT(dataInizio)}</strong> → <strong>{formatDataIT(dataFine)}</strong>
             </p>
           </div>
 
@@ -478,7 +495,7 @@ function ReportAggregatoView({
             Report Periodo
           </h2>
           <p className="text-xs text-apple-gray">
-            {report.dataInizio} → {report.dataFine}
+            {formatDataIT(report.dataInizio)} → {formatDataIT(report.dataFine)}
           </p>
         </div>
         <button
