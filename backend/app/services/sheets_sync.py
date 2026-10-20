@@ -26,7 +26,7 @@ def sync_google_sheets(sheet_url: str, user_id: str | None = None) -> dict:
     reader = csv.reader(io.StringIO(resp.text))
     rows = list(reader)
     if not rows:
-        return {"nuovi": 0, "aggiornati": 0, "eliminati": 0, "saltati": 0, "totale": 0}
+        return {"nuovi": 0, "aggiornati": 0, "saltati": 0, "totale": 0}
 
     # Cerca indici colonne
     headers_row = [str(h).strip().upper() for h in rows[0]]
@@ -34,7 +34,6 @@ def sync_google_sheets(sheet_url: str, user_id: str | None = None) -> dict:
     idx_cell = next((i for i, h in enumerate(headers_row) if any(k in h for k in ["CELL", "TEL", "TELEFONO"])), None)
     idx_email = next((i for i, h in enumerate(headers_row) if any(k in h for k in ["EMAIL", "MAIL"])), None)
     idx_note = next((i for i, h in enumerate(headers_row) if "NOTE" in h or "ANAMNESI" in h), None)
-    # NUOVO: colonna stato agenda (fallback: colonna F = indice 5)
     idx_stato = next((i for i, h in enumerate(headers_row) if "STATO" in h), 5)
 
     if idx_nome is None:
@@ -73,55 +72,34 @@ def sync_google_sheets(sheet_url: str, user_id: str | None = None) -> dict:
         stato_norm = stato_val.strip().lower()
 
         try:
-            # ============================================================
-            # NUOVO: stato "Annullato" -> elimina cliente dal gestionale
-            # ============================================================
+            # --- NUOVO: gestione stato Annullato ---
             if stato_norm in ("annullato", "cancellato", "eliminato"):
                 q_ann = supabase.table("clienti").select("id, nome_cognome").eq("nome_cognome", nome_val)
-                if user_id:
-                    q_ann = q_ann.eq("user_id", user_id)
+                if user_id: q_ann = q_ann.eq("user_id", user_id)
                 res_ann = q_ann.execute()
-
                 if not res_ann.data or len(res_ann.data) == 0:
                     logger.info("Annullato ma non presente in DB: %s", nome_val)
                     saltati += 1
                     continue
-
                 cliente_id_ann = res_ann.data[0]["id"]
-
-                # Controlla documenti fiscali collegati
                 try:
-                    fatt = supabase.table("fatture").select("id", count="exact").eq("cliente_id", cliente_id_ann).execute()
-                    scar = supabase.table("scontrini").select("id", count="exact").eq("cliente_id", cliente_id_ann).execute()
-                    sca = supabase.table("scarichi_seduta").select("id", count="exact").eq("cliente_id", cliente_id_ann).execute()
-                    n_fatt = fatt.count or 0
-                    n_scar = scar.count or 0
-                    n_sca = sca.count or 0
-                except Exception as e:
-                    logger.warning("Impossibile verificare documenti per %s: %s", nome_val, e)
-                    n_fatt, n_scar, n_sca = 0, 0, 0
-
+                    n_fatt = supabase.table("fatture").select("id", count="exact").eq("cliente_id", cliente_id_ann).execute().count or 0
+                    n_scar = supabase.table("scontrini").select("id", count="exact").eq("cliente_id", cliente_id_ann).execute().count or 0
+                    n_sca = supabase.table("scarichi_seduta").select("id", count="exact").eq("cliente_id", cliente_id_ann).execute().count or 0
+                except Exception:
+                    n_fatt = n_scar = n_sca = 0
                 if n_fatt > 0 or n_scar > 0 or n_sca > 0:
-                    logger.warning(
-                        "Impossibile eliminare %s: ha %d fatture, %d scontrini, %d scarichi",
-                        nome_val, n_fatt, n_scar, n_sca,
-                    )
+                    logger.warning("Impossibile eliminare %s: ha documenti", nome_val)
                     saltati += 1
                     continue
-
-                # DELETE cliente (cascade su client_users, appuntamenti, note, ecc.)
                 del_q = supabase.table("clienti").delete().eq("id", cliente_id_ann)
-                if user_id:
-                    del_q = del_q.eq("user_id", user_id)
+                if user_id: del_q = del_q.eq("user_id", user_id)
                 del_q.execute()
-
                 logger.info("Cliente eliminato da Sheet (Annullato): %s", nome_val)
                 eliminati += 1
                 continue
+            # --- FINE NUOVO ---
 
-            # ============================================================
-            # Comportamento originale (Prenotato / Modificato / ecc.)
-            # ============================================================
             # Cerca cliente esistente per nome_cognome (e user_id se fornito)
             q = supabase.table("clienti").select("id").eq("nome_cognome", nome_val)
             if user_id:
@@ -157,10 +135,7 @@ def sync_google_sheets(sheet_url: str, user_id: str | None = None) -> dict:
             logger.error("Errore sync riga %s: %s", nome_val, e)
             saltati += 1
 
-    logger.info(
-        "Sync completata: %d nuovi, %d aggiornati, %d eliminati, %d saltati su %d",
-        nuovi, aggiornati, eliminati, saltati, totale,
-    )
+    logger.info("Sync completata: %d nuovi, %d aggiornati, %d saltati su %d", nuovi, aggiornati, saltati, totale)
     return {
         "nuovi": nuovi,
         "aggiornati": aggiornati,
