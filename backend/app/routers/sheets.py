@@ -13,11 +13,16 @@ router = APIRouter(prefix="/api/sheets", tags=["sheets"])
 async def sync_sheets_endpoint(req: SheetSyncRequest):
     try:
         res = sync_google_sheets(req.sheet_url, req.user_id)
-        msg = f"Sincronizzazione completata: {res['nuovi']} nuovi clienti, {res['aggiornati']} aggiornati."
+        msg = (
+            f"Sincronizzazione completata: {res['nuovi']} nuovi clienti, "
+            f"{res['aggiornati']} aggiornati, "
+            f"{res['eliminati']} eliminati (Annullati)."
+        )
         return SheetsSyncResponse(
             success=True,
             nuovi=res["nuovi"],
             aggiornati=res["aggiornati"],
+            eliminati=res["eliminati"],
             saltati=res["saltati"],
             totale=res["totale"],
             messaggio=msg,
