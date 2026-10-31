@@ -334,7 +334,7 @@ async def riepilogo_iva(
         sb = get_supabase()
 
         # 1. Fatture emesse (IVA a debito)
-        fatture = sb.table("fatture").select("data, iva").eq("user_id", user_id).gte("data", f"{anno}-01-01").lte("data", f"{anno}-12-31").execute()
+        fatture = sb.table("fatture").select("data_fine, iva_importo").eq("user_id", user_id).gte("data_fine", f"{anno}-01-01").lte("data_fine", f"{anno}-12-31").execute()
 
         # 1b. Scontrini (IVA a debito, solo se presenti)
         try:
@@ -358,9 +358,10 @@ async def riepilogo_iva(
                 return f"{d.month:02d}/{anno}"
 
         for f in (fatture.data or []):
-            k = chiave_periodo(f["data"])
-            periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0})
-            periodi[k]["iva_debito"] += float(f.get("iva_importo") or 0)
+            if f.get("data_fine"):
+                k = chiave_periodo(f["data_fine"])
+                periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0})
+                periodi[k]["iva_debito"] += float(f.get("iva_importo") or 0)
 
         for s in (scontrini.data or []):
             if s.get("data_emissione") and s.get("iva_importo") is not None:
