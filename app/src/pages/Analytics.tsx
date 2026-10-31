@@ -15,6 +15,7 @@ import { generaPdfReportCliente, generaPdfReportAggregato } from '../lib/pdfAnal
 import { formatEuro } from '../lib/fatture';
 import { Toast, type ToastTipo } from '../components/Toast';
 import { supabase } from '../lib/supabase';
+import { ModaleInviaTemplate } from '../components/ModaleInviaTemplate';
 
 // ============================================================
 // HELPER: formattazione date in italiano
@@ -531,6 +532,8 @@ function ReportAggregatoView({
   });
   const [mostraSoglie, setMostraSoglie] = useState(false);
   const [modaleFiltro, setModaleFiltro] = useState<{ tipo: 'nuovi' | 'dormienti' | 'persi' | 'frequenza'; soglia?: number } | null>(null);
+  const [clienteDaContattare, setClienteDaContattare] = useState<Cliente | null>(null);
+  const [toastInvia, setToastInvia] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem('kpi_soglia_dormienti', String(sogliaDormienti));
@@ -729,7 +732,32 @@ function ReportAggregatoView({
           tipo={modaleFiltro.tipo}
           soglia={modaleFiltro.soglia}
           onClose={() => setModaleFiltro(null)}
+          onClienteClick={(c) => setClienteDaContattare(c)}
         />
+      )}
+
+      {/* Modale invio template (WhatsApp / Email) */}
+      {clienteDaContattare && (
+        <ModaleInviaTemplate
+          chiave="whatsapp_riattivazione"
+          cliente={clienteDaContattare}
+          onClose={() => setClienteDaContattare(null)}
+          onSuccess={(msg: string) => {
+            setToastInvia(msg);
+            setTimeout(() => setToastInvia(null), 3000);
+            setClienteDaContattare(null);
+          }}
+          onError={(msg: string) => {
+            setToastInvia('❌ ' + msg);
+            setTimeout(() => setToastInvia(null), 3000);
+          }}
+        />
+      )}
+
+      {toastInvia && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-apple shadow-apple-lg z-[60] text-sm">
+          {toastInvia}
+        </div>
       )}
     </div>
   );
@@ -1074,10 +1102,12 @@ function ModaleClientiFiltrati({
   tipo,
   soglia,
   onClose,
+  onClienteClick,
 }: {
   tipo: 'nuovi' | 'dormienti' | 'persi' | 'frequenza';
   soglia?: number;
   onClose: () => void;
+  onClienteClick: (c: Cliente) => void;
 }) {
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
