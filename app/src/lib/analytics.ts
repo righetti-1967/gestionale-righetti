@@ -99,6 +99,12 @@ export interface ReportAggregato {
   // Percentuali
   percentualeServizi: number;
   percentualeProdotti: number;
+
+  // KPI Clienti (nuovi)
+  nuoviClienti: number;              // clienti creati nel periodo
+  frequenzaRitornoMedia: number | null;  // giorni medi tra visite (per clienti con ≥2 passaggi)
+  clientiDormienti: number;          // clienti senza passaggi da 90gg
+  clientiPersi: number;              // clienti senza passaggi da 180gg
 }
 
 // ============================================================
@@ -369,6 +375,93 @@ export async function calcolaReportAggregato(
   const numeroScontrini = scontriniPeriodo.length;
   const numeroFatture = fatturePeriodo.length;
 
+  // ============================================================
+  // KPI CLIENTI (nuovi clienti, frequenza, dormienti, persi)
+  // ============================================================
+
+  // 1. Nuovi clienti nel periodo (per created_at)
+  const resNuovi = await supabase
+    .from('clienti')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', dataInizio)
+    .lte('created_at', dataFine + 'T23:59:59');
+  const nuoviClienti = resNuovi.count || 0;
+
+  // 2. Frequenza di ritorno: giorni medi tra visite (per clienti con ≥2 passaggi nel periodo)
+  const datePerCliente = new Map<number, string[]>();
+  for (const s of scontriniPeriodo) {
+    if (!s.cliente_id) continue;
+    const data = ((s as any).data_emissione || (s as any).data || '').split('T')[0];
+    if (!data) continue;
+    if (!datePerCliente.has(s.cliente_id)) datePerCliente.set(s.cliente_id, []);
+    datePerCliente.get(s.cliente_id)!.push(data);
+  }
+  for (const f of fatturePeriodo) {
+    if (!f.cliente_id) continue;
+    const data = (f.data_inizio || '').split('T')[0];
+    if (!data) continue;
+    if (!datePerCliente.has(f.cliente_id)) datePerCliente.set(f.cliente_id, []);
+    datePerCliente.get(f.cliente_id)!.push(data);
+  }
+
+  // Calcola differenze tra date consecutive per ogni cliente
+  let sommaGiorni = 0;
+  let numIntervalli = 0;
+  for (const [_cliId, dateList] of datePerCliente.entries()) {
+    const dateUniche = Array.from(new Set(dateList)).sort();
+    if (dateUniche.length < 2) continue;
+    for (let i = 1; i < dateUniche.length; i++) {
+      const d1 = new Date(dateUniche[i - 1] + 'T00:00:00').getTime();
+      const d2 = new Date(dateUniche[i] + 'T00:00:00').getTime();
+      sommaGiorni += (d2 - d1) / (1000 * 60 * 60 * 24);
+      numIntervalli++;
+    }
+  }
+  const frequenzaRitornoMedia = numIntervalli > 0
+    ? Math.round((sommaGiorni / numIntervalli) * 10) / 10
+    : null;
+
+  // 3. Clienti dormienti (90gg) e persi (180gg)
+  // Strategia: per ogni cliente in archivio, prendi ultimo passaggio (scontrino o fattura).
+  // Se non c'è passaggio da 90gg (ma ce n'è stato uno), è dormiente. Se >180gg, è perso.
+  const oggi = new Date();
+  oggi.setHours(0, 0, 0, 0);
+  const soglia90 = new Date(oggi.getTime() - 90 * 24 * 60 * 60 * 1000);
+  const soglia180 = new Date(oggi.getTime() - 180 * 24 * 60 * 60 * 1000);
+
+  // Carica tutti gli scontrini (madre) + fatture dell'utente per trovare ultimo passaggio
+  const [resTuttiScontrini, resTutteFatture] = await Promise.all([
+    supabase.from('scontrini').select('cliente_id, data_emissione').eq('tipo', 'madre').not('annullato', 'is', true),
+    supabase.from('fatture').select('cliente_id, data_inizio'),
+  ]);
+
+  const ultimoPassaggioPerCliente = new Map<number, string>();
+  const aggiornaUltimo = (clienteId: number | null, data: string | null) => {
+    if (!clienteId || !data) return;
+    const soloData = data.split('T')[0].split(' ')[0];
+    const attuale = ultimoPassaggioPerCliente.get(clienteId);
+    if (!attuale || soloData > attuale) {
+      ultimoPassaggioPerCliente.set(clienteId, soloData);
+    }
+  };
+  for (const s of (resTuttiScontrini.data || []) as any[]) {
+    aggiornaUltimo(s.cliente_id, s.data_emissione);
+  }
+  for (const f of (resTutteFatture.data || []) as any[]) {
+    aggiornaUltimo(f.cliente_id, f.data_inizio);
+  }
+
+  const resTuttiClienti = await supabase.from('clienti').select('id');
+  let clientiDormienti = 0;
+  let clientiPersi = 0;
+  for (const c of (resTuttiClienti.data || []) as any[]) {
+    const ultimo = ultimoPassaggioPerCliente.get(c.id);
+    if (!ultimo) continue; // cliente mai passato → non è "dormiente" né "perso" (è nuovo)
+    const dUltimo = new Date(ultimo + 'T00:00:00');
+    if (dUltimo < soglia180) clientiPersi++;
+    else if (dUltimo < soglia90) clientiDormienti++;
+  }
+
   // 5. Aggrega items
   const serviziMap = new Map<string, ItemAggregato>();
   const prodottiMap = new Map<string, ItemAggregato>();
@@ -520,6 +613,12 @@ export async function calcolaReportAggregato(
     prodottiAcquistati,
     percentualeServizi,
     percentualeProdotti,
+
+    // KPI Clienti
+    nuoviClienti,
+    frequenzaRitornoMedia,
+    clientiDormienti,
+    clientiPersi,
   };
 }
 
