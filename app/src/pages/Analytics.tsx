@@ -139,13 +139,22 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
   }, [clienteSelezionato]);
 
   // Carica report aggregato
+  // Debounce soglie: aggiorna il report solo 500ms dopo l'ultima modifica
+  const [soglieDebounced, setSoglieDebounced] = useState({ sogliaDormienti, sogliaPersi });
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSoglieDebounced({ sogliaDormienti, sogliaPersi });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [sogliaDormienti, sogliaPersi]);
+
   useEffect(() => {
     if (!dataInizio || !dataFine) return;
     let annullato = false;
     async function carica() {
       try {
         setCaricandoAggregato(true);
-        const r = await calcolaReportAggregato(dataInizio, dataFine, { sogliaDormienti, sogliaPersi });
+        const r = await calcolaReportAggregato(dataInizio, dataFine, soglieDebounced);
         if (!annullato) setReportAggregato(r);
       } catch (err: any) {
         if (!annullato) {
@@ -159,7 +168,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
     return () => {
       annullato = true;
     };
-  }, [dataInizio, dataFine, sogliaDormienti, sogliaPersi]);
+  }, [dataInizio, dataFine, soglieDebounced]);
 
   const clientiFiltrati = useMemo(() => {
     if (!ricerca.trim()) return clienti.slice(0, 20);
@@ -700,7 +709,7 @@ function ReportAggregatoView({
           </button>
           <button onClick={() => apriModaleFiltro('dormienti', sogliaDormienti)} className="text-left">
             <KpiCard
-              label="Dormienti (90gg+)"
+              label={`Dormienti (${sogliaDormienti}gg+)`}
               value={String(report.clientiDormienti ?? 0)}
               icon="😴"
               colore="orange"
@@ -708,7 +717,7 @@ function ReportAggregatoView({
           </button>
           <button onClick={() => apriModaleFiltro('persi', sogliaPersi)} className="text-left">
             <KpiCard
-              label="Persi (180gg+)"
+              label={`Persi (${sogliaPersi}gg+)`}
               value={String(report.clientiPersi ?? 0)}
               icon="🚨"
               colore="orange"
