@@ -51,6 +51,8 @@ export function Spese() {
   const [filtroCategoria, setFiltroCategoria] = useState<string>('tutte');
   const [showForm, setShowForm] = useState(false);
   const [spesaInModifica, setSpesaInModifica] = useState<Spesa | null>(null);
+  const [importando, setImportando] = useState(false);
+  const [risultatoImport, setRisultatoImport] = useState<{ importati: number; saltati: number; errori: string[] } | null>(null);
   const [toast, setToast] = useState<{ message: string; tipo: ToastTipo } | null>(null);
   const [categorie, setCategorie] = useState<{id: number, nome: string}[]>([]);
   const [kpi, setKpi] = useState<{
@@ -108,6 +110,55 @@ export function Spese() {
         non_pagate: data.non_pagate,
       });
     } catch {}
+  }
+
+  async function handleImportXML(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    
+    if (!file.name.toLowerCase().endsWith('.zip') && !file.name.toLowerCase().endsWith('.xml')) {
+      alert('Seleziona un file .zip o .xml');
+      return;
+    }
+
+    setImportando(true);
+    setRisultatoImport(null);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch(`${API_URL}/api/spese/import-xml?user_id=${user.id}`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+        throw new Error(err.detail || 'Errore import');
+      }
+      
+      const data = await res.json();
+      setRisultatoImport({
+        importati: data.importati ?? 0,
+        saltati: data.saltati ?? 0,
+        errori: data.errori ?? [],
+      });
+      
+      await caricaSpese();
+      await caricaKpi();
+      
+      if (data.importati > 0) {
+        setToast({ message: `✅ Importate ${data.importati} fatture`, tipo: 'success' });
+      } else if (data.saltati > 0) {
+        setToast({ message: `ℹ️ ${data.saltati} fatture già presenti`, tipo: 'info' });
+      }
+    } catch (err: any) {
+      setToast({ message: '❌ ' + (err?.message || 'Errore import'), tipo: 'error' });
+    } finally {
+      setImportando(false);
+      e.target.value = ''; // reset input
+    }
   }
 
   async function togglePagata(spesa: Spesa) {
@@ -171,12 +222,28 @@ export function Spese() {
           <h1 className="text-2xl sm:text-3xl font-bold text-apple-darkgray mb-1">Spese & Scadenze</h1>
           <p className="text-sm text-apple-gray">Gestisci uscite e scadenze dell'azienda</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-4 py-2.5 bg-apple-blue text-white rounded-apple font-medium text-sm shadow-apple hover:bg-blue-600 transition-all"
-        >
-          + Nuova Spesa
-        </button>
+        <div className="flex gap-2">
+          <label className={`px-4 py-2.5 rounded-apple font-medium text-sm shadow-apple cursor-pointer transition-all flex items-center gap-2 ${
+            importando 
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+              : 'bg-green-600 text-white hover:bg-green-700'
+          }`}>
+            {importando ? '⏳ Importando…' : '📥 Importa XML'}
+            <input
+              type="file"
+              accept=".zip,.xml"
+              onChange={handleImportXML}
+              disabled={importando}
+              className="hidden"
+            />
+          </label>
+          <button
+            onClick={() => setShowForm(true)}
+            className="px-4 py-2.5 bg-apple-blue text-white rounded-apple font-medium text-sm shadow-apple hover:bg-blue-600 transition-all"
+          >
+            + Nuova Spesa
+          </button>
+        </div>
       </div>
 
       {/* KPI */}
