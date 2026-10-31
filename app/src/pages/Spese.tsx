@@ -50,6 +50,7 @@ export function Spese() {
   const [filtroStato, setFiltroStato] = useState<FiltroStato>('tutte');
   const [filtroCategoria, setFiltroCategoria] = useState<string>('tutte');
   const [showForm, setShowForm] = useState(false);
+  const [spesaInModifica, setSpesaInModifica] = useState<Spesa | null>(null);
   const [toast, setToast] = useState<{ message: string; tipo: ToastTipo } | null>(null);
   const [categorie, setCategorie] = useState<{id: number, nome: string}[]>([]);
   const [kpi, setKpi] = useState<{
@@ -286,7 +287,11 @@ export function Spese() {
               {speseOrdinate.map((s) => {
                 const scaduta = s.data_scadenza && s.data_scadenza < oggi && !s.pagata;
                 return (
-                  <tr key={s.id} className="border-b border-gray-100 last:border-0 hover:bg-apple-lightgray/40">
+                  <tr
+                    key={s.id}
+                    onClick={() => setSpesaInModifica(s)}
+                    className="border-b border-gray-100 last:border-0 hover:bg-apple-lightgray/40 cursor-pointer"
+                  >
                     <td className="px-4 py-3 text-apple-darkgray">{formatData(s.data)}</td>
                     <td className="px-4 py-3 font-medium text-apple-darkgray">
                       {s.descrizione}
@@ -304,7 +309,7 @@ export function Spese() {
                     <td className="px-4 py-3 text-right font-semibold text-apple-darkgray">{formatEuro(s.importo)}</td>
                     <td className="px-4 py-3 text-center">
                       <button
-                        onClick={() => togglePagata(s)}
+                        onClick={(e) => { e.stopPropagation(); togglePagata(s); }}
                         className={`text-[10px] px-2 py-1 rounded font-semibold transition-colors ${
                           s.pagata
                             ? 'bg-green-100 text-green-700 hover:bg-green-200'
@@ -316,7 +321,7 @@ export function Spese() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
-                        onClick={() => eliminaSpesa(s)}
+                        onClick={(e) => { e.stopPropagation(); eliminaSpesa(s); }}
                         className="text-red-500 hover:text-red-700 text-lg"
                         title="Elimina"
                       >
@@ -344,6 +349,21 @@ export function Spese() {
             setToast({ message: '✅ Spesa salvata', tipo: 'success' });
           }}
           onCancel={() => setShowForm(false)}
+        />
+      )}
+
+      {spesaInModifica && (
+        <FormModificaSpesa
+          spesa={spesaInModifica}
+          categorie={categorie}
+          onCategoryCreated={caricaCategorie}
+          onSaved={() => {
+            setSpesaInModifica(null);
+            caricaSpese();
+            caricaKpi();
+            setToast({ message: '✅ Spesa aggiornata', tipo: 'success' });
+          }}
+          onCancel={() => setSpesaInModifica(null)}
         />
       )}
 
@@ -556,6 +576,145 @@ function FormNuovaSpesa({
             <button type="submit" disabled={salvando} className="flex-1 py-2 rounded-apple bg-apple-blue text-white font-medium text-sm hover:bg-blue-600 disabled:opacity-50">
               {salvando ? '⏳ Salvo…' : '💾 Salva'}
             </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// FORM MODIFICA SPESA
+// ============================================================================
+
+function FormModificaSpesa({
+  spesa,
+  categorie,
+  onCategoryCreated,
+  onSaved,
+  onCancel,
+}: {
+  spesa: Spesa;
+  categorie: { id: number; nome: string }[];
+  onCategoryCreated: () => void;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const [data, setData] = useState(spesa.data);
+  const [descrizione, setDescrizione] = useState(spesa.descrizione);
+  const [importo, setImporto] = useState(String(spesa.importo));
+  const [importoIvato, setImportoIvato] = useState(true);
+  const [categoria, setCategoria] = useState(spesa.categoria || '');
+  const [dataScadenza, setDataScadenza] = useState(spesa.data_scadenza || '');
+  const [note, setNote] = useState(spesa.note || '');
+  const [salvando, setSalvando] = useState(false);
+  const [errore, setErrore] = useState<string | null>(null);
+  const [showNuovaCategoria, setShowNuovaCategoria] = useState(false);
+  const [nuovaCategoria, setNuovaCategoria] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSalvando(true);
+    setErrore(null);
+    try {
+      const importoNum = parseFloat(importo);
+      const imponibile = importoIvato ? Math.round((importoNum / 1.22) * 100) / 100 : importoNum;
+      const iva = importoIvato ? Math.round((importoNum - imponibile) * 100) / 100 : 0;
+
+      const payload = {
+        data,
+        descrizione: descrizione.trim(),
+        importo: importoNum,
+        importo_ivato: importoIvato,
+        imponibile,
+        iva,
+        categoria: categoria || null,
+        data_scadenza: dataScadenza || null,
+        note: note.trim() || null,
+      };
+
+      const res = await fetch(`${API_URL}/api/spese/${spesa.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+        throw new Error(err.detail || 'Errore salvataggio');
+      }
+      onSaved();
+    } catch (e: any) {
+      setErrore(e?.message || 'Errore');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-apple shadow-apple-lg max-w-lg w-full my-8 p-6">
+        <h2 className="text-lg font-bold text-apple-darkgray mb-4">Modifica Spesa</h2>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Descrizione *</label>
+            <input type="text" value={descrizione} onChange={(e) => setDescrizione(e.target.value)} className="w-full px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Data *</label>
+              <input type="date" value={data} onChange={(e) => setData(e.target.value)} className="w-full px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Importo € *</label>
+              <input type="number" step="0.01" value={importo} onChange={(e) => setImporto(e.target.value)} className="w-full px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm" />
+              <label className="flex items-center gap-1.5 mt-2 cursor-pointer text-[11px] text-apple-gray">
+                <input type="checkbox" checked={importoIvato} onChange={(e) => setImportoIvato(e.target.checked)} className="w-3.5 h-3.5" />
+                <span>Importo IVA inclusa (22%)</span>
+              </label>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Categoria</label>
+            {showNuovaCategoria ? (
+              <div className="flex gap-2">
+                <input type="text" value={nuovaCategoria} onChange={(e) => setNuovaCategoria(e.target.value)} placeholder="Nuova categoria..." className="flex-1 px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm" />
+                <button type="button" onClick={async () => {
+                  if (!nuovaCategoria.trim()) return;
+                  await fetch(`${API_URL}/api/spese/categorie`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: spesa.user_id, nome: nuovaCategoria.trim() })
+                  });
+                  setNuovaCategoria('');
+                  setShowNuovaCategoria(false);
+                  onCategoryCreated();
+                }} className="px-3 py-2 bg-green-600 text-white rounded-apple text-xs font-medium">Salva</button>
+                <button type="button" onClick={() => setShowNuovaCategoria(false)} className="px-3 py-2 bg-gray-200 rounded-apple text-xs">Annulla</button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className="flex-1 px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm">
+                  <option value="">— Seleziona —</option>
+                  {categorie.map((c) => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+                </select>
+                <button type="button" onClick={() => setShowNuovaCategoria(true)} className="px-3 py-2 bg-blue-100 text-blue-700 rounded-apple text-xs font-medium">+ Nuova</button>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Data scadenza (opzionale)</label>
+            <input type="date" value={dataScadenza} onChange={(e) => setDataScadenza(e.target.value)} className="w-full px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Note</label>
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm" />
+          </div>
+
+          {errore && <div className="bg-red-50 text-red-700 text-xs p-2 rounded">{errore}</div>}
+
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onCancel} disabled={salvando} className="flex-1 py-2 rounded-apple bg-gray-100 text-apple-darkgray font-medium text-sm">Annulla</button>
+            <button type="submit" disabled={salvando} className="flex-1 py-2 rounded-apple bg-apple-blue text-white font-medium text-sm">{salvando ? '⏳ Salvo…' : '💾 Salva modifiche'}</button>
           </div>
         </form>
       </div>
