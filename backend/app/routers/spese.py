@@ -23,6 +23,9 @@ class SpesaBase(BaseModel):
     data: str  # YYYY-MM-DD
     descrizione: str
     importo: float
+    importo_ivato: bool = True
+    imponibile: Optional[float] = None
+    iva: Optional[float] = None
     categoria: Optional[str] = None
     fornitore_id: Optional[int] = None
     tipo: str = "una_tantum"  # 'una_tantum' | 'ricorrente'
