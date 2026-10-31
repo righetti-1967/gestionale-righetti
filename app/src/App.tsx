@@ -196,7 +196,7 @@ function AppGestionale() {
           {currentPage === 'prodotti' && <Prodotti />}
           {currentPage === 'percorsi' && <Percorsi onNavigate={setCurrentPage} />}
           {currentPage === 'cassa_fiscale' && <CassaFiscale />}
-          {currentPage === 'analytics' && <Analytics />}
+          {currentPage === 'analytics' && <Analytics onNavigate={setCurrentPage} />}
           {currentPage === 'impostazioni' && <Impostazioni />}
         </main>
       </div>
