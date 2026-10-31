@@ -915,6 +915,33 @@ function ReportAggregatoView({
         )}
       </div>
 
+      {/* KPI Economia - Margine Lordo */}
+      <div>
+        <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
+          💰 Economia
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <KpiCard
+            label="Incassi"
+            value={formatEuro(report.spesaTotale ?? 0)}
+            icon="📈"
+            colore="green"
+          />
+          <KpiCard
+            label="Spese"
+            value={formatEuro(report.totaleSpese ?? 0)}
+            icon="📉"
+            colore="orange"
+          />
+          <KpiCard
+            label="Margine Lordo"
+            value={`${formatEuro(report.margineLordo ?? 0)} (${report.margineLordoPct ?? 0}%)`}
+            icon="💰"
+            colore={report.margineLordo >= 0 ? 'purple' : 'orange'}
+          />
+        </div>
+      </div>
+
       {/* Ripartizione */}
       <div className="bg-white rounded-apple shadow-apple p-4 sm:p-6">
         <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-3">

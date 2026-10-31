@@ -111,6 +111,11 @@ export interface ReportAggregato {
   minutiOccupati: number;            // minuti effettivi di appuntamenti
   tassoOccupazione: number;          // % occupazione (0-100)
   minutiLiberi: number;              // slot ancora disponibili
+
+  // KPI Economia (nuovi)
+  totaleSpese: number;               // somma spese pagate nel periodo
+  margineLordo: number;              // incassi - spese
+  margineLordoPct: number;           // % margine su incassi
 }
 
 // ============================================================
@@ -527,6 +532,23 @@ export async function calcolaReportAggregato(
 
   const minutiLiberi = Math.max(0, minutiDisponibili - minutiOccupati);
 
+  // ============================================================
+  // KPI ECONOMIA (Margine Lordo)
+  // ============================================================
+  let totaleSpese = 0;
+  try {
+    const { getTotaleSpesePeriodo } = await import('./spese');
+    const user = await supabase.auth.getUser();
+    if (user.data.user) {
+      totaleSpese = await getTotaleSpesePeriodo(user.data.user.id, dataInizio, dataFine);
+    }
+  } catch (e) {
+    console.error('Errore caricamento spese per margine:', e);
+  }
+
+  const margineLordo = spesaTotale - totaleSpese;
+  const margineLordoPct = spesaTotale > 0 ? Math.round((margineLordo / spesaTotale) * 1000) / 10 : 0;
+
   // 5. Aggrega items
   const serviziMap = new Map<string, ItemAggregato>();
   const prodottiMap = new Map<string, ItemAggregato>();
@@ -688,6 +710,9 @@ export async function calcolaReportAggregato(
     minutiOccupati,
     tassoOccupazione,
     minutiLiberi,
+    totaleSpese,
+    margineLordo,
+    margineLordoPct,
   };
 }
 
