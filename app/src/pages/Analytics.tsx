@@ -38,6 +38,7 @@ type PresetPeriodo = 'settimana' | 'mese' | 'anno' | 'custom';
 
 export function Analytics() {
   const [tab, setTab] = useState<Tab>('singolo');
+
   const [toast, setToast] = useState<{ message: string; tipo: ToastTipo } | null>(null);
 
   // Singolo cliente
@@ -501,6 +502,23 @@ function ReportAggregatoView({
   report: ReportAggregato;
   onEsportaPdf: () => void;
 }) {
+
+  // Soglie KPI Clienti (configurabili, salvate in localStorage)
+  const [sogliaDormienti, setSogliaDormienti] = useState<number>(() => {
+    const saved = localStorage.getItem('kpi_soglia_dormienti');
+    return saved ? parseInt(saved) : 90;
+  });
+  const [sogliaPersi, setSogliaPersi] = useState<number>(() => {
+    const saved = localStorage.getItem('kpi_soglia_persi');
+    return saved ? parseInt(saved) : 180;
+  });
+  const [mostraSoglie, setMostraSoglie] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('kpi_soglia_dormienti', String(sogliaDormienti));
+    localStorage.setItem('kpi_soglia_persi', String(sogliaPersi));
+  }, [sogliaDormienti, sogliaPersi]);
+
   return (
     <div className="space-y-4">
       {/* Header con pulsante export */}
@@ -558,9 +576,52 @@ function ReportAggregatoView({
 
       {/* KPI Clienti (nuovi) */}
       <div>
-        <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
-          👥 Clienti
-        </h3>
+        <div className="flex items-center justify-between mb-2 mt-2">
+          <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide">
+            👥 Clienti
+          </h3>
+          <button
+            onClick={() => setMostraSoglie(!mostraSoglie)}
+            className="text-[10px] text-apple-blue hover:text-blue-700 font-medium"
+          >
+            {mostraSoglie ? '✕ Chiudi' : '⚙️ Configura soglie'}
+          </button>
+        </div>
+
+        {mostraSoglie && (
+          <div className="bg-blue-50 border border-blue-200 rounded-apple p-3 mb-3 space-y-2">
+            <p className="text-[11px] text-blue-900 font-medium">
+              Personalizza le soglie per il tuo studio:
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] text-blue-700 uppercase mb-1">Dormienti (gg)</label>
+                <input
+                  type="number"
+                  min="30"
+                  max="365"
+                  value={sogliaDormienti}
+                  onChange={(e) => setSogliaDormienti(parseInt(e.target.value) || 90)}
+                  className="w-full px-2 py-1 rounded bg-white border border-blue-200 text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-blue-700 uppercase mb-1">Persi (gg)</label>
+                <input
+                  type="number"
+                  min="60"
+                  max="730"
+                  value={sogliaPersi}
+                  onChange={(e) => setSogliaPersi(parseInt(e.target.value) || 180)}
+                  className="w-full px-2 py-1 rounded bg-white border border-blue-200 text-xs"
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-blue-600 italic">
+              ℹ️ Ricarica per applicare le nuove soglie al calcolo.
+            </p>
+          </div>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <KpiCard
             label="Nuovi clienti"
