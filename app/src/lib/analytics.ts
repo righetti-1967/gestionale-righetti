@@ -105,6 +105,12 @@ export interface ReportAggregato {
   frequenzaRitornoMedia: number | null;  // giorni medi tra visite (per clienti con ≥2 passaggi)
   clientiDormienti: number;          // clienti senza passaggi da 90gg
   clientiPersi: number;              // clienti senza passaggi da 180gg
+
+  // KPI Agenda (nuovi)
+  minutiDisponibili: number;         // slot totali disponibili nel periodo
+  minutiOccupati: number;            // minuti effettivi di appuntamenti
+  tassoOccupazione: number;          // % occupazione (0-100)
+  minutiLiberi: number;              // slot ancora disponibili
 }
 
 // ============================================================
@@ -468,6 +474,52 @@ export async function calcolaReportAggregato(
     else if (dUltimo < soglia90) clientiDormienti++;
   }
 
+  // ============================================================
+  // KPI OCCUPAZIONE AGENDA
+  // ============================================================
+  const { getAgendaConfigSync } = await import('./agenda-config');
+  const agendaConfig = getAgendaConfigSync();
+
+  // Calcola minuti disponibili nel periodo (giorni lavorativi × ore/giorno × 60)
+  const [oraAperturaH, oraAperturaM] = (agendaConfig.oraApertura || '09:00').split(':').map(Number);
+  const [oraChiusuraH, oraChiusuraM] = (agendaConfig.oraChiusura || '18:00').split(':').map(Number);
+  const minutiAlGiorno = (oraChiusuraH * 60 + oraChiusuraM) - (oraAperturaH * 60 + oraAperturaM);
+  const giorniLavorativi = agendaConfig.giorniLavorativi || [2, 3, 4, 5, 6];
+
+  // Conta giorni lavorativi nel periodo
+  let giorniLavorativiNelPeriodo = 0;
+  const dataInizioDate = new Date(dataInizio + 'T00:00:00');
+  const dataFineDate = new Date(dataFine + 'T00:00:00');
+  const dataCorrente = new Date(dataInizioDate);
+  while (dataCorrente <= dataFineDate) {
+    if (giorniLavorativi.includes(dataCorrente.getDay())) {
+      giorniLavorativiNelPeriodo++;
+    }
+    dataCorrente.setDate(dataCorrente.getDate() + 1);
+  }
+
+  const minutiDisponibili = giorniLavorativiNelPeriodo * minutiAlGiorno;
+
+  // Carica appuntamenti del periodo (esclusi blocchi)
+  const resAppuntamenti = await supabase
+    .from('appuntamenti')
+    .select('durata_minuti, is_blocco, stato')
+    .gte('data', dataInizio)
+    .lte('data', dataFine)
+    .neq('stato', 'cancellato')
+    .neq('is_blocco', true);
+
+  const minutiOccupati = (resAppuntamenti.data || []).reduce(
+    (sum: number, a: any) => sum + Number(a.durata_minuti || 0),
+    0
+  );
+
+  const tassoOccupazione = minutiDisponibili > 0
+    ? Math.round((minutiOccupati / minutiDisponibili) * 1000) / 10
+    : 0;
+
+  const minutiLiberi = Math.max(0, minutiDisponibili - minutiOccupati);
+
   // 5. Aggrega items
   const serviziMap = new Map<string, ItemAggregato>();
   const prodottiMap = new Map<string, ItemAggregato>();
@@ -625,6 +677,10 @@ export async function calcolaReportAggregato(
     frequenzaRitornoMedia,
     clientiDormienti,
     clientiPersi,
+    minutiDisponibili,
+    minutiOccupati,
+    tassoOccupazione,
+    minutiLiberi,
   };
 }
 
