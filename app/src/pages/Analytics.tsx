@@ -556,6 +556,39 @@ function ReportAggregatoView({
         <KpiCardSmall label="Passaggi/Cliente" value={String(report.passaggiPerCliente)} />
       </div>
 
+      {/* KPI Clienti (nuovi) */}
+      <div>
+        <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
+          👥 Clienti
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <KpiCard
+            label="Nuovi clienti"
+            value={String(report.nuoviClienti ?? 0)}
+            icon="🆕"
+            colore="green"
+          />
+          <KpiCard
+            label="Frequenza ritorno"
+            value={report.frequenzaRitornoMedia != null ? `${report.frequenzaRitornoMedia}gg` : '—'}
+            icon="🔄"
+            colore="blue"
+          />
+          <KpiCard
+            label="Dormienti (90gg+)"
+            value={String(report.clientiDormienti ?? 0)}
+            icon="😴"
+            colore="orange"
+          />
+          <KpiCard
+            label="Persi (180gg+)"
+            value={String(report.clientiPersi ?? 0)}
+            icon="🚨"
+            colore="red"
+          />
+        </div>
+      </div>
+
       {/* Ripartizione */}
       <div className="bg-white rounded-apple shadow-apple p-4 sm:p-6">
         <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-3">
