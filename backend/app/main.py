@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import licenze, sheets, email
+from app.routers import licenze, sheets, email, spese
 
 logging.basicConfig(level=settings.log_level)
 logger = logging.getLogger(__name__)
@@ -19,6 +19,7 @@ app = FastAPI(
 app.include_router(licenze.router)
 app.include_router(sheets.router)
 app.include_router(email.router)
+app.include_router(spese.router)
 
 app.add_middleware(
     CORSMiddleware,
