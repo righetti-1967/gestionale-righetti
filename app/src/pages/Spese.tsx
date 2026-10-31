@@ -233,12 +233,11 @@ export function Spese() {
   });
 
   const speseOrdinate = [...speseFiltrate].sort((a, b) => {
-    // Se tab è "scadenze", ordina sempre per data_scadenza crescente (scadenze imminenti)
-    if (tab === 'scadenze') {
-      return (a.data_scadenza || '').localeCompare(b.data_scadenza || '');
-    }
-    // Altrimenti usa sortData (default: desc = più recenti prima)
-    const cmp = (a.data || '').localeCompare(b.data || '');
+    // In Scadenze, ordina per data_scadenza; in Spese, per data
+    const campoData = tab === 'scadenze' ? 'data_scadenza' : 'data';
+    const dataA = (a[campoData as keyof Spesa] as string) || '';
+    const dataB = (b[campoData as keyof Spesa] as string) || '';
+    const cmp = dataA.localeCompare(dataB);
     return sortData === 'asc' ? cmp : -cmp;
   });
 
@@ -373,7 +372,7 @@ export function Spese() {
                   className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase cursor-pointer hover:text-apple-darkgray transition-colors select-none"
                   title={sortData === 'asc' ? 'Crescente (clicca per decrescente)' : 'Decrescente (clicca per crescente)'}
                 >
-                  Data {sortData === 'asc' ? '↑' : '↓'}
+                  {tab === 'scadenze' ? 'Scadenza' : 'Data'} {sortData === 'asc' ? '↑' : '↓'}
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Descrizione</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Categoria</th>
