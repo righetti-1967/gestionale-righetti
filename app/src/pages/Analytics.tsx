@@ -512,12 +512,17 @@ function ReportAggregatoView({
     const saved = localStorage.getItem('kpi_soglia_persi');
     return saved ? parseInt(saved) : 180;
   });
+  const [sogliaFrequenzaAttesa, setSogliaFrequenzaAttesa] = useState<number>(() => {
+    const saved = localStorage.getItem('kpi_soglia_frequenza');
+    return saved ? parseInt(saved) : 45;
+  });
   const [mostraSoglie, setMostraSoglie] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('kpi_soglia_dormienti', String(sogliaDormienti));
     localStorage.setItem('kpi_soglia_persi', String(sogliaPersi));
-  }, [sogliaDormienti, sogliaPersi]);
+    localStorage.setItem('kpi_soglia_frequenza', String(sogliaFrequenzaAttesa));
+  }, [sogliaDormienti, sogliaPersi, sogliaFrequenzaAttesa]);
 
   return (
     <div className="space-y-4">
@@ -593,7 +598,7 @@ function ReportAggregatoView({
             <p className="text-[11px] text-blue-900 font-medium">
               Personalizza le soglie per il tuo studio:
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="block text-[10px] text-blue-700 uppercase mb-1">Dormienti (gg)</label>
                 <input
@@ -613,6 +618,17 @@ function ReportAggregatoView({
                   max="730"
                   value={sogliaPersi}
                   onChange={(e) => setSogliaPersi(parseInt(e.target.value) || 180)}
+                  className="w-full px-2 py-1 rounded bg-white border border-blue-200 text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-blue-700 uppercase mb-1">Frequenza (gg)</label>
+                <input
+                  type="number"
+                  min="7"
+                  max="180"
+                  value={sogliaFrequenzaAttesa}
+                  onChange={(e) => setSogliaFrequenzaAttesa(parseInt(e.target.value) || 45)}
                   className="w-full px-2 py-1 rounded bg-white border border-blue-200 text-xs"
                 />
               </div>
