@@ -510,14 +510,9 @@ function ReportAggregatoView({
   onNavigate?: (page: string, params?: string) => void;
 }) {
 
-  // Funzione per navigare a Clienti con filtro
-  function handleFiltroClienti(tipo: 'nuovi' | 'dormienti' | 'persi' | 'frequenza', soglia?: number) {
-    try {
-      sessionStorage.setItem('clienti_filtro', JSON.stringify({ tipo, soglia }));
-    } catch {}
-    if (onNavigate) {
-      onNavigate('clienti');
-    }
+  // Funzione per aprire modale clienti filtrati
+  function apriModaleFiltro(tipo: 'nuovi' | 'dormienti' | 'persi' | 'frequenza', soglia?: number) {
+    setModaleFiltro({ tipo, soglia });
   }
 
 
@@ -535,6 +530,7 @@ function ReportAggregatoView({
     return saved ? parseInt(saved) : 45;
   });
   const [mostraSoglie, setMostraSoglie] = useState(false);
+  const [modaleFiltro, setModaleFiltro] = useState<{ tipo: 'nuovi' | 'dormienti' | 'persi' | 'frequenza'; soglia?: number } | null>(null);
 
   useEffect(() => {
     localStorage.setItem('kpi_soglia_dormienti', String(sogliaDormienti));
@@ -657,7 +653,7 @@ function ReportAggregatoView({
           </div>
         )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <button onClick={() => handleFiltroClienti('nuovi')} className="text-left">
+          <button onClick={() => apriModaleFiltro('nuovi')} className="text-left">
             <KpiCard
               label="Nuovi clienti"
               value={String(report.nuoviClienti ?? 0)}
@@ -665,7 +661,7 @@ function ReportAggregatoView({
               colore="green"
             />
           </button>
-          <button onClick={() => handleFiltroClienti('frequenza', sogliaFrequenzaAttesa)} className="text-left">
+          <button onClick={() => apriModaleFiltro('frequenza', sogliaFrequenzaAttesa)} className="text-left">
             <KpiCard
               label="Frequenza ritorno"
               value={report.frequenzaRitornoMedia != null ? `${report.frequenzaRitornoMedia}gg` : '—'}
@@ -673,7 +669,7 @@ function ReportAggregatoView({
               colore="blue"
             />
           </button>
-          <button onClick={() => handleFiltroClienti('dormienti', sogliaDormienti)} className="text-left">
+          <button onClick={() => apriModaleFiltro('dormienti', sogliaDormienti)} className="text-left">
             <KpiCard
               label="Dormienti (90gg+)"
               value={String(report.clientiDormienti ?? 0)}
@@ -681,7 +677,7 @@ function ReportAggregatoView({
               colore="orange"
             />
           </button>
-          <button onClick={() => handleFiltroClienti('persi', sogliaPersi)} className="text-left">
+          <button onClick={() => apriModaleFiltro('persi', sogliaPersi)} className="text-left">
             <KpiCard
               label="Persi (180gg+)"
               value={String(report.clientiPersi ?? 0)}
@@ -726,6 +722,15 @@ function ReportAggregatoView({
           <ListaItems items={report.prodottiAcquistati.slice(0, 10)} />
         </div>
       </div>
+
+      {/* Modale clienti filtrati */}
+      {modaleFiltro !== null && (
+        <ModaleClientiFiltrati
+          tipo={modaleFiltro.tipo}
+          soglia={modaleFiltro.soglia}
+          onClose={() => setModaleFiltro(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1056,6 +1061,164 @@ function TabIvaConfronto() {
             </tfoot>
           </table>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// MODALE CLIENTI FILTRATI
+// ============================================================================
+
+function ModaleClientiFiltrati({
+  tipo,
+  soglia,
+  onClose,
+}: {
+  tipo: 'nuovi' | 'dormienti' | 'persi' | 'frequenza';
+  soglia?: number;
+  onClose: () => void;
+}) {
+  const [clienti, setClienti] = useState<Cliente[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errore, setErrore] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function carica() {
+      setLoading(true);
+      setErrore(null);
+      try {
+        const tutti = await getClienti();
+        const { supabase } = await import('../lib/supabase');
+
+        if (tipo === 'nuovi') {
+          const oggi = new Date();
+          const inizioMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1).toISOString();
+          const fineMese = new Date(oggi.getFullYear(), oggi.getMonth() + 1, 0, 23, 59, 59).toISOString();
+          const filtrati = tutti.filter((c: any) => {
+            const created = c.created_at as string | null;
+            return created && created >= inizioMese && created <= fineMese;
+          });
+          setClienti(filtrati);
+          return;
+        }
+
+        // Per dormienti/persi/frequenza: carica scontrini + fatture
+        const [resScontrini, resFatture] = await Promise.all([
+          supabase.from('scontrini').select('cliente_id, data_emissione').eq('tipo', 'madre').not('annullato', 'is', true),
+          supabase.from('fatture').select('cliente_id, data_inizio'),
+        ]);
+
+        const datePerCliente = new Map<number, string[]>();
+        for (const s of (resScontrini.data || []) as any[]) {
+          if (!s.cliente_id || !s.data_emissione) continue;
+          const d = String(s.data_emissione).split('T')[0];
+          if (!datePerCliente.has(s.cliente_id)) datePerCliente.set(s.cliente_id, []);
+          datePerCliente.get(s.cliente_id)!.push(d);
+        }
+        for (const f of (resFatture.data || []) as any[]) {
+          if (!f.cliente_id || !f.data_inizio) continue;
+          const d = String(f.data_inizio).split('T')[0];
+          if (!datePerCliente.has(f.cliente_id)) datePerCliente.set(f.cliente_id, []);
+          datePerCliente.get(f.cliente_id)!.push(d);
+        }
+
+        const oggi = new Date();
+        oggi.setHours(0, 0, 0, 0);
+        const sogliaGg = soglia ?? (tipo === 'dormienti' ? 90 : tipo === 'persi' ? 180 : 45);
+        const sogliaData = new Date(oggi.getTime() - sogliaGg * 24 * 60 * 60 * 1000);
+
+        const filtrati = tutti.filter((c) => {
+          const date = datePerCliente.get(c.id);
+          if (!date || date.length === 0) return false;
+          const dateUniche = Array.from(new Set(date)).sort();
+
+          if (tipo === 'dormienti' || tipo === 'persi') {
+            const ultima = dateUniche[dateUniche.length - 1];
+            const dUltima = new Date(ultima + 'T00:00:00');
+            return dUltima < sogliaData;
+          }
+
+          if (tipo === 'frequenza') {
+            if (dateUniche.length < 2) return false;
+            let somma = 0;
+            for (let i = 1; i < dateUniche.length; i++) {
+              const d1 = new Date(dateUniche[i - 1] + 'T00:00:00').getTime();
+              const d2 = new Date(dateUniche[i] + 'T00:00:00').getTime();
+              somma += (d2 - d1) / (1000 * 60 * 60 * 24);
+            }
+            const freqMedia = somma / (dateUniche.length - 1);
+            return freqMedia > sogliaGg;
+          }
+
+          return false;
+        });
+
+        filtrati.sort((a, b) => a.nome_cognome.localeCompare(b.nome_cognome));
+        setClienti(filtrati);
+      } catch (e: any) {
+        setErrore(e?.message || 'Errore caricamento');
+      } finally {
+        setLoading(false);
+      }
+    }
+    carica();
+  }, [tipo, soglia]);
+
+  const titolo = {
+    nuovi: '🆕 Nuovi clienti (mese corrente)',
+    dormienti: `😴 Dormienti (${soglia ?? 90}gg+)`,
+    persi: `🚨 Persi (${soglia ?? 180}gg+)`,
+    frequenza: `🔄 Frequenza ritorno > ${soglia ?? 45}gg`,
+  }[tipo];
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-apple shadow-apple-lg max-w-2xl w-full max-h-[85vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 py-4 border-b border-gray-200/60 flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-bold text-apple-darkgray">{titolo}</h3>
+            <p className="text-xs text-apple-gray">
+              {loading ? 'Caricamento…' : `${clienti.length} clienti`}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-apple-gray"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="p-8 text-center text-sm text-apple-gray">Caricamento…</div>
+          ) : errore ? (
+            <div className="p-8 text-center text-sm text-red-600">❌ {errore}</div>
+          ) : clienti.length === 0 ? (
+            <div className="p-8 text-center text-sm text-apple-gray">
+              📭 Nessun cliente in questa categoria
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {clienti.map((c) => (
+                <div key={c.id} className="px-5 py-3 hover:bg-apple-lightgray/40">
+                  <p className="text-sm font-semibold text-apple-darkgray">{c.nome_cognome}</p>
+                  <div className="flex gap-3 text-xs text-apple-gray mt-0.5">
+                    {c.cellulare && <span>📞 {c.cellulare}</span>}
+                    {c.email && <span className="truncate">✉️ {c.email}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
