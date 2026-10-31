@@ -626,3 +626,81 @@ FINE AGGIUNTA
 - Logo demo: fallback su /favicon.svg statico, no piu' 404
 
 _Ultimo aggiornamento: 13 ottobre 2026 sera_
+
+---
+
+## 🔮 BACKLOG — KPI AVANZATI (da fare in prossime sessioni)
+
+### Priorità 1 — Configurazione Operatori + Economia
+
+**Obiettivo:** poter calcolare costo/ricavo/margine per operatore e break-even.
+
+#### FASE 1 — Configurazione Operatori (in Impostazioni)
+Nuovo tab "Economia" (o sotto-tab di Agenda) per ogni operatore:
+- Busta paga lorda mensile
+- Busta paga netta mensile
+- Contributi INPS (%)
+- TFR (%)
+- Ore settimanali
+- Giorni lavorativi settimanali
+- Tipo: dipendente | titolare | collaboratore
+- Note
+- Salvataggio in `impostazioni` chiave `operatori_economia` (JSON)
+
+Costo/ora calcolato: `(lordo + lordo*contributi% + lordo*TFR%) / ore_mese`
+
+#### FASE 2 — Configurazione Costi Fissi
+Nuovo tab in Impostazioni "Costi Fissi":
+- Lista categorie spese (Affitto, Utenze, Assicurazioni, Stipendi, ecc.)
+- Checkbox "Fisso" / "Variabile" per ogni categoria
+- Salvataggio in `impostazioni` chiave `costi_fissi_config`
+
+#### FASE 3 — Calcolo KPI
+- Costo/ora per operatore
+- Ricavo/ora per operatore (fatturato / ore lavorate)
+- Margine/ora per operatore
+- Break-even point: `costi_fissi / margine_contribuzione`
+
+#### FASE 4 — UI in Analytics
+- Card "Costo/Ricavo per Operatore" (loop su operatori)
+- Card "Break-Even" (mancano X€ per andare in pari)
+
+---
+
+### Priorità 2 — YoY (Confronto Anno su Anno)
+
+**Obiettivo:** confrontare il periodo corrente con lo stesso periodo dell'anno precedente.
+
+- Calcolo YoY in `calcolaReportAggregato`:
+  - Incassi anno scorso
+  - Clienti anno scorso
+  - Scontrino medio anno scorso
+  - Delta % su incassi/clienti/scontrino
+- UI in Analytics: card "📊 Confronto anno precedente"
+
+**⚠️ Attenzione:** la patch precedente ha fallito (variabili duplicate, uso prima della dichiarazione). Approccio da usare: scrivere il codice con calma in un file temporaneo e sostituirlo interamente, oppure patch piccole verificate una per una.
+
+---
+
+### Priorità 3 — Altri KPI avanzati (da definire)
+
+Idee già discusse:
+- Fatturato per servizio/prodotto (margine)
+- Tasso di ritorno per servizio
+- Cross-selling (% passaggi con servizio + prodotto)
+- No-show rate
+- Cancellazioni per motivo
+- Distribuzione appuntamenti per fascia oraria
+- Break-even per operatore
+- ROI marketing (se tracci fonte acquisizione)
+
+---
+
+### Note tecniche
+
+- `src/lib/analytics.ts` è il file principale per i calcoli
+- `src/pages/Analytics.tsx` per la UI
+- `src/lib/spese.ts` per caricare le spese da backend Railway
+- Backend: `backend/app/routers/spese.py` per IVA, import XML, KPI spese
+
+_Ultimo aggiornamento: 31 ottobre 2026_
