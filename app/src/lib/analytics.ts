@@ -306,8 +306,14 @@ export async function calcolaReportCliente(
 
 export async function calcolaReportAggregato(
   dataInizio: string,
-  dataFine: string
+  dataFine: string,
+  opzioni?: {
+    sogliaDormienti?: number;
+    sogliaPersi?: number;
+  }
 ): Promise<ReportAggregato> {
+  const sogliaDormienti = opzioni?.sogliaDormienti ?? 90;
+  const sogliaPersi = opzioni?.sogliaPersi ?? 180;
   // 1. Carica scontrini + fatture del periodo
   const [tuttiScontrini, resFatture] = await Promise.all([
     getScontrini({ dataInizio, dataFine }).catch(() => []),
@@ -426,8 +432,8 @@ export async function calcolaReportAggregato(
   // Se non c'è passaggio da 90gg (ma ce n'è stato uno), è dormiente. Se >180gg, è perso.
   const oggi = new Date();
   oggi.setHours(0, 0, 0, 0);
-  const soglia90 = new Date(oggi.getTime() - 90 * 24 * 60 * 60 * 1000);
-  const soglia180 = new Date(oggi.getTime() - 180 * 24 * 60 * 60 * 1000);
+  const soglia90 = new Date(oggi.getTime() - sogliaDormienti * 24 * 60 * 60 * 1000);
+  const soglia180 = new Date(oggi.getTime() - sogliaPersi * 24 * 60 * 60 * 1000);
 
   // Carica tutti gli scontrini (madre) + fatture dell'utente per trovare ultimo passaggio
   const [resTuttiScontrini, resTutteFatture] = await Promise.all([
