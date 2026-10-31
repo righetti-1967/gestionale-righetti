@@ -737,9 +737,13 @@ function ReportAggregatoView({
       )}
 
       {/* Modale invio template (WhatsApp / Email) */}
-      {clienteDaContattare && (
+      {clienteDaContattare && modaleFiltro && (
         <ModaleInviaTemplate
-          chiave="whatsapp_riattivazione"
+          chiave={
+            modaleFiltro.tipo === 'nuovi'
+              ? 'whatsapp_post_seduta'  // placeholder per "nuovo cliente" (benvenuto non ancora disponibile)
+              : 'whatsapp_riattivazione'
+          }
           cliente={clienteDaContattare}
           onClose={() => setClienteDaContattare(null)}
           onSuccess={(msg: string) => {
