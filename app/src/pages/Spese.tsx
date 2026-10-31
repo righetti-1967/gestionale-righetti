@@ -54,6 +54,7 @@ export function Spese() {
   const [showForm, setShowForm] = useState(false);
   const [spesaInModifica, setSpesaInModifica] = useState<Spesa | null>(null);
   const [importando, setImportando] = useState(false);
+  const [sortData, setSortData] = useState<'asc' | 'desc'>('desc');
   const [risultatoImport, setRisultatoImport] = useState<{ importati: number; saltati: number; errori: string[] } | null>(null);
   const [toast, setToast] = useState<{ message: string; tipo: ToastTipo } | null>(null);
   const [categorie, setCategorie] = useState<{id: number, nome: string}[]>([]);
@@ -232,10 +233,13 @@ export function Spese() {
   });
 
   const speseOrdinate = [...speseFiltrate].sort((a, b) => {
+    // Se tab è "scadenze", ordina sempre per data_scadenza crescente (scadenze imminenti)
     if (tab === 'scadenze') {
       return (a.data_scadenza || '').localeCompare(b.data_scadenza || '');
     }
-    return (b.data || '').localeCompare(a.data || '');
+    // Altrimenti usa sortData (default: desc = più recenti prima)
+    const cmp = (a.data || '').localeCompare(b.data || '');
+    return sortData === 'asc' ? cmp : -cmp;
   });
 
   return (
@@ -364,7 +368,13 @@ export function Spese() {
           <table className="w-full text-sm">
             <thead className="bg-apple-lightgray/60 border-b border-gray-200/60">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Data</th>
+                <th
+                  onClick={() => setSortData(sortData === 'asc' ? 'desc' : 'asc')}
+                  className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase cursor-pointer hover:text-apple-darkgray transition-colors select-none"
+                  title={sortData === 'asc' ? 'Crescente (clicca per decrescente)' : 'Decrescente (clicca per crescente)'}
+                >
+                  Data {sortData === 'asc' ? '↑' : '↓'}
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Descrizione</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Categoria</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Scadenza</th>
