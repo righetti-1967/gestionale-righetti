@@ -10,6 +10,8 @@ interface Spesa {
   data: string;
   descrizione: string;
   importo: number;
+  imponibile: number | null;
+  iva: number | null;
   categoria: string | null;
   tipo: string;
   ricorrenza: string | null;
@@ -366,7 +368,9 @@ export function Spese() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Descrizione</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Categoria</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Scadenza</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Importo</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Imponibile</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase">IVA</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Lordo</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Stato</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Azioni</th>
               </tr>
@@ -394,6 +398,8 @@ export function Spese() {
                       {formatData(s.data_scadenza)}
                       {scaduta && ' ⚠️'}
                     </td>
+                    <td className="px-4 py-3 text-right text-apple-gray">{s.imponibile != null ? formatEuro(s.imponibile) : '—'}</td>
+                    <td className="px-4 py-3 text-right text-blue-700">{s.iva != null && s.iva > 0 ? formatEuro(s.iva) : '—'}</td>
                     <td className="px-4 py-3 text-right font-semibold text-apple-darkgray">{formatEuro(s.importo)}</td>
                     <td className="px-4 py-3 text-center">
                       <button
