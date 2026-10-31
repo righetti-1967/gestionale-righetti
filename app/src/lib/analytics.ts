@@ -346,7 +346,26 @@ export async function calcolaReportAggregato(
     .select('id', { count: 'exact', head: true });
   const numeroClientiTotali = resClientiCount.count || 0;
 
-  const numeroPassaggi = scontriniPeriodo.length + fatturePeriodo.length;
+  // PASSAGGI: raggruppa per (cliente_id, data) → 1 cliente in 1 giorno = 1 passaggio
+  // (indipendentemente da quante fiche/documenti emette)
+  const passaggiSet = new Set<string>();
+  const chiavePassaggio = (clienteId: number | null | undefined, data: string | null | undefined): string | null => {
+    if (!clienteId || !data) return null;
+    // Normalizza la data a YYYY-MM-DD (alcuni record potrebbero avere timestamp)
+    const soloData = String(data).split('T')[0].split(' ')[0];
+    return `${clienteId}_${soloData}`;
+  };
+
+  for (const s of scontriniPeriodo) {
+    const k = chiavePassaggio(s.cliente_id, (s as any).data_emissione || (s as any).data);
+    if (k) passaggiSet.add(k);
+  }
+  for (const f of fatturePeriodo) {
+    const k = chiavePassaggio(f.cliente_id, f.data_inizio);
+    if (k) passaggiSet.add(k);
+  }
+
+  const numeroPassaggi = passaggiSet.size;
   const numeroScontrini = scontriniPeriodo.length;
   const numeroFatture = fatturePeriodo.length;
 
