@@ -624,7 +624,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         {/* Card Spese & Scadenze */}
         <button
           onClick={() => onNavigate?.('spese')}
-          className="bg-white rounded-apple shadow-apple p-2.5 sm:p-4 text-left hover:shadow-apple-lg transition-all col-span-2"
+          className="bg-white rounded-apple shadow-apple p-2.5 sm:p-4 text-left hover:shadow-apple-lg transition-all"
         >
           <div className="flex items-start justify-between mb-2">
             <span className="text-lg">💸</span>
