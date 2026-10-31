@@ -1238,13 +1238,17 @@ function ModaleClientiFiltrati({
           ) : (
             <div className="divide-y divide-gray-100">
               {clienti.map((c) => (
-                <div key={c.id} className="px-5 py-3 hover:bg-apple-lightgray/40">
+                <button
+                  key={c.id}
+                  onClick={() => onClienteClick(c)}
+                  className="w-full text-left px-5 py-3 hover:bg-blue-50 transition-colors cursor-pointer"
+                >
                   <p className="text-sm font-semibold text-apple-darkgray">{c.nome_cognome}</p>
                   <div className="flex gap-3 text-xs text-apple-gray mt-0.5">
                     {c.cellulare && <span>📞 {c.cellulare}</span>}
                     {c.email && <span className="truncate">✉️ {c.email}</span>}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
