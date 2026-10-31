@@ -372,6 +372,7 @@ function FormNuovaSpesa({
   const [data, setData] = useState(new Date().toISOString().split('T')[0]);
   const [descrizione, setDescrizione] = useState('');
   const [importo, setImporto] = useState('');
+  const [importoIvato, setImportoIvato] = useState(true);
   const [categoria, setCategoria] = useState('');
   const [showNuovaCategoria, setShowNuovaCategoria] = useState(false);
   const [nuovaCategoria, setNuovaCategoria] = useState('');
@@ -393,11 +394,18 @@ function FormNuovaSpesa({
     setSalvando(true);
     setErrore(null);
     try {
+      const importoNum = parseFloat(importo)
+      const imponibile = importoIvato ? Math.round((importoNum / 1.22) * 100) / 100 : importoNum
+      const iva = importoIvato ? Math.round((importoNum - imponibile) * 100) / 100 : 0
+
       const payload = {
         user_id: userId,
         data,
         descrizione: descrizione.trim(),
-        importo: parseFloat(importo),
+        importo: importoNum,
+        importo_ivato: importoIvato,
+        imponibile,
+        iva,
         categoria: categoria || null,
         tipo,
         ricorrenza: tipo === 'ricorrente' ? ricorrenza : null,
@@ -446,6 +454,15 @@ function FormNuovaSpesa({
             <div>
               <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Importo € *</label>
               <input type="number" step="0.01" value={importo} onChange={(e) => setImporto(e.target.value)} className="w-full px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm focus:outline-none focus:bg-white focus:border-apple-blue" placeholder="0,00" />
+              <label className="flex items-center gap-1.5 mt-2 cursor-pointer text-[11px] text-apple-gray">
+                <input type="checkbox" checked={importoIvato} onChange={(e) => setImportoIvato(e.target.checked)} className="w-3.5 h-3.5" />
+                <span>Importo IVA inclusa (22%)</span>
+              </label>
+              {importoIvato && importo && (
+                <p className="text-[10px] text-apple-gray mt-1">
+                  Imponibile: €{(parseFloat(importo) / 1.22).toFixed(2)} · IVA: €{(parseFloat(importo) - parseFloat(importo) / 1.22).toFixed(2)}
+                </p>
+              )}
             </div>
           </div>
           <div>
