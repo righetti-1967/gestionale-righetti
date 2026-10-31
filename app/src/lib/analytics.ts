@@ -113,9 +113,9 @@ export interface ReportAggregato {
   minutiLiberi: number;              // slot ancora disponibili
 
   // KPI Economia (nuovi)
-  totaleSpese: number;               // somma spese pagate nel periodo
-  margineLordo: number;              // incassi - spese
-  margineLordoPct: number;           // % margine su incassi
+  totaleSpese: number;
+  margineLordo: number;
+  margineLordoPct: number;
 }
 
 // ============================================================
