@@ -173,6 +173,41 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
     };
   }, [dataInizio, dataFine, soglieDebounced]);
 
+
+  // Carica report per ogni operatore
+  useEffect(() => {
+    if (!dataInizio || !dataFine) return;
+    let annullato = false;
+    async function caricaPerOperatori() {
+      setCaricandoOperatori(true);
+      try {
+        const { caricaAgendaConfig } = await import('../lib/agenda-config');
+        const config = await caricaAgendaConfig();
+        const operatori = config.operatori || [];
+        if (!annullato) setOperatoriConfig(operatori);
+
+        const results: Record<string, any> = {};
+        for (const op of operatori) {
+          try {
+            const r = await calcolaReportAggregato(dataInizio, dataFine, {
+              ...soglieDebounced,
+              operatore: op.id,
+            });
+            results[op.id] = r;
+          } catch (e) {
+            console.error('Errore report operatore', op.id, e);
+          }
+        }
+        if (!annullato) setReportPerOperatore(results);
+      } catch (e) {
+        console.error('Errore caricamento operatori:', e);
+      } finally {
+        if (!annullato) setCaricandoOperatori(false);
+      }
+    }
+    caricaPerOperatori();
+    return () => { annullato = true; };
+  }, [dataInizio, dataFine, soglieDebounced]);
   const clientiFiltrati = useMemo(() => {
     if (!ricerca.trim()) return clienti.slice(0, 20);
     const q = ricerca.toLowerCase();
