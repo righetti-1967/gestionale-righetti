@@ -36,7 +36,12 @@ function formatDataIT(iso: string): string {
 type Tab = 'singolo' | 'aggregato' | 'iva';
 type PresetPeriodo = 'settimana' | 'mese' | 'anno' | 'custom';
 
-export function Analytics() {
+interface AnalyticsProps {
+  onNavigate?: (page: string, params?: string) => void;
+}
+
+export function Analytics({ onNavigate }: AnalyticsProps) {
+
   const [tab, setTab] = useState<Tab>('singolo');
 
   const [toast, setToast] = useState<{ message: string; tipo: ToastTipo } | null>(null);
@@ -336,7 +341,7 @@ export function Analytics() {
             <ReportAggregatoView
               report={reportAggregato}
               onEsportaPdf={esportaPdfAggregato}
-            />
+             onNavigate={onNavigate} />
           ) : null}
         </div>
       )}
@@ -498,10 +503,23 @@ function ReportSingoloView({
 function ReportAggregatoView({
   report,
   onEsportaPdf,
+  onNavigate,
 }: {
   report: ReportAggregato;
   onEsportaPdf: () => void;
+  onNavigate?: (page: string, params?: string) => void;
 }) {
+
+  // Funzione per navigare a Clienti con filtro
+  function handleFiltroClienti(tipo: 'nuovi' | 'dormienti' | 'persi' | 'frequenza', soglia?: number) {
+    try {
+      sessionStorage.setItem('clienti_filtro', JSON.stringify({ tipo, soglia }));
+    } catch {}
+    if (onNavigate) {
+      onNavigate('clienti');
+    }
+  }
+
 
   // Soglie KPI Clienti (configurabili, salvate in localStorage)
   const [sogliaDormienti, setSogliaDormienti] = useState<number>(() => {
@@ -639,30 +657,38 @@ function ReportAggregatoView({
           </div>
         )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <KpiCard
-            label="Nuovi clienti"
-            value={String(report.nuoviClienti ?? 0)}
-            icon="🆕"
-            colore="green"
-          />
-          <KpiCard
-            label="Frequenza ritorno"
-            value={report.frequenzaRitornoMedia != null ? `${report.frequenzaRitornoMedia}gg` : '—'}
-            icon="🔄"
-            colore="blue"
-          />
-          <KpiCard
-            label="Dormienti (90gg+)"
-            value={String(report.clientiDormienti ?? 0)}
-            icon="😴"
-            colore="orange"
-          />
-          <KpiCard
-            label="Persi (180gg+)"
-            value={String(report.clientiPersi ?? 0)}
-            icon="🚨"
-            colore="orange"
-          />
+          <button onClick={() => handleFiltroClienti('nuovi')} className="text-left">
+            <KpiCard
+              label="Nuovi clienti"
+              value={String(report.nuoviClienti ?? 0)}
+              icon="🆕"
+              colore="green"
+            />
+          </button>
+          <button onClick={() => handleFiltroClienti('frequenza', sogliaFrequenzaAttesa)} className="text-left">
+            <KpiCard
+              label="Frequenza ritorno"
+              value={report.frequenzaRitornoMedia != null ? `${report.frequenzaRitornoMedia}gg` : '—'}
+              icon="🔄"
+              colore="blue"
+            />
+          </button>
+          <button onClick={() => handleFiltroClienti('dormienti', sogliaDormienti)} className="text-left">
+            <KpiCard
+              label="Dormienti (90gg+)"
+              value={String(report.clientiDormienti ?? 0)}
+              icon="😴"
+              colore="orange"
+            />
+          </button>
+          <button onClick={() => handleFiltroClienti('persi', sogliaPersi)} className="text-left">
+            <KpiCard
+              label="Persi (180gg+)"
+              value={String(report.clientiPersi ?? 0)}
+              icon="🚨"
+              colore="orange"
+            />
+          </button>
         </div>
       </div>
 
