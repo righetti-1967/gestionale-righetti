@@ -338,7 +338,7 @@ async def riepilogo_iva(
 
         # 1b. Scontrini (IVA a debito, solo se presenti)
         try:
-            scontrini = sb.table("scontrini").select("data, iva").eq("user_id", user_id).gte("data", f"{anno}-01-01").lte("data", f"{anno}-12-31").execute()
+            scontrini = sb.table("scontrini").select("data_emissione, iva_importo").eq("user_id", user_id).gte("data_emissione", f"{anno}-01-01").lte("data_emissione", f"{anno}-12-31").execute()
         except Exception:
             scontrini = type("obj", (), {"data": []})()
 
@@ -360,13 +360,13 @@ async def riepilogo_iva(
         for f in (fatture.data or []):
             k = chiave_periodo(f["data"])
             periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0})
-            periodi[k]["iva_debito"] += float(f.get("iva") or 0)
+            periodi[k]["iva_debito"] += float(f.get("iva_importo") or 0)
 
         for s in (scontrini.data or []):
-            if s.get("data") and s.get("iva") is not None:
-                k = chiave_periodo(s["data"])
+            if s.get("data_emissione") and s.get("iva_importo") is not None:
+                k = chiave_periodo(s["data_emissione"])
                 periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0})
-                periodi[k]["iva_debito"] += float(s.get("iva") or 0)
+                periodi[k]["iva_debito"] += float(s.get("iva_importo") or 0)
 
         for s in (spese.data or []):
             k = chiave_periodo(s["data"])
