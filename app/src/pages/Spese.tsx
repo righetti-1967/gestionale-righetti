@@ -376,7 +376,7 @@ function FormNuovaSpesa({
   const [showNuovaCategoria, setShowNuovaCategoria] = useState(false);
   const [nuovaCategoria, setNuovaCategoria] = useState('');
   const [tipo, setTipo] = useState<'una_tantum' | 'ricorrente'>('una_tantum');
-  const [ricorrenza, setRicorrenza] = useState<'mensile' | 'trimestrale' | 'semestrale' | 'annuale'>('mensile');
+  const [ricorrenza, setRicorrenza] = useState<'settimanale' | 'quindicinale' | 'mensile' | 'bimestrale' | 'trimestrale' | 'semestrale' | 'annuale'>('mensile');
   const [dataScadenza, setDataScadenza] = useState('');
   const [giornoScadenza, setGiornoScadenza] = useState<number>(1);
   const [mesiAnticipo, setMesiAnticipo] = useState<number>(12);
@@ -489,10 +489,13 @@ function FormNuovaSpesa({
               <div>
                 <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Ricorrenza</label>
                 <select value={ricorrenza} onChange={(e) => setRicorrenza(e.target.value as any)} className="w-full px-3 py-2 rounded-apple bg-white border border-purple-200 text-sm">
-                  <option value="mensile">Mensile</option>
-                  <option value="trimestrale">Trimestrale</option>
-                  <option value="semestrale">Semestrale</option>
-                  <option value="annuale">Annuale</option>
+                  <option value="settimanale">Settimanale (ogni 7gg)</option>
+                  <option value="quindicinale">Quindicinale (ogni 15gg)</option>
+                  <option value="mensile">Mensile (ogni mese)</option>
+                  <option value="bimestrale">Bimestrale (ogni 2 mesi)</option>
+                  <option value="trimestrale">Trimestrale (ogni 3 mesi)</option>
+                  <option value="semestrale">Semestrale (ogni 6 mesi)</option>
+                  <option value="annuale">Annuale (ogni anno)</option>
                 </select>
               </div>
               <div>

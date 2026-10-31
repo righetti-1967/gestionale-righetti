@@ -586,6 +586,28 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </p>
         </button>
 
+        {/* Card Spese & Scadenze */}
+        <button
+          onClick={() => onNavigate?.('spese')}
+          className="bg-white rounded-apple shadow-apple p-2.5 sm:p-4 text-left hover:shadow-apple-lg transition-all col-span-2"
+        >
+          <div className="flex items-start justify-between mb-2">
+            <span className="text-lg">💸</span>
+            <span className="text-[10px] text-apple-gray">Vai →</span>
+          </div>
+          <p className="text-xs text-apple-gray mb-1">Spese & Scadenze</p>
+          <div className="flex gap-4">
+            <div>
+              <p className="text-[10px] text-apple-gray">Mese</p>
+              <p className="text-base font-bold text-red-600">{formatEuro(kpiSpese?.totale_mese ?? 0)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-apple-gray">7 giorni</p>
+              <p className="text-base font-bold text-amber-600">{formatEuro(kpiSpese?.scadenze_prossimi_7gg?.totale ?? 0)}</p>
+            </div>
+          </div>
+        </button>
+        
         {/* Card Clienti Totali */}
         <button
           onClick={() => onNavigate?.('clienti')}
