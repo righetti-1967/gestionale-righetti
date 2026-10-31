@@ -71,6 +71,9 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
   const [operatoriConfig, setOperatoriConfig] = useState<Array<{id: string; label: string; colore: string}>>([]);
   const [reportPerOperatore, setReportPerOperatore] = useState<Record<string, any>>({});
   const [caricandoOperatori, setCaricandoOperatori] = useState(false);
+  const [periodoOccupazione, setPeriodoOccupazione] = useState<'settimana' | 'mese' | 'trimestre' | 'semestre' | 'anno' | 'custom'>('mese');
+  const [dataInizioOccupazione, setDataInizioOccupazione] = useState('');
+  const [dataFineOccupazione, setDataFineOccupazione] = useState('');
 
   // Singolo cliente
   const [clienti, setClienti] = useState<Cliente[]>([]);
@@ -174,9 +177,40 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
   }, [dataInizio, dataFine, soglieDebounced]);
 
 
+    // Calcola date periodo occupazione
+  function calcolaDatePeriodoOccupazione(periodo: string): { inizio: string; fine: string } {
+    const oggi = new Date();
+    const fine = oggi.toISOString().split('T')[0];
+    let inizio = fine;
+
+    if (periodo === 'settimana') {
+      const d = new Date(oggi);
+      d.setDate(d.getDate() - 7);
+      inizio = d.toISOString().split('T')[0];
+    } else if (periodo === 'mese') {
+      const d = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+      inizio = d.toISOString().split('T')[0];
+    } else if (periodo === 'trimestre') {
+      const d = new Date(oggi);
+      d.setMonth(d.getMonth() - 3);
+      inizio = d.toISOString().split('T')[0];
+    } else if (periodo === 'semestre') {
+      const d = new Date(oggi);
+      d.setMonth(d.getMonth() - 6);
+      inizio = d.toISOString().split('T')[0];
+    } else if (periodo === 'anno') {
+      inizio = `${oggi.getFullYear()}-01-01`;
+    } else if (periodo === 'custom') {
+      inizio = dataInizioOccupazione || fine;
+      return { inizio, fine: dataFineOccupazione || fine };
+    }
+    return { inizio, fine };
+  }
+
   // Carica report per ogni operatore
   useEffect(() => {
-    if (!dataInizio || !dataFine) return;
+    const { inizio, fine } = calcolaDatePeriodoOccupazione(periodoOccupazione);
+    if (!inizio || !fine) return;
     let annullato = false;
     async function caricaPerOperatori() {
       setCaricandoOperatori(true);
@@ -189,7 +223,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
         const results: Record<string, any> = {};
         for (const op of operatori) {
           try {
-            const r = await calcolaReportAggregato(dataInizio, dataFine, {
+            const r = await calcolaReportAggregato(inizio, fine, {
               ...soglieDebounced,
               operatore: op.id,
             });
@@ -207,7 +241,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
     }
     caricaPerOperatori();
     return () => { annullato = true; };
-  }, [dataInizio, dataFine, soglieDebounced]);
+  }, [periodoOccupazione, dataInizioOccupazione, dataFineOccupazione, soglieDebounced]);
   const clientiFiltrati = useMemo(() => {
     if (!ricerca.trim()) return clienti.slice(0, 20);
     const q = ricerca.toLowerCase();
@@ -422,6 +456,12 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
               setMostraSoglie={setMostraSoglie}
               operatoriConfig={operatoriConfig}
               reportPerOperatore={reportPerOperatore}
+              periodoOccupazione={periodoOccupazione}
+              setPeriodoOccupazione={setPeriodoOccupazione}
+              dataInizioOccupazione={dataInizioOccupazione}
+              setDataInizioOccupazione={setDataInizioOccupazione}
+              dataFineOccupazione={dataFineOccupazione}
+              setDataFineOccupazione={setDataFineOccupazione}
             />
           ) : null}
         </div>
@@ -595,6 +635,12 @@ function ReportAggregatoView({
   setMostraSoglie,
   operatoriConfig,
   reportPerOperatore,
+  periodoOccupazione,
+  setPeriodoOccupazione,
+  dataInizioOccupazione,
+  setDataInizioOccupazione,
+  dataFineOccupazione,
+  setDataFineOccupazione,
 }: {
   report: ReportAggregato;
   onEsportaPdf: () => void;
@@ -609,6 +655,12 @@ function ReportAggregatoView({
   setMostraSoglie: (v: boolean) => void;
   operatoriConfig: Array<{ id: string; label: string; colore: string }>;
   reportPerOperatore: Record<string, any>;
+  periodoOccupazione: 'settimana' | 'mese' | 'trimestre' | 'semestre' | 'anno' | 'custom';
+  setPeriodoOccupazione: (v: 'settimana' | 'mese' | 'trimestre' | 'semestre' | 'anno' | 'custom') => void;
+  dataInizioOccupazione: string;
+  setDataInizioOccupazione: (v: string) => void;
+  dataFineOccupazione: string;
+  setDataFineOccupazione: (v: string) => void;
 }) {
 
   // Funzione per aprire modale clienti filtrati
@@ -772,9 +824,57 @@ function ReportAggregatoView({
 
       {/* KPI Occupazione Agenda - per operatore */}
       <div>
-        <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
-          📅 Occupazione Agenda (per operatore)
-        </h3>
+        <div className="flex items-center justify-between mb-2 mt-2 flex-wrap gap-2">
+          <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide">
+            📅 Occupazione Agenda (per operatore)
+          </h3>
+          <div className="flex gap-1 bg-gray-100 rounded-apple p-1">
+            {([
+              { id: 'settimana', label: '📆 Settimana' },
+              { id: 'mese', label: '📅 Mese' },
+              { id: 'trimestre', label: '📊 Trimestre' },
+              { id: 'semestre', label: '📈 Semestre' },
+              { id: 'anno', label: '🗓️ Anno' },
+              { id: 'custom', label: '⚙️ Custom' },
+            ] as const).map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setPeriodoOccupazione(p.id)}
+                className={`px-2.5 py-1 rounded-apple text-[10px] font-semibold transition-all ${
+                  periodoOccupazione === p.id
+                    ? 'bg-white text-apple-darkgray shadow-sm'
+                    : 'text-apple-gray hover:text-apple-darkgray'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {periodoOccupazione === 'custom' && (
+          <div className="bg-white rounded-apple shadow-apple p-3 mb-3 flex gap-2 flex-wrap">
+            <div>
+              <label className="block text-[10px] text-apple-gray uppercase mb-1">Da</label>
+              <input
+                type="date"
+                value={dataInizioOccupazione}
+                onChange={(e) => setDataInizioOccupazione(e.target.value)}
+                className="px-2 py-1 rounded bg-gray-50 border border-gray-200 text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-apple-gray uppercase mb-1">A</label>
+              <input
+                type="date"
+                value={dataFineOccupazione}
+                onChange={(e) => setDataFineOccupazione(e.target.value)}
+                className="px-2 py-1 rounded bg-gray-50 border border-gray-200 text-xs"
+              />
+            </div>
+          </div>
+        )}
+
         {operatoriConfig.length === 0 ? (
           <div className="bg-white rounded-apple shadow-apple p-4 text-center text-xs text-apple-gray">
             Nessun operatore configurato
