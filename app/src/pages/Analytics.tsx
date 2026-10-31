@@ -726,6 +726,33 @@ function ReportAggregatoView({
         </div>
       </div>
 
+      {/* KPI Occupazione Agenda */}
+      <div>
+        <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
+          📅 Occupazione Agenda
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <KpiCard
+            label="Tasso occupazione"
+            value={`${report.tassoOccupazione ?? 0}%`}
+            icon="📊"
+            colore="purple"
+          />
+          <KpiCard
+            label="Ore occupate"
+            value={`${Math.round((report.minutiOccupati || 0) / 60)}h`}
+            icon="⏱️"
+            colore="blue"
+          />
+          <KpiCard
+            label="Ore libere"
+            value={`${Math.round((report.minutiLiberi || 0) / 60)}h`}
+            icon="🕐"
+            colore="green"
+          />
+        </div>
+      </div>
+
       {/* Ripartizione */}
       <div className="bg-white rounded-apple shadow-apple p-4 sm:p-6">
         <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-3">
