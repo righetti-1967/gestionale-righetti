@@ -316,6 +316,7 @@ export async function calcolaReportAggregato(
   opzioni?: {
     sogliaDormienti?: number;
     sogliaPersi?: number;
+    operatore?: string;
   }
 ): Promise<ReportAggregato> {
   const sogliaDormienti = opzioni?.sogliaDormienti ?? 90;
@@ -501,13 +502,19 @@ export async function calcolaReportAggregato(
   const minutiDisponibili = giorniLavorativiNelPeriodo * minutiAlGiorno;
 
   // Carica appuntamenti del periodo (esclusi blocchi)
-  const resAppuntamenti = await supabase
+  let queryAppuntamenti = supabase
     .from('appuntamenti')
-    .select('durata_minuti, is_blocco, stato')
+    .select('durata_minuti, is_blocco, stato, operatore')
     .gte('data', dataInizio)
     .lte('data', dataFine)
     .neq('stato', 'cancellato')
     .neq('is_blocco', true);
+
+  if (opzioni?.operatore) {
+    queryAppuntamenti = queryAppuntamenti.eq('operatore', opzioni.operatore);
+  }
+
+  const resAppuntamenti = await queryAppuntamenti;
 
   const minutiOccupati = (resAppuntamenti.data || []).reduce(
     (sum: number, a: any) => sum + Number(a.durata_minuti || 0),

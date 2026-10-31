@@ -68,6 +68,9 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
   }, [sogliaDormienti, sogliaPersi, sogliaFrequenzaAttesa]);
 
   const [mostraSoglie, setMostraSoglie] = useState(false);
+  const [operatoriConfig, setOperatoriConfig] = useState<Array<{id: string; label: string; colore: string}>>([]);
+  const [reportPerOperatore, setReportPerOperatore] = useState<Record<string, any>>({});
+  const [caricandoOperatori, setCaricandoOperatori] = useState(false);
 
   // Singolo cliente
   const [clienti, setClienti] = useState<Cliente[]>([]);
@@ -382,6 +385,8 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
               setSogliaFrequenzaAttesa={setSogliaFrequenzaAttesa}
               mostraSoglie={mostraSoglie}
               setMostraSoglie={setMostraSoglie}
+              operatoriConfig={operatoriConfig}
+              reportPerOperatore={reportPerOperatore}
             />
           ) : null}
         </div>
@@ -553,6 +558,8 @@ function ReportAggregatoView({
   setSogliaFrequenzaAttesa,
   mostraSoglie,
   setMostraSoglie,
+  operatoriConfig,
+  reportPerOperatore,
 }: {
   report: ReportAggregato;
   onEsportaPdf: () => void;
@@ -565,6 +572,8 @@ function ReportAggregatoView({
   setSogliaFrequenzaAttesa: (v: number) => void;
   mostraSoglie: boolean;
   setMostraSoglie: (v: boolean) => void;
+  operatoriConfig: Array<{ id: string; label: string; colore: string }>;
+  reportPerOperatore: Record<string, any>;
 }) {
 
   // Funzione per aprire modale clienti filtrati
@@ -726,31 +735,49 @@ function ReportAggregatoView({
         </div>
       </div>
 
-      {/* KPI Occupazione Agenda */}
+      {/* KPI Occupazione Agenda - per operatore */}
       <div>
         <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
-          📅 Occupazione Agenda
+          📅 Occupazione Agenda (per operatore)
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <KpiCard
-            label="Tasso occupazione"
-            value={`${report.tassoOccupazione ?? 0}%`}
-            icon="📊"
-            colore="purple"
-          />
-          <KpiCard
-            label="Ore occupate"
-            value={`${Math.round((report.minutiOccupati || 0) / 60)}h`}
-            icon="⏱️"
-            colore="blue"
-          />
-          <KpiCard
-            label="Ore libere"
-            value={`${Math.round((report.minutiLiberi || 0) / 60)}h`}
-            icon="🕐"
-            colore="green"
-          />
-        </div>
+        {operatoriConfig.length === 0 ? (
+          <div className="bg-white rounded-apple shadow-apple p-4 text-center text-xs text-apple-gray">
+            Nessun operatore configurato
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {operatoriConfig.map((op) => {
+              const r = reportPerOperatore[op.id];
+              if (!r) return null;
+              return (
+                <div key={op.id} className="bg-white rounded-apple shadow-apple p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-bold text-apple-darkgray">
+                      👤 {op.label}
+                    </h4>
+                    <span className="text-xs text-apple-gray">
+                      {r.tassoOccupazione ?? 0}% occupazione
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <p className="text-apple-gray">Tasso</p>
+                      <p className="font-semibold text-purple-700">{r.tassoOccupazione ?? 0}%</p>
+                    </div>
+                    <div>
+                      <p className="text-apple-gray">Ore occupate</p>
+                      <p className="font-semibold text-blue-700">{Math.round((r.minutiOccupati || 0) / 60)}h</p>
+                    </div>
+                    <div>
+                      <p className="text-apple-gray">Ore libere</p>
+                      <p className="font-semibold text-green-700">{Math.round((r.minutiLiberi || 0) / 60)}h</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Ripartizione */}
