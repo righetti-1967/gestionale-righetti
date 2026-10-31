@@ -584,7 +584,7 @@ function ReportAggregatoView({
             label="Persi (180gg+)"
             value={String(report.clientiPersi ?? 0)}
             icon="🚨"
-            colore="red"
+            colore="orange"
           />
         </div>
       </div>
