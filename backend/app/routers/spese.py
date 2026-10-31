@@ -74,15 +74,17 @@ def _calcola_data_scadenza(data_base: date, giorno_scadenza: int | None, mesi_av
     return d
 
 
-def _calcola_step_mesi(ricorrenza: str) -> int:
-    """Ritorna quanti mesi avanzare per ogni ricorrenza."""
+def _calcola_step_giorni(ricorrenza: str) -> int:
+    """Ritorna quanti giorni avanzare per ogni ricorrenza."""
     return {
-        "mensile": 1,
-        "bimestrale": 2,
-        "trimestrale": 3,
-        "semestrale": 6,
-        "annuale": 12,
-    }.get(ricorrenza, 1)
+        "settimanale": 7,
+        "quindicinale": 15,
+        "mensile": 30,  # approssimato, meglio usare mesi
+        "bimestrale": 60,
+        "trimestrale": 90,
+        "semestrale": 180,
+        "annuale": 365,
+    }.get(ricorrenza, 30)
 
 
 # ============================================================================
@@ -230,6 +232,12 @@ async def kpi_spese(
         res_mese = sb.table("spese").select("importo").eq("user_id", user_id).gte("data", inizio_mese.isoformat()).lte("data", fine_mese.isoformat()).execute()
         totale_mese = sum(float(s.get("importo") or 0) for s in (res_mese.data or []))
 
+        # Scadenze prossimi 7 giorni (non pagate)
+        tra_7 = oggi + timedelta(days=7)
+        res_scadenze_7 = sb.table("spese").select("importo").eq("user_id", user_id).eq("pagata", False).not_.is_("data_scadenza", "null").gte("data_scadenza", oggi.isoformat()).lte("data_scadenza", tra_7.isoformat()).execute()
+        totale_scadenze_7gg = sum(float(s.get("importo") or 0) for s in (res_scadenze_7.data or []))
+        n_scadenze_7gg = len(res_scadenze_7.data or [])
+
         # Scadenze prossimi 30 giorni (non pagate)
         tra_30 = oggi + timedelta(days=30)
         res_scadenze = sb.table("spese").select("importo").eq("user_id", user_id).eq("pagata", False).not_.is_("data_scadenza", "null").gte("data_scadenza", oggi.isoformat()).lte("data_scadenza", tra_30.isoformat()).execute()
@@ -245,6 +253,10 @@ async def kpi_spese(
             "success": True,
             "mese": inizio_mese.strftime("%Y-%m"),
             "totale_mese": round(totale_mese, 2),
+            "scadenze_prossimi_7gg": {
+                "totale": round(totale_scadenze_7gg, 2),
+                "numero": n_scadenze_7gg,
+            },
             "scadenze_prossimi_30gg": {
                 "totale": round(totale_scadenze_30gg, 2),
                 "numero": n_scadenze_30gg,
