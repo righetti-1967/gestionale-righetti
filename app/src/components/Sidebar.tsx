@@ -33,6 +33,7 @@ const menuItems: MenuItem[] = [
   { id: 'agenda', label: 'Agenda', icon: '📅' },
   { id: 'magazzino', label: 'Magazzino', icon: '🏪' },
   { id: 'ordini', label: 'Ordini', icon: '🛒' },
+  { id: 'spese', label: 'Spese & Scadenze', icon: '💸' },
 ];
 
 export function Sidebar({ currentPage, onNavigate, mobileOpen, onCloseMobile }: SidebarProps) {

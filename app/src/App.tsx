@@ -8,6 +8,7 @@ import { NotificaConfermaCliente } from './components/NotificaConfermaCliente';
 import { Dashboard } from './pages/Dashboard';
 import { Clienti } from './pages/Clienti';
 import { Fatture } from './pages/Fatture';
+import { Spese } from './pages/Spese';
 import { Servizi } from './pages/Servizi';
 import { DDT } from './pages/DDT';
 import { Magazzino } from './pages/Magazzino';
@@ -187,6 +188,7 @@ function AppGestionale() {
           {currentPage === 'agenda' && <Agenda onNavigate={setCurrentPage} />}
           {currentPage === 'clienti' && <Clienti onNavigate={setCurrentPage} />}
           {currentPage === 'fatture' && <Fatture />}
+          {currentPage === 'spese' && <Spese />}
           {currentPage === 'ddt' && <DDT />}
           {currentPage === 'magazzino' && <Magazzino />}
           {currentPage === 'ordini' && <Ordini />}
