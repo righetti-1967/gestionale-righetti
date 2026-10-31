@@ -513,8 +513,12 @@ async def import_xml_fatture(
             try:
                 with zipfile.ZipFile(io.BytesIO(content)) as z:
                     for name in z.namelist():
-                        if name.lower().endswith('.xml'):
-                            xml_files.append((name, z.read(name)))
+                        if not name.lower().endswith('.xml'):
+                            continue
+                        # Salta i file di sistema macOS
+                        if name.startswith('__MACOSX/') or '/._' in name or name.startswith('._'):
+                            continue
+                        xml_files.append((name, z.read(name)))
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Errore lettura ZIP: {e}")
         elif filename.lower().endswith('.xml'):
