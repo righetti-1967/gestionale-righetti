@@ -90,6 +90,17 @@ def _calcola_step_giorni(ricorrenza: str) -> int:
     }.get(ricorrenza, 30)
 
 
+def _calcola_step_mesi(ricorrenza: str) -> int:
+    """Ritorna quanti mesi avanzare per ogni ricorrenza (per generazione scadenze)."""
+    return {
+        "mensile": 1,
+        "bimestrale": 2,
+        "trimestrale": 3,
+        "semestrale": 6,
+        "annuale": 12,
+    }.get(ricorrenza, 1)
+
+
 # ============================================================================
 # ENDPOINT
 # ============================================================================
