@@ -204,6 +204,16 @@ export function Analytics() {
         >
           👥 Aggregato Periodo
         </button>
+        <button
+          onClick={() => setTab('iva')}
+          className={`px-5 py-2 rounded-apple text-sm font-semibold transition-all ${
+            tab === 'iva'
+              ? 'bg-white text-apple-darkgray shadow-apple'
+              : 'text-apple-gray hover:text-apple-darkgray'
+          }`}
+        >
+          🧾 IVA a Confronto
+        </button>
       </div>
 
       {/* === TAB SINGOLO === */}
