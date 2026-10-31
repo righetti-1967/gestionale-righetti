@@ -14,6 +14,7 @@ import { getClienti, type Cliente } from '../lib/clienti';
 import { generaPdfReportCliente, generaPdfReportAggregato } from '../lib/pdfAnalytics';
 import { formatEuro } from '../lib/fatture';
 import { Toast, type ToastTipo } from '../components/Toast';
+import { supabase } from '../lib/supabase';
 
 // ============================================================
 // HELPER: formattazione date in italiano
@@ -32,7 +33,7 @@ function formatDataIT(iso: string): string {
   }
 }
 
-type Tab = 'singolo' | 'aggregato';
+type Tab = 'singolo' | 'aggregato' | 'iva';
 type PresetPeriodo = 'settimana' | 'mese' | 'anno' | 'custom';
 
 export function Analytics() {
@@ -267,6 +268,7 @@ export function Analytics() {
       {tab === 'aggregato' && (
         <div className="space-y-4">
           {/* Filtri periodo */}
+
           <div className="bg-white rounded-apple shadow-apple p-4 sm:p-6">
             <div className="flex flex-wrap gap-2 mb-4">
               {([
@@ -327,6 +329,9 @@ export function Analytics() {
           ) : null}
         </div>
       )}
+
+      {/* === TAB IVA === */}
+      {tab === 'iva' && <TabIvaConfronto />}
 
       {toast && (
         <Toast
@@ -759,6 +764,147 @@ function RankingClienti({ clienti }: { clienti: ClienteRanking[] }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ============================================================================
+// TAB IVA A CONFRONTO
+// ============================================================================
+
+function TabIvaConfronto() {
+  const [anno, setAnno] = useState(new Date().getFullYear());
+  const [periodicita, setPeriodicita] = useState<'mensile' | 'trimestrale'>('mensile');
+  const [dati, setDati] = useState<Array<{
+    periodo: string;
+    iva_debito: number;
+    iva_credito: number;
+    saldo: number;
+    da_versare: boolean;
+  }>>([]);
+  const [loading, setLoading] = useState(false);
+  const [errore, setErrore] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function carica() {
+      setLoading(true);
+      setErrore(null);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const res = await fetch(
+          `https://gestionale-righetti-production.up.railway.app/api/spese/iva-riepilogo?user_id=${user.id}&anno=${anno}&periodicita=${periodicita}`
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        setDati(json.periodi || []);
+      } catch (e: any) {
+        setErrore(e?.message || 'Errore caricamento');
+      } finally {
+        setLoading(false);
+      }
+    }
+    carica();
+  }, [anno, periodicita]);
+
+  const totali = dati.reduce(
+    (acc, d) => ({
+      iva_debito: acc.iva_debito + d.iva_debito,
+      iva_credito: acc.iva_credito + d.iva_credito,
+      saldo: acc.saldo + d.saldo,
+    }),
+    { iva_debito: 0, iva_credito: 0, saldo: 0 }
+  );
+
+  function formatEuro(n: number): string {
+    return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-apple shadow-apple p-4 sm:p-6">
+        <div className="flex flex-wrap gap-3 items-center">
+          <div>
+            <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Anno</label>
+            <select
+              value={anno}
+              onChange={(e) => setAnno(parseInt(e.target.value))}
+              className="px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
+            >
+              {[2024, 2025, 2026, 2027].map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Periodicità</label>
+            <select
+              value={periodicita}
+              onChange={(e) => setPeriodicita(e.target.value as 'mensile' | 'trimestrale')}
+              className="px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
+            >
+              <option value="mensile">Mensile</option>
+              <option value="trimestrale">Trimestrale</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-apple shadow-apple overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center text-sm text-apple-gray">Caricamento…</div>
+        ) : errore ? (
+          <div className="p-8 text-center text-sm text-red-600">❌ {errore}</div>
+        ) : dati.length === 0 ? (
+          <div className="p-8 text-center text-sm text-apple-gray">
+            📭 Nessun dato IVA per il periodo selezionato
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-apple-lightgray/60 border-b border-gray-200/60">
+              <tr>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Periodo</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase">IVA Debito</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase">IVA Credito</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Saldo</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Stato</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dati.map((d) => (
+                <tr key={d.periodo} className="border-b border-gray-100 last:border-0 hover:bg-apple-lightgray/40">
+                  <td className="px-4 py-3 font-medium text-apple-darkgray">{d.periodo}</td>
+                  <td className="px-4 py-3 text-right text-green-700 font-semibold">{formatEuro(d.iva_debito)}</td>
+                  <td className="px-4 py-3 text-right text-blue-700 font-semibold">{formatEuro(d.iva_credito)}</td>
+                  <td className={`px-4 py-3 text-right font-bold ${d.saldo > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {formatEuro(d.saldo)}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`text-[10px] px-2 py-1 rounded font-semibold ${
+                      d.da_versare
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-green-100 text-green-700'
+                    }`}>
+                      {d.da_versare ? '💸 Da versare' : '✅ A credito'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot className="bg-apple-lightgray/80 border-t-2 border-gray-300 font-bold">
+              <tr>
+                <td className="px-4 py-3 text-apple-darkgray uppercase text-xs">Totale</td>
+                <td className="px-4 py-3 text-right text-green-700">{formatEuro(totali.iva_debito)}</td>
+                <td className="px-4 py-3 text-right text-blue-700">{formatEuro(totali.iva_credito)}</td>
+                <td className={`px-4 py-3 text-right ${totali.saldo > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {formatEuro(totali.saldo)}
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
