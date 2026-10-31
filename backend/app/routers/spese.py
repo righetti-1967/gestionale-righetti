@@ -3,11 +3,14 @@ Router Spese e Scadenze.
 CRUD spese + generazione automatica scadenze ricorrenti.
 """
 import logging
+import xmltodict
+import zipfile
+import io
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from pydantic import BaseModel, Field
 
 from app.services.supabase_client import get_supabase
@@ -395,4 +398,216 @@ async def riepilogo_iva(
         }
     except Exception as e:
         logger.exception("Errore riepilogo IVA")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# IMPORT FATTURE DI ACQUISTO DA XML (FatturaPA)
+# ============================================================================
+
+def _estrai_dati_fatturapa(xml_dict: dict) -> dict | None:
+    """Estrae i dati chiave da un XML FatturaPA (fattura di acquisto).
+    Ritorna None se non è una fattura valida."""
+    try:
+        # La struttura FatturaPA ha radice "p:FatturaElettronica" o "FatturaElettronica"
+        root = xml_dict.get("p:FatturaElettronica") or xml_dict.get("FatturaElettronica")
+        if not root:
+            return None
+
+        header = root.get("FatturaElettronicaHeader", {})
+        body = root.get("FatturaElettronicaBody", {})
+        
+        # Se body è una lista, prendi il primo (fatture multiple nello stesso file sono rare)
+        if isinstance(body, list):
+            body = body[0] if body else {}
+
+        # Dati cedente/prestatore (fornitore)
+        cedente = header.get("CedentePrestatore", {})
+        dati_anagrafici_ced = cedente.get("DatiAnagrafici", {})
+        anagrafica_ced = dati_anagrafici_ced.get("Anagrafica", {})
+        id_fiscale_iva_ced = dati_anagrafici_ced.get("IdFiscaleIVA", {})
+        
+        # Fornitore: denominazione o nome+cognome
+        denominazione = anagrafica_ced.get("Denominazione")
+        if not denominazione:
+            nome = anagrafica_ced.get("Nome", "")
+            cognome = anagrafica_ced.get("Cognome", "")
+            denominazione = f"{nome} {cognome}".strip() or "Fornitore sconosciuto"
+        
+        partita_iva = id_fiscale_iva_ced.get("IdCodice", "")
+
+        # Dati documento
+        dati_generali = body.get("DatiGenerali", {}).get("DatiGeneraliDocumento", {})
+        tipo_doc = dati_generali.get("TipoDocumento", "TD01")
+        numero = dati_generali.get("Numero", "")
+        data_str = dati_generali.get("Data", "")  # YYYY-MM-DD
+        importo_totale = float(dati_generali.get("ImportoTotaleDocumento", 0) or 0)
+
+        # Se è una nota di credito (TD04) o simile, salta (per ora)
+        if tipo_doc in ("TD04", "TD05"):
+            return None
+
+        # Calcola imponibile e IVA dalle righe
+        totale_imponibile = 0.0
+        totale_iva = 0.0
+        riepiloghi = body.get("DatiBeniServizi", {}).get("DatiRiepilogo", [])
+        if isinstance(riepiloghi, dict):
+            riepiloghi = [riepiloghi]
+        for r in riepiloghi:
+            totale_imponibile += float(r.get("ImponibileImporto", 0) or 0)
+            totale_iva += float(r.get("Imposta", 0) or 0)
+
+        # Se l'importo totale è 0, usa imponibile + iva
+        if importo_totale == 0:
+            importo_totale = totale_imponibile + totale_iva
+
+        # Scadenza pagamento (se presente)
+        data_scadenza = None
+        pagamenti = body.get("DatiPagamento", [])
+        if isinstance(pagamenti, dict):
+            pagamenti = [pagamenti]
+        for p in pagamenti:
+            dettagli = p.get("DettaglioPagamento", [])
+            if isinstance(dettagli, dict):
+                dettagli = [dettagli]
+            for d in dettagli:
+                if d.get("DataScadenzaPagamento"):
+                    data_scadenza = d["DataScadenzaPagamento"]
+                    break
+            if data_scadenza:
+                break
+
+        return {
+            "fornitore_denominazione": denominazione,
+            "fornitore_partita_iva": partita_iva,
+            "numero_fattura": numero,
+            "data": data_str,
+            "importo_totale": round(importo_totale, 2),
+            "imponibile": round(totale_imponibile, 2),
+            "iva": round(totale_iva, 2),
+            "data_scadenza": data_scadenza,
+            "tipo_documento": tipo_doc,
+        }
+    except Exception as e:
+        logger.error("Errore parsing FatturaPA: %s", e)
+        return None
+
+
+@router.post("/import-xml")
+async def import_xml_fatture(
+    file: UploadFile = File(...),
+    user_id: str = Query(...),
+):
+    """Importa fatture di acquisto da file XML (FatturaPA) o ZIP contenente XML.
+    Crea record in `fatture_acquisto` e `spese` collegate."""
+    try:
+        sb = get_supabase()
+        
+        # Leggi il file
+        content = await file.read()
+        filename = file.filename or ""
+        xml_files: list[tuple[str, bytes]] = []
+
+        # Se è uno ZIP, estrai tutti gli XML
+        if filename.lower().endswith('.zip'):
+            try:
+                with zipfile.ZipFile(io.BytesIO(content)) as z:
+                    for name in z.namelist():
+                        if name.lower().endswith('.xml'):
+                            xml_files.append((name, z.read(name)))
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Errore lettura ZIP: {e}")
+        elif filename.lower().endswith('.xml'):
+            xml_files.append((filename, content))
+        else:
+            raise HTTPException(status_code=400, detail="File deve essere .xml o .zip")
+
+        if not xml_files:
+            raise HTTPException(status_code=400, detail="Nessun file XML trovato")
+
+        importati = 0
+        saltati = 0
+        errori = []
+
+        for fname, xml_bytes in xml_files:
+            try:
+                xml_dict = xmltodict.parse(xml_bytes)
+                dati = _estrai_dati_fatturapa(xml_dict)
+                if not dati:
+                    saltati += 1
+                    continue
+
+                # Cerca fornitore per P.IVA, se non esiste lo crea
+                fornitore_id = None
+                if dati["fornitore_partita_iva"]:
+                    res_f = sb.table("fornitori").select("id").eq("user_id", user_id).eq("partita_iva", dati["fornitore_partita_iva"]).execute()
+                    if res_f.data and len(res_f.data) > 0:
+                        fornitore_id = res_f.data[0]["id"]
+                    else:
+                        # Crea fornitore
+                        res_new = sb.table("fornitori").insert({
+                            "user_id": user_id,
+                            "ragione_sociale": dati["fornitore_denominazione"],
+                            "partita_iva": dati["fornitore_partita_iva"],
+                        }).execute()
+                        if res_new.data:
+                            fornitore_id = res_new.data[0]["id"]
+
+                # Verifica se la fattura esiste già (per numero + fornitore + data)
+                res_esistente = sb.table("fatture_acquisto").select("id").eq("user_id", user_id).eq("numero_fattura", dati["numero_fattura"]).eq("data", dati["data"]).execute()
+                if res_esistente.data and len(res_esistente.data) > 0:
+                    saltati += 1
+                    continue
+
+                # Inserisci fattura di acquisto
+                res_fatt = sb.table("fatture_acquisto").insert({
+                    "user_id": user_id,
+                    "fornitore_id": fornitore_id,
+                    "numero_fattura": dati["numero_fattura"],
+                    "data": dati["data"],
+                    "data_scadenza": dati["data_scadenza"],
+                    "imponibile": dati["imponibile"],
+                    "iva": dati["iva"],
+                    "totale": dati["importo_totale"],
+                    "pagata": False,
+                    "note": f"Importata da {fname}",
+                }).execute()
+
+                if res_fatt.data:
+                    fatt_id = res_fatt.data[0]["id"]
+                    # Crea spesa collegata
+                    sb.table("spese").insert({
+                        "user_id": user_id,
+                        "data": dati["data"],
+                        "descrizione": f"Fattura {dati['numero_fattura']} - {dati['fornitore_denominazione']}",
+                        "importo": dati["importo_totale"],
+                        "importo_ivato": True,
+                        "imponibile": dati["imponibile"],
+                        "iva": dati["iva"],
+                        "categoria": "Fornitori",
+                        "fornitore_id": fornitore_id,
+                        "tipo": "una_tantum",
+                        "data_scadenza": dati["data_scadenza"],
+                        "pagata": False,
+                        "fattura_acquisto_id": fatt_id,
+                        "note": f"Importata da XML: {fname}",
+                    }).execute()
+                    importati += 1
+
+            except Exception as e:
+                errori.append(f"{fname}: {e}")
+                logger.error("Errore import %s: %s", fname, e)
+
+        return {
+            "success": True,
+            "file_totali": len(xml_files),
+            "importati": importati,
+            "saltati": saltati,
+            "errori": errori[:10],  # max 10 errori mostrati
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Errore import XML")
         raise HTTPException(status_code=500, detail=str(e))

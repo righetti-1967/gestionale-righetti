@@ -8,3 +8,4 @@ requests==2.32.3
 supabase==2.10.0
 httpx==0.27.2
 python-dateutil==2.9.0.post0
+xmltodict==0.13.0
