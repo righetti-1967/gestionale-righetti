@@ -34,6 +34,7 @@ class SpesaBase(BaseModel):
     note: Optional[str] = None
     ricorrenza_attiva: bool = False
     giorno_scadenza: Optional[int] = None
+    mesi_anticipo: Optional[int] = 12
 
 
 class SpesaCreate(SpesaBase):
@@ -55,6 +56,7 @@ class SpesaUpdate(BaseModel):
     note: Optional[str] = None
     ricorrenza_attiva: Optional[bool] = None
     giorno_scadenza: Optional[int] = None
+    mesi_anticipo: Optional[int] = 12
 
 
 # ============================================================================
@@ -144,7 +146,8 @@ async def crea_spesa(spesa: SpesaCreate):
         ):
             step_mesi = _calcola_step_mesi(spesa.ricorrenza)
             data_base = datetime.strptime(spesa.data_scadenza, "%Y-%m-%d").date()
-            n_mesi = 12 // step_mesi  # 12 mesi totali
+            mesi_totali = spesa.mesi_anticipo or 12
+            n_mesi = mesi_totali // step_mesi
 
             for i in range(1, n_mesi + 1):
                 data_futura = _calcola_data_scadenza(data_base, spesa.giorno_scadenza, i * step_mesi)
@@ -257,4 +260,31 @@ async def kpi_spese(
         }
     except Exception as e:
         logger.exception("Errore KPI spese")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# CATEGORIE
+# ============================================================================
+
+class CategoriaCreate(BaseModel):
+    user_id: str
+    nome: str
+
+@router.get("/categorie")
+async def lista_categorie(user_id: str = Query(...)):
+    try:
+        sb = get_supabase()
+        res = sb.table("categorie_spese").select("id, nome").eq("user_id", user_id).order("nome").execute()
+        return {"success": True, "categorie": res.data or []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/categorie")
+async def crea_categoria(cat: CategoriaCreate):
+    try:
+        sb = get_supabase()
+        res = sb.table("categorie_spese").insert({"user_id": cat.user_id, "nome": cat.nome.strip()}).execute()
+        return {"success": True, "categoria": res.data[0]}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
