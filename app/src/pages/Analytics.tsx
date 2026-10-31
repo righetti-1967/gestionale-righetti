@@ -47,6 +47,28 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
 
   const [toast, setToast] = useState<{ message: string; tipo: ToastTipo } | null>(null);
 
+  // Soglie KPI Clienti (configurabili, salvate in localStorage)
+  const [sogliaDormienti, setSogliaDormienti] = useState<number>(() => {
+    const saved = localStorage.getItem('kpi_soglia_dormienti');
+    return saved ? parseInt(saved) : 90;
+  });
+  const [sogliaPersi, setSogliaPersi] = useState<number>(() => {
+    const saved = localStorage.getItem('kpi_soglia_persi');
+    return saved ? parseInt(saved) : 180;
+  });
+  const [sogliaFrequenzaAttesa, setSogliaFrequenzaAttesa] = useState<number>(() => {
+    const saved = localStorage.getItem('kpi_soglia_frequenza');
+    return saved ? parseInt(saved) : 45;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('kpi_soglia_dormienti', String(sogliaDormienti));
+    localStorage.setItem('kpi_soglia_persi', String(sogliaPersi));
+    localStorage.setItem('kpi_soglia_frequenza', String(sogliaFrequenzaAttesa));
+  }, [sogliaDormienti, sogliaPersi, sogliaFrequenzaAttesa]);
+
+  const [mostraSoglie, setMostraSoglie] = useState(false);
+
   // Singolo cliente
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [ricerca, setRicerca] = useState('');
@@ -123,7 +145,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
     async function carica() {
       try {
         setCaricandoAggregato(true);
-        const r = await calcolaReportAggregato(dataInizio, dataFine);
+        const r = await calcolaReportAggregato(dataInizio, dataFine, { sogliaDormienti, sogliaPersi });
         if (!annullato) setReportAggregato(r);
       } catch (err: any) {
         if (!annullato) {
@@ -137,7 +159,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
     return () => {
       annullato = true;
     };
-  }, [dataInizio, dataFine]);
+  }, [dataInizio, dataFine, sogliaDormienti, sogliaPersi]);
 
   const clientiFiltrati = useMemo(() => {
     if (!ricerca.trim()) return clienti.slice(0, 20);
@@ -342,7 +364,16 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
             <ReportAggregatoView
               report={reportAggregato}
               onEsportaPdf={esportaPdfAggregato}
-             onNavigate={onNavigate} />
+              onNavigate={onNavigate}
+              sogliaDormienti={sogliaDormienti}
+              sogliaPersi={sogliaPersi}
+              sogliaFrequenzaAttesa={sogliaFrequenzaAttesa}
+              setSogliaDormienti={setSogliaDormienti}
+              setSogliaPersi={setSogliaPersi}
+              setSogliaFrequenzaAttesa={setSogliaFrequenzaAttesa}
+              mostraSoglie={mostraSoglie}
+              setMostraSoglie={setMostraSoglie}
+            />
           ) : null}
         </div>
       )}
@@ -505,10 +536,26 @@ function ReportAggregatoView({
   report,
   onEsportaPdf,
   onNavigate,
+  sogliaDormienti,
+  sogliaPersi,
+  sogliaFrequenzaAttesa,
+  setSogliaDormienti,
+  setSogliaPersi,
+  setSogliaFrequenzaAttesa,
+  mostraSoglie,
+  setMostraSoglie,
 }: {
   report: ReportAggregato;
   onEsportaPdf: () => void;
   onNavigate?: (page: string, params?: string) => void;
+  sogliaDormienti: number;
+  sogliaPersi: number;
+  sogliaFrequenzaAttesa: number;
+  setSogliaDormienti: (v: number) => void;
+  setSogliaPersi: (v: number) => void;
+  setSogliaFrequenzaAttesa: (v: number) => void;
+  mostraSoglie: boolean;
+  setMostraSoglie: (v: boolean) => void;
 }) {
 
   // Funzione per aprire modale clienti filtrati
@@ -516,30 +563,9 @@ function ReportAggregatoView({
     setModaleFiltro({ tipo, soglia });
   }
 
-
-  // Soglie KPI Clienti (configurabili, salvate in localStorage)
-  const [sogliaDormienti, setSogliaDormienti] = useState<number>(() => {
-    const saved = localStorage.getItem('kpi_soglia_dormienti');
-    return saved ? parseInt(saved) : 90;
-  });
-  const [sogliaPersi, setSogliaPersi] = useState<number>(() => {
-    const saved = localStorage.getItem('kpi_soglia_persi');
-    return saved ? parseInt(saved) : 180;
-  });
-  const [sogliaFrequenzaAttesa, setSogliaFrequenzaAttesa] = useState<number>(() => {
-    const saved = localStorage.getItem('kpi_soglia_frequenza');
-    return saved ? parseInt(saved) : 45;
-  });
-  const [mostraSoglie, setMostraSoglie] = useState(false);
   const [modaleFiltro, setModaleFiltro] = useState<{ tipo: 'nuovi' | 'dormienti' | 'persi' | 'frequenza'; soglia?: number } | null>(null);
   const [clienteDaContattare, setClienteDaContattare] = useState<Cliente | null>(null);
   const [toastInvia, setToastInvia] = useState<string | null>(null);
-
-  useEffect(() => {
-    localStorage.setItem('kpi_soglia_dormienti', String(sogliaDormienti));
-    localStorage.setItem('kpi_soglia_persi', String(sogliaPersi));
-    localStorage.setItem('kpi_soglia_frequenza', String(sogliaFrequenzaAttesa));
-  }, [sogliaDormienti, sogliaPersi, sogliaFrequenzaAttesa]);
 
   return (
     <div className="space-y-4">
