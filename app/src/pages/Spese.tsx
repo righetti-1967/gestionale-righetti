@@ -162,20 +162,41 @@ export function Spese() {
   }
 
   async function togglePagata(spesa: Spesa) {
+    const nuovoStato = !spesa.pagata;
+    const nuovaData = nuovoStato ? new Date().toISOString().split('T')[0] : null;
+
+    // 1. Aggiorna SUBITO lo state locale (UI reattiva immediata)
+    setSpese((prev) =>
+      prev.map((s) =>
+        s.id === spesa.id
+          ? { ...s, pagata: nuovoStato, data_pagamento: nuovaData }
+          : s
+      )
+    );
+
     try {
       const res = await fetch(`${API_URL}/api/spese/${spesa.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          pagata: !spesa.pagata,
-          data_pagamento: !spesa.pagata ? new Date().toISOString().split('T')[0] : null,
+          pagata: nuovoStato,
+          data_pagamento: nuovaData,
         }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      await caricaSpese();
+
+      // 2. Ricarica KPI (per aggiornare i numeri in alto)
       await caricaKpi();
-      setToast({ message: spesa.pagata ? '✅ Segnata come non pagata' : '✅ Segnata come pagata', tipo: 'success' });
+
+      setToast({
+        message: nuovoStato ? '✅ Segnata come pagata' : '✅ Segnata come non pagata',
+        tipo: 'success',
+      });
     } catch (e: any) {
+      // Se il backend fallisce, ripristina lo state locale
+      setSpese((prev) =>
+        prev.map((s) => (s.id === spesa.id ? { ...s, pagata: spesa.pagata, data_pagamento: spesa.data_pagamento } : s))
+      );
       setToast({ message: '❌ ' + (e?.message || 'Errore'), tipo: 'error' });
     }
   }
