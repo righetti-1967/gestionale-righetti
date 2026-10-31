@@ -354,7 +354,9 @@ async def riepilogo_iva(
         def chiave_periodo(data_str: str) -> str:
             from datetime import datetime as dt
             d = dt.strptime(data_str, "%Y-%m-%d")
-            if periodicita == "trimestrale":
+            if periodicita == "annuale":
+                return f"{anno}"
+            elif periodicita == "trimestrale":
                 trimestre = (d.month - 1) // 3 + 1
                 return f"T{trimestre} {anno}"
             else:
@@ -363,19 +365,31 @@ async def riepilogo_iva(
         for f in (fatture.data or []):
             if f.get("data_fine"):
                 k = chiave_periodo(f["data_fine"])
-                periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0})
+                periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0, "iva_ordini": 0.0})
                 periodi[k]["iva_debito"] += float(f.get("iva_importo") or 0)
 
         for s in (scontrini.data or []):
             if s.get("data_emissione") and s.get("iva_importo") is not None:
                 k = chiave_periodo(s["data_emissione"])
-                periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0})
+                periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0, "iva_ordini": 0.0})
                 periodi[k]["iva_debito"] += float(s.get("iva_importo") or 0)
 
         for s in (spese.data or []):
             k = chiave_periodo(s["data"])
-            periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0})
+            periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0, "iva_ordini": 0.0})
             periodi[k]["iva_credito"] += float(s.get("iva") or 0)
+
+        # 3. Ordini fornitori (IVA informativa, non nel saldo)
+        try:
+            ordini = sb.table("ordini_fornitore").select("data_ordine, totale_iva").eq("user_id", user_id).gte("data_ordine", f"{anno}-01-01").lte("data_ordine", f"{anno}-12-31").execute()
+        except Exception:
+            ordini = type("obj", (), {"data": []})()
+
+        for o in (ordini.data or []):
+            if o.get("data_ordine") and o.get("totale_iva") is not None:
+                k = chiave_periodo(o["data_ordine"])
+                periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0, "iva_ordini": 0.0})
+                periodi[k]["iva_ordini"] = periodi[k].get("iva_ordini", 0.0) + float(o.get("totale_iva") or 0)
 
         # 4. Aggiungi saldo
         result = []
@@ -386,6 +400,7 @@ async def riepilogo_iva(
                 "periodo": k,
                 "iva_debito": round(v["iva_debito"], 2),
                 "iva_credito": round(v["iva_credito"], 2),
+                "iva_ordini": round(v.get("iva_ordini", 0.0), 2),
                 "saldo": saldo,
                 "da_versare": saldo > 0,
             })
