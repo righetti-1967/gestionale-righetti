@@ -9,6 +9,7 @@ import { getProdotti } from "../lib/prodotti";
 import { getTuttiScarichi } from "../lib/scarichi";
 import { getAppuntamenti } from "../lib/appuntamenti";
 import { formatEuro } from "../lib/percorsi-helper";
+import { supabase } from '../lib/supabase';
 
 const MESI_NOMI = [
   "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
@@ -139,6 +140,40 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       scontriniAnno,
     };
   })();
+
+
+  // KPI Spese (caricato dal backend)
+  const [kpiSpese, setKpiSpese] = useState<{
+    totale_mese: number;
+    scadenze_prossimi_7gg: { totale: number; numero: number };
+    scadenze_prossimi_30gg: { totale: number; numero: number };
+    pagate: { numero: number; totale: number };
+    non_pagate: { numero: number; totale: number };
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function caricaKpiSpese() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const res = await fetch(`https://gestionale-righetti-production.up.railway.app/api/spese/kpi?user_id=${user.id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) {
+          setKpiSpese({
+            totale_mese: data.totale_mese ?? 0,
+            scadenze_prossimi_7gg: data.scadenze_prossimi_7gg ?? { totale: 0, numero: 0 },
+            scadenze_prossimi_30gg: data.scadenze_prossimi_30gg ?? { totale: 0, numero: 0 },
+            pagate: data.pagate ?? { numero: 0, totale: 0 },
+            non_pagate: data.non_pagate ?? { numero: 0, totale: 0 },
+          });
+        }
+      } catch {}
+    }
+    caricaKpiSpese();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     async function carica() {
