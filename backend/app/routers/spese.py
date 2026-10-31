@@ -317,3 +317,81 @@ async def crea_categoria(cat: CategoriaCreate):
         return {"success": True, "categoria": res.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# RIEPILOGO IVA (Debito - Credito)
+# ============================================================================
+
+@router.get("/iva-riepilogo")
+async def riepilogo_iva(
+    user_id: str = Query(...),
+    anno: int = Query(...),
+    periodicita: str = Query("mensile", description="mensile | trimestrale"),
+):
+    """Calcola IVA a debito (fatture emesse) vs IVA a credito (spese) per periodo."""
+    try:
+        sb = get_supabase()
+
+        # 1. Fatture emesse (IVA a debito)
+        fatture = sb.table("fatture").select("data, iva").eq("user_id", user_id).gte("data", f"{anno}-01-01").lte("data", f"{anno}-12-31").execute()
+
+        # 1b. Scontrini (IVA a debito, solo se presenti)
+        try:
+            scontrini = sb.table("scontrini").select("data, iva").eq("user_id", user_id).gte("data", f"{anno}-01-01").lte("data", f"{anno}-12-31").execute()
+        except Exception:
+            scontrini = type("obj", (), {"data": []})()
+
+        # 2. Spese (IVA a credito)
+        spese = sb.table("spese").select("data, iva").eq("user_id", user_id).gte("data", f"{anno}-01-01").lte("data", f"{anno}-12-31").execute()
+
+        # 3. Aggrega per periodo
+        periodi: dict[str, dict] = {}
+
+        def chiave_periodo(data_str: str) -> str:
+            from datetime import datetime as dt
+            d = dt.strptime(data_str, "%Y-%m-%d")
+            if periodicita == "trimestrale":
+                trimestre = (d.month - 1) // 3 + 1
+                return f"T{trimestre} {anno}"
+            else:
+                return f"{d.month:02d}/{anno}"
+
+        for f in (fatture.data or []):
+            k = chiave_periodo(f["data"])
+            periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0})
+            periodi[k]["iva_debito"] += float(f.get("iva") or 0)
+
+        for s in (scontrini.data or []):
+            if s.get("data") and s.get("iva") is not None:
+                k = chiave_periodo(s["data"])
+                periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0})
+                periodi[k]["iva_debito"] += float(s.get("iva") or 0)
+
+        for s in (spese.data or []):
+            k = chiave_periodo(s["data"])
+            periodi.setdefault(k, {"iva_debito": 0.0, "iva_credito": 0.0})
+            periodi[k]["iva_credito"] += float(s.get("iva") or 0)
+
+        # 4. Aggiungi saldo
+        result = []
+        for k in sorted(periodi.keys()):
+            v = periodi[k]
+            saldo = round(v["iva_debito"] - v["iva_credito"], 2)
+            result.append({
+                "periodo": k,
+                "iva_debito": round(v["iva_debito"], 2),
+                "iva_credito": round(v["iva_credito"], 2),
+                "saldo": saldo,
+                "da_versare": saldo > 0,
+            })
+
+        return {
+            "success": True,
+            "anno": anno,
+            "periodicita": periodicita,
+            "periodi": result,
+        }
+    except Exception as e:
+        logger.exception("Errore riepilogo IVA")
+        raise HTTPException(status_code=500, detail=str(e))
