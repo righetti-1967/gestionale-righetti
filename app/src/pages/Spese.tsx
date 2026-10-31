@@ -26,11 +26,7 @@ interface Spesa {
 type Tab = 'spese' | 'scadenze';
 type FiltroStato = 'tutte' | 'pagate' | 'non-pagate';
 
-const CATEGORIE = [
-  'Affitto', 'Mutuo', 'Utenze', 'Stipendi', 'Contributi', 'Tasse',
-  'Fornitori', 'Materiali', 'Manutenzione', 'Software', 'Assicurazioni',
-  'Consulenze', 'Altro',
-];
+
 
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 
@@ -55,6 +51,7 @@ export function Spese() {
   const [filtroCategoria, setFiltroCategoria] = useState<string>('tutte');
   const [showForm, setShowForm] = useState(false);
   const [toast, setToast] = useState<{ message: string; tipo: ToastTipo } | null>(null);
+  const [categorie, setCategorie] = useState<{id: number, nome: string}[]>([]);
   const [kpi, setKpi] = useState<{
     totale_mese: number;
     scadenze_prossimi_30gg: { totale: number; numero: number };
@@ -66,6 +63,7 @@ export function Spese() {
     if (user) {
       caricaSpese();
       caricaKpi();
+      caricaCategorie();
     }
   }, [user]);
 
@@ -83,6 +81,17 @@ export function Spese() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function caricaCategorie() {
+    if (!user) return;
+    try {
+      const res = await fetch(`${API_URL}/api/spese/categorie?user_id=${user.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCategorie(data.categorie || []);
+      }
+    } catch {}
   }
 
   async function caricaKpi() {
@@ -241,7 +250,7 @@ export function Spese() {
           className="px-3 py-2.5 bg-white rounded-apple shadow-apple text-sm border border-gray-100"
         >
           <option value="tutte">Tutte le categorie</option>
-          {CATEGORIE.map((c) => <option key={c} value={c}>{c}</option>)}
+          {categorie.map((c) => <option key={c.id} value={c.nome}>{c.nome}</option>)}
         </select>
       </div>
 
@@ -326,6 +335,8 @@ export function Spese() {
       {showForm && (
         <FormNuovaSpesa
           userId={user?.id || ''}
+          categorie={categorie}
+          onCategoryCreated={caricaCategorie}
           onSaved={() => {
             setShowForm(false);
             caricaSpese();
@@ -347,10 +358,14 @@ export function Spese() {
 
 function FormNuovaSpesa({
   userId,
+  categorie,
+  onCategoryCreated,
   onSaved,
   onCancel,
 }: {
   userId: string;
+  categorie: {id: number, nome: string}[];
+  onCategoryCreated: () => void;
   onSaved: () => void;
   onCancel: () => void;
 }) {
@@ -358,10 +373,13 @@ function FormNuovaSpesa({
   const [descrizione, setDescrizione] = useState('');
   const [importo, setImporto] = useState('');
   const [categoria, setCategoria] = useState('');
+  const [showNuovaCategoria, setShowNuovaCategoria] = useState(false);
+  const [nuovaCategoria, setNuovaCategoria] = useState('');
   const [tipo, setTipo] = useState<'una_tantum' | 'ricorrente'>('una_tantum');
   const [ricorrenza, setRicorrenza] = useState<'mensile' | 'trimestrale' | 'semestrale' | 'annuale'>('mensile');
   const [dataScadenza, setDataScadenza] = useState('');
   const [giornoScadenza, setGiornoScadenza] = useState<number>(1);
+  const [mesiAnticipo, setMesiAnticipo] = useState<number>(12);
   const [note, setNote] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
@@ -388,6 +406,7 @@ function FormNuovaSpesa({
         note: note.trim() || null,
         ricorrenza_attiva: tipo === 'ricorrente',
         giorno_scadenza: tipo === 'ricorrente' ? giornoScadenza : null,
+        mesi_anticipo: tipo === 'ricorrente' ? mesiAnticipo : null,
       };
       const res = await fetch(`${API_URL}/api/spese`, {
         method: 'POST',
@@ -431,10 +450,31 @@ function FormNuovaSpesa({
           </div>
           <div>
             <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Categoria</label>
-            <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className="w-full px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm focus:outline-none focus:bg-white focus:border-apple-blue">
-              <option value="">— Seleziona —</option>
-              {CATEGORIE.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            {showNuovaCategoria ? (
+              <div className="flex gap-2">
+                <input type="text" value={nuovaCategoria} onChange={(e) => setNuovaCategoria(e.target.value)} placeholder="Nuova categoria..." className="flex-1 px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm" />
+                <button type="button" onClick={async () => {
+                  if (!nuovaCategoria.trim()) return;
+                  await fetch(`${API_URL}/api/spese/categorie`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, nome: nuovaCategoria.trim() })
+                  });
+                  setNuovaCategoria('');
+                  setShowNuovaCategoria(false);
+                  onCategoryCreated();
+                }} className="px-3 py-2 bg-green-600 text-white rounded-apple text-xs font-medium">Salva</button>
+                <button type="button" onClick={() => setShowNuovaCategoria(false)} className="px-3 py-2 bg-gray-200 rounded-apple text-xs">Annulla</button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className="flex-1 px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm">
+                  <option value="">— Seleziona —</option>
+                  {categorie.map((c) => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+                </select>
+                <button type="button" onClick={() => setShowNuovaCategoria(true)} className="px-3 py-2 bg-blue-100 text-blue-700 rounded-apple text-xs font-medium">+ Nuova</button>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-gray-100 pt-3">
@@ -462,6 +502,15 @@ function FormNuovaSpesa({
               <div className="col-span-2">
                 <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Prima scadenza</label>
                 <input type="date" value={dataScadenza} onChange={(e) => setDataScadenza(e.target.value)} className="w-full px-3 py-2 rounded-apple bg-white border border-purple-200 text-sm" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Genera scadenze per</label>
+                <select value={mesiAnticipo} onChange={(e) => setMesiAnticipo(parseInt(e.target.value))} className="w-full px-3 py-2 rounded-apple bg-white border border-purple-200 text-sm">
+                  <option value="6">6 mesi</option>
+                  <option value="12">12 mesi (1 anno)</option>
+                  <option value="24">24 mesi (2 anni)</option>
+                  <option value="36">36 mesi (3 anni)</option>
+                </select>
               </div>
             </div>
           )}
