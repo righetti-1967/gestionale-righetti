@@ -48,6 +48,9 @@ class SpesaUpdate(BaseModel):
     data: Optional[str] = None
     descrizione: Optional[str] = None
     importo: Optional[float] = None
+    importo_ivato: Optional[bool] = None
+    imponibile: Optional[float] = None
+    iva: Optional[float] = None
     categoria: Optional[str] = None
     fornitore_id: Optional[int] = None
     tipo: Optional[str] = None
