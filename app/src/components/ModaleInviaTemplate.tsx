@@ -65,8 +65,21 @@ export function ModaleInviaTemplate({
     nome,
     cognome,
     azienda: azienda.ragioneSociale || 'Studio',
-    data: new Date().toLocaleDateString('it-IT'),
-    data_estesa: (() => { try { const d = new Date(); const s = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); return s.charAt(0).toUpperCase() + s.slice(1); } catch { return ''; } })(),
+    nome_studio: azienda.nomeStudio || azienda.ragioneSociale || 'Studio',
+    // Data: usa created_at del cliente (iscrizione) se disponibile, altrimenti oggi
+    data: (() => {
+      const c: any = cliente;
+      const d = c.created_at ? new Date(c.created_at) : new Date();
+      return d.toLocaleDateString('it-IT');
+    })(),
+    data_estesa: (() => {
+      try {
+        const c: any = cliente;
+        const d = c.created_at ? new Date(c.created_at) : new Date();
+        const s = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        return s.charAt(0).toUpperCase() + s.slice(1);
+      } catch { return ''; }
+    })(),
   };
 
   useEffect(() => {
