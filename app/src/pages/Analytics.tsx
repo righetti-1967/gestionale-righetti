@@ -784,11 +784,12 @@ function RankingClienti({ clienti }: { clienti: ClienteRanking[] }) {
 
 function TabIvaConfronto() {
   const [anno, setAnno] = useState(new Date().getFullYear());
-  const [periodicita, setPeriodicita] = useState<'mensile' | 'trimestrale'>('mensile');
+  const [periodicita, setPeriodicita] = useState<'mensile' | 'trimestrale' | 'annuale'>('mensile');
   const [dati, setDati] = useState<Array<{
     periodo: string;
     iva_debito: number;
     iva_credito: number;
+    iva_ordini: number;
     saldo: number;
     da_versare: boolean;
   }>>([]);
@@ -821,9 +822,10 @@ function TabIvaConfronto() {
     (acc, d) => ({
       iva_debito: acc.iva_debito + d.iva_debito,
       iva_credito: acc.iva_credito + d.iva_credito,
+      iva_ordini: acc.iva_ordini + (d.iva_ordini || 0),
       saldo: acc.saldo + d.saldo,
     }),
-    { iva_debito: 0, iva_credito: 0, saldo: 0 }
+    { iva_debito: 0, iva_credito: 0, iva_ordini: 0, saldo: 0 }
   );
 
   function formatEuro(n: number): string {
@@ -850,11 +852,12 @@ function TabIvaConfronto() {
             <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Periodicità</label>
             <select
               value={periodicita}
-              onChange={(e) => setPeriodicita(e.target.value as 'mensile' | 'trimestrale')}
+              onChange={(e) => setPeriodicita(e.target.value as 'mensile' | 'trimestrale' | 'annuale')}
               className="px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
             >
               <option value="mensile">Mensile</option>
               <option value="trimestrale">Trimestrale</option>
+              <option value="annuale">Annuale</option>
             </select>
           </div>
         </div>
@@ -876,6 +879,7 @@ function TabIvaConfronto() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Periodo</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase">IVA Debito</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase">IVA Credito</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase" title="IVA da ordini fornitori (in attesa di fattura, non nel saldo)">IVA Ordini ℹ️</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Saldo</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Stato</th>
               </tr>
@@ -886,6 +890,7 @@ function TabIvaConfronto() {
                   <td className="px-4 py-3 font-medium text-apple-darkgray">{d.periodo}</td>
                   <td className="px-4 py-3 text-right text-green-700 font-semibold">{formatEuro(d.iva_debito)}</td>
                   <td className="px-4 py-3 text-right text-blue-700 font-semibold">{formatEuro(d.iva_credito)}</td>
+                  <td className="px-4 py-3 text-right text-purple-600 italic">{formatEuro(d.iva_ordini || 0)}</td>
                   <td className={`px-4 py-3 text-right font-bold ${d.saldo > 0 ? 'text-red-600' : 'text-green-600'}`}>
                     {formatEuro(d.saldo)}
                   </td>
@@ -906,6 +911,7 @@ function TabIvaConfronto() {
                 <td className="px-4 py-3 text-apple-darkgray uppercase text-xs">Totale</td>
                 <td className="px-4 py-3 text-right text-green-700">{formatEuro(totali.iva_debito)}</td>
                 <td className="px-4 py-3 text-right text-blue-700">{formatEuro(totali.iva_credito)}</td>
+                <td className="px-4 py-3 text-right text-purple-600 italic">{formatEuro(totali.iva_ordini)}</td>
                 <td className={`px-4 py-3 text-right ${totali.saldo > 0 ? 'text-red-600' : 'text-green-600'}`}>
                   {formatEuro(totali.saldo)}
                 </td>
