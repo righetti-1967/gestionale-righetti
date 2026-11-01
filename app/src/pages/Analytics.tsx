@@ -74,6 +74,10 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
   const [periodoOccupazione, setPeriodoOccupazione] = useState<'settimana' | 'mese' | 'trimestre' | 'semestre' | 'anno' | 'custom'>('mese');
   const [dataInizioOccupazione, setDataInizioOccupazione] = useState('');
   const [dataFineOccupazione, setDataFineOccupazione] = useState('');
+  const [periodoClienti, setPeriodoClienti] = useState<'settimana' | 'mese' | 'trimestre' | 'semestre' | 'anno' | 'custom'>('mese');
+  const [dataInizioClienti, setDataInizioClienti] = useState('');
+  const [dataFineClienti, setDataFineClienti] = useState('');
+  const [reportClientiPeriodo, setReportClientiPeriodo] = useState<any>(null);
 
   // Singolo cliente
   const [clienti, setClienti] = useState<Cliente[]>([]);
@@ -206,6 +210,53 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
     }
     return { inizio, fine };
   }
+
+  // Calcola date periodo clienti
+  function calcolaDatePeriodoClienti(periodo: string): { inizio: string; fine: string } {
+    const oggi = new Date();
+    const fine = oggi.toISOString().split('T')[0];
+    let inizio = fine;
+
+    if (periodo === 'settimana') {
+      const d = new Date(oggi);
+      d.setDate(d.getDate() - 7);
+      inizio = d.toISOString().split('T')[0];
+    } else if (periodo === 'mese') {
+      const d = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+      inizio = d.toISOString().split('T')[0];
+    } else if (periodo === 'trimestre') {
+      const d = new Date(oggi);
+      d.setMonth(d.getMonth() - 3);
+      inizio = d.toISOString().split('T')[0];
+    } else if (periodo === 'semestre') {
+      const d = new Date(oggi);
+      d.setMonth(d.getMonth() - 6);
+      inizio = d.toISOString().split('T')[0];
+    } else if (periodo === 'anno') {
+      inizio = `${oggi.getFullYear()}-01-01`;
+    } else if (periodo === 'custom') {
+      inizio = dataInizioClienti || fine;
+      return { inizio, fine: dataFineClienti || fine };
+    }
+    return { inizio, fine };
+  }
+
+  // Carica report KPI clienti per periodo
+  useEffect(() => {
+    const { inizio, fine } = calcolaDatePeriodoClienti(periodoClienti);
+    if (!inizio || !fine) return;
+    let annullato = false;
+    async function carica() {
+      try {
+        const r = await calcolaReportAggregato(inizio, fine, soglieDebounced);
+        if (!annullato) setReportClientiPeriodo(r);
+      } catch (e) {
+        console.error('Errore KPI clienti periodo:', e);
+      }
+    }
+    carica();
+    return () => { annullato = true; };
+  }, [periodoClienti, dataInizioClienti, dataFineClienti, soglieDebounced]);
 
   // Carica report per ogni operatore
   useEffect(() => {
@@ -462,6 +513,13 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
               setDataInizioOccupazione={setDataInizioOccupazione}
               dataFineOccupazione={dataFineOccupazione}
               setDataFineOccupazione={setDataFineOccupazione}
+              periodoClienti={periodoClienti}
+              setPeriodoClienti={setPeriodoClienti}
+              dataInizioClienti={dataInizioClienti}
+              setDataInizioClienti={setDataInizioClienti}
+              dataFineClienti={dataFineClienti}
+              setDataFineClienti={setDataFineClienti}
+              reportClientiPeriodo={reportClientiPeriodo}
             />
           ) : null}
         </div>
@@ -641,6 +699,13 @@ function ReportAggregatoView({
   setDataInizioOccupazione,
   dataFineOccupazione,
   setDataFineOccupazione,
+  periodoClienti,
+  setPeriodoClienti,
+  dataInizioClienti,
+  setDataInizioClienti,
+  dataFineClienti,
+  setDataFineClienti,
+  reportClientiPeriodo,
 }: {
   report: ReportAggregato;
   onEsportaPdf: () => void;
@@ -661,6 +726,13 @@ function ReportAggregatoView({
   setDataInizioOccupazione: (v: string) => void;
   dataFineOccupazione: string;
   setDataFineOccupazione: (v: string) => void;
+  periodoClienti: 'settimana' | 'mese' | 'trimestre' | 'semestre' | 'anno' | 'custom';
+  setPeriodoClienti: (v: 'settimana' | 'mese' | 'trimestre' | 'semestre' | 'anno' | 'custom') => void;
+  dataInizioClienti: string;
+  setDataInizioClienti: (v: string) => void;
+  dataFineClienti: string;
+  setDataFineClienti: (v: string) => void;
+  reportClientiPeriodo: any;
 }) {
 
   // Funzione per aprire modale clienti filtrati
@@ -729,17 +801,64 @@ function ReportAggregatoView({
 
       {/* KPI Clienti (nuovi) */}
       <div>
-        <div className="flex items-center justify-between mb-2 mt-2">
+        <div className="flex items-center justify-between mb-2 mt-2 flex-wrap gap-2">
           <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide">
             👥 Clienti
           </h3>
-          <button
-            onClick={() => setMostraSoglie(!mostraSoglie)}
-            className="text-[10px] text-apple-blue hover:text-blue-700 font-medium"
-          >
-            {mostraSoglie ? '✕ Chiudi' : '⚙️ Configura soglie'}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex gap-1 bg-gray-100 rounded-apple p-1">
+              {([
+                { id: 'settimana', label: '📆 Sett.' },
+                { id: 'mese', label: '📅 Mese' },
+                { id: 'trimestre', label: '📊 Trim.' },
+                { id: 'semestre', label: '📈 Sem.' },
+                { id: 'anno', label: '🗓️ Anno' },
+                { id: 'custom', label: '⚙️ Custom' },
+              ] as const).map((per) => (
+                <button
+                  key={per.id}
+                  onClick={() => setPeriodoClienti(per.id)}
+                  className={`px-2 py-1 rounded-apple text-[10px] font-semibold transition-all ${
+                    periodoClienti === per.id
+                      ? 'bg-white text-apple-darkgray shadow-sm'
+                      : 'text-apple-gray hover:text-apple-darkgray'
+                  }`}
+                >
+                  {per.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setMostraSoglie(!mostraSoglie)}
+              className="text-[10px] text-apple-blue hover:text-blue-700 font-medium"
+            >
+              {mostraSoglie ? '✕ Chiudi' : '⚙️ Soglie'}
+            </button>
+          </div>
         </div>
+
+        {periodoClienti === 'custom' && (
+          <div className="bg-white rounded-apple shadow-apple p-3 mb-3 flex gap-2 flex-wrap">
+            <div>
+              <label className="block text-[10px] text-apple-gray uppercase mb-1">Da</label>
+              <input
+                type="date"
+                value={dataInizioClienti}
+                onChange={(e) => setDataInizioClienti(e.target.value)}
+                className="px-2 py-1 rounded bg-gray-50 border border-gray-200 text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-apple-gray uppercase mb-1">A</label>
+              <input
+                type="date"
+                value={dataFineClienti}
+                onChange={(e) => setDataFineClienti(e.target.value)}
+                className="px-2 py-1 rounded bg-gray-50 border border-gray-200 text-xs"
+              />
+            </div>
+          </div>
+        )}
 
         {mostraSoglie && (
           <div className="bg-blue-50 border border-blue-200 rounded-apple p-3 mb-3 space-y-2">
@@ -790,7 +909,7 @@ function ReportAggregatoView({
           <button onClick={() => apriModaleFiltro('nuovi')} className="text-left">
             <KpiCard
               label="Nuovi clienti"
-              value={String(report.nuoviClienti ?? 0)}
+              value={String(reportClientiPeriodo?.nuoviClienti ?? report.nuoviClienti ?? 0)}
               icon="🆕"
               colore="green"
             />
@@ -798,7 +917,7 @@ function ReportAggregatoView({
           <button onClick={() => apriModaleFiltro('frequenza', sogliaFrequenzaAttesa)} className="text-left">
             <KpiCard
               label="Frequenza ritorno"
-              value={report.frequenzaRitornoMedia != null ? `${report.frequenzaRitornoMedia}gg` : '—'}
+              value={reportClientiPeriodo?.frequenzaRitornoMedia != null ? `${reportClientiPeriodo.frequenzaRitornoMedia}gg` : (report.frequenzaRitornoMedia != null ? `${report.frequenzaRitornoMedia}gg` : '—')}
               icon="🔄"
               colore="blue"
             />
@@ -806,7 +925,7 @@ function ReportAggregatoView({
           <button onClick={() => apriModaleFiltro('dormienti', sogliaDormienti)} className="text-left">
             <KpiCard
               label={`Dormienti (${sogliaDormienti}gg+)`}
-              value={String(report.clientiDormienti ?? 0)}
+              value={String(reportClientiPeriodo?.clientiDormienti ?? report.clientiDormienti ?? 0)}
               icon="😴"
               colore="orange"
             />
@@ -814,7 +933,7 @@ function ReportAggregatoView({
           <button onClick={() => apriModaleFiltro('persi', sogliaPersi)} className="text-left">
             <KpiCard
               label={`Persi (${sogliaPersi}gg+)`}
-              value={String(report.clientiPersi ?? 0)}
+              value={String(reportClientiPeriodo?.clientiPersi ?? report.clientiPersi ?? 0)}
               icon="🚨"
               colore="orange"
             />
