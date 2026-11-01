@@ -235,8 +235,8 @@ export function Spese() {
     if (filtroStato === 'non-pagate' && s.pagata) return false;
     if (filtroCategoria !== 'tutte' && s.categoria !== filtroCategoria) return false;
 
-    // Filtro periodo
-    const dataRif = tab === 'scadenze' ? s.data_scadenza : s.data;
+    // Filtro periodo: usa SEMPRE data_scadenza (sia tab Spese che Scadenze)
+    const dataRif = s.data_scadenza;
     if (!dataRif) return false;
 
     if (periodoTipo === 'corrente') {
