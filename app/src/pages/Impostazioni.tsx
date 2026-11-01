@@ -42,6 +42,7 @@ import { IntegrazioniLogTab } from '../components/IntegrazioniLogTab';
 import { TestiTemplateTab } from '../components/TestiTemplateTab';
 import { AutomazioniTab } from '../components/AutomazioniTab';
 import { AppClienteTab } from '../components/AppClienteTab';
+import { EconomiaTab } from '../components/EconomiaTab';
 import type { RegimeFiscale } from '../lib/configFiscale';
 
 // ============ TIPI ============
@@ -120,7 +121,7 @@ function normalizzaDati(raw: unknown): DatiAziendali {
   };
 }
 
-type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'comunicazioni' | 'testi_template' | 'automazioni' | 'sicurezza' | 'licenze' | 'app_cliente';
+type TabId = 'profilo' | 'azienda' | 'fatturazione' | 'agenda' | 'privacy' | 'aspetto' | 'google_sheets' | 'comunicazioni' | 'testi_template' | 'automazioni' | 'sicurezza' | 'licenze' | 'app_cliente' | 'economia';
 
 const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'profilo', label: 'Profilo', icon: '👤' },
@@ -135,6 +136,7 @@ const BASE_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'automazioni', label: 'Automazioni', icon: '🔔' },
   { id: 'sicurezza', label: 'Sicurezza', icon: '🔐' },
   { id: 'app_cliente', label: 'App Cliente', icon: '📱' },
+  { id: 'economia', label: 'Economia', icon: '💰' },
 ];
 
 const ADMIN_EMAIL = 'righetti@righetti.club';
@@ -1023,7 +1025,7 @@ export function Impostazioni() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab');
-      const validTabs: TabId[] = ['profilo', 'azienda', 'fatturazione', 'agenda', 'privacy', 'aspetto', 'google_sheets', 'comunicazioni', 'testi_template', 'automazioni', 'sicurezza', 'licenze', 'app_cliente'];
+      const validTabs: TabId[] = ['profilo', 'azienda', 'fatturazione', 'agenda', 'privacy', 'aspetto', 'google_sheets', 'comunicazioni', 'testi_template', 'automazioni', 'sicurezza', 'licenze', 'app_cliente', 'economia'];
       if (tabParam && validTabs.includes(tabParam as TabId)) {
         return tabParam as TabId;
       }
