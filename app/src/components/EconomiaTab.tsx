@@ -39,10 +39,11 @@ export function EconomiaTab({ registraSalva }: EconomiaTabProps) {
         const operatoriAllineati: EconomiaOperatore[] = (agenda.operatori || []).map((op) => {
           return operatoriEsistenti.get(op.id) || {
             operatore_id: op.id,
-            tipo: 'dipendente',
+            tipo: 'dipendente' as const,
             busta_paga_lorda: 0,
             busta_paga_netta: 0,
             contributi_pct: 30,
+            contributi_fissi_mensili: 0,
             tfr_pct: 7,
             ore_settimanali: 40,
             giorni_settimanali: 5,
@@ -145,50 +146,91 @@ export function EconomiaTab({ registraSalva }: EconomiaTabProps) {
                         <option value="collaboratore">Collaboratore</option>
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Busta paga lorda (€/mese)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={op.busta_paga_lorda || ''}
-                        onChange={(e) => aggiornaOperatore(op.operatore_id, { busta_paga_lorda: parseFloat(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Busta paga netta (€/mese)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={op.busta_paga_netta || ''}
-                        onChange={(e) => aggiornaOperatore(op.operatore_id, { busta_paga_netta: parseFloat(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Contributi INPS (%)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={op.contributi_pct || ''}
-                        onChange={(e) => aggiornaOperatore(op.operatore_id, { contributi_pct: parseFloat(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
-                        placeholder="30"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">TFR (%)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={op.tfr_pct || ''}
-                        onChange={(e) => aggiornaOperatore(op.operatore_id, { tfr_pct: parseFloat(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
-                        placeholder="7"
-                      />
-                    </div>
+
+                    {op.tipo === 'titolare' ? (
+                      <>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Netto mensile (€)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={op.busta_paga_netta || ''}
+                            onChange={(e) => aggiornaOperatore(op.operatore_id, { busta_paga_netta: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Contributi fissi mensili (€)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={op.contributi_fissi_mensili || ''}
+                            onChange={(e) => aggiornaOperatore(op.operatore_id, { contributi_fissi_mensili: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
+                            placeholder="0.00"
+                          />
+                          <p className="text-[9px] text-apple-gray mt-0.5 italic">
+                            ℹ️ Quota INPS fissa mensile (artigiani/commercianti)
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Busta paga lorda (€/mese)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={op.busta_paga_lorda || ''}
+                            onChange={(e) => aggiornaOperatore(op.operatore_id, { busta_paga_lorda: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Busta paga netta (€/mese)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={op.busta_paga_netta || ''}
+                            onChange={(e) => aggiornaOperatore(op.operatore_id, { busta_paga_netta: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">
+                            Contributi INPS (%)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={op.contributi_pct || ''}
+                            onChange={(e) => aggiornaOperatore(op.operatore_id, { contributi_pct: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
+                            placeholder={op.tipo === 'collaboratore' ? '35' : '30'}
+                          />
+                          <p className="text-[9px] text-apple-gray mt-0.5 italic">
+                            {op.tipo === 'collaboratore'
+                              ? 'ℹ️ Gestione separata: 35% (o 24% se pensionato)'
+                              : 'ℹ️ Contributi a carico azienda: ~30%'}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">TFR (%)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={op.tfr_pct || ''}
+                            onChange={(e) => aggiornaOperatore(op.operatore_id, { tfr_pct: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
+                            placeholder="7"
+                          />
+                        </div>
+                      </>
+                    )}
+
                     <div>
                       <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Ore settimanali</label>
                       <input

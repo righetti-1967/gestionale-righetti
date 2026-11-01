@@ -11,9 +11,10 @@ import { supabase } from './supabase';
 export interface EconomiaOperatore {
   operatore_id: string;          // "luca", "lorenzo", ecc.
   tipo: 'dipendente' | 'titolare' | 'collaboratore';
-  busta_paga_lorda: number;      // € mensili lordi
+  busta_paga_lorda: number;      // € mensili lordi (dipendente/collaboratore)
   busta_paga_netta: number;      // € mensili netti
-  contributi_pct: number;        // % INPS (es. 30)
+  contributi_pct: number;        // % INPS (dipendente/collaboratore)
+  contributi_fissi_mensili: number; // € contributi fissi mensili (titolare)
   tfr_pct: number;               // % TFR (es. 7)
   ore_settimanali: number;       // es. 40
   giorni_settimanali: number;    // es. 5
@@ -99,10 +100,16 @@ export async function salvaEconomia(config: ConfigEconomia): Promise<void> {
 export function calcolaCostoOrario(op: EconomiaOperatore): number {
   if (!op.ore_settimanali || op.ore_settimanali <= 0) return 0;
   const oreMese = op.ore_settimanali * 4.33;
-  const costoMensile = op.busta_paga_lorda * (1 + op.contributi_pct / 100 + op.tfr_pct / 100);
+  const costoMensile = calcolaCostoMensile(op);
   return Math.round((costoMensile / oreMese) * 100) / 100;
 }
 
 export function calcolaCostoMensile(op: EconomiaOperatore): number {
+  if (op.tipo === 'titolare') {
+    // Titolare: netto + contributi fissi + (TFR opzionale)
+    const base = op.busta_paga_netta + (op.contributi_fissi_mensili || 0);
+    return Math.round(base * (1 + (op.tfr_pct || 0) / 100) * 100) / 100;
+  }
+  // Dipendente/Collaboratore: lordo * (1 + contributi% + TFR%)
   return Math.round(op.busta_paga_lorda * (1 + op.contributi_pct / 100 + op.tfr_pct / 100) * 100) / 100;
 }
