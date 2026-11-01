@@ -722,7 +722,7 @@ export function Agenda({
         <p className="text-xs text-apple-gray capitalize">{titoloData()}</p>
       </div>
 
-      <div className="hidden sm:flex flex-wrap items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         {/* Azioni */}
         <RicercaClienteAgenda onVaiAAppuntamento={handleVaiAAppuntamento} />
         <button

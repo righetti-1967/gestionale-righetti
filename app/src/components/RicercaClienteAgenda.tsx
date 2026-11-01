@@ -158,7 +158,7 @@ export function RicercaClienteAgenda({ onVaiAAppuntamento }: RicercaClienteAgend
           }`}
         >
           <span>🔍</span>
-          <span>Cerca cliente</span>
+          <span className="hidden sm:inline">Cerca cliente</span>
         </button>
 
         {popoverAperto && (
