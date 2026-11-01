@@ -344,6 +344,84 @@ export function Spese() {
         </button>
       </div>
 
+      {/* Filtro periodo */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-4 items-start sm:items-center flex-wrap">
+        <div className="flex gap-1 bg-gray-100 rounded-apple p-1 flex-wrap">
+          {([
+            { id: 'corrente', label: '📅 Mese corrente' },
+            { id: 'mese', label: '🗓️ Mese specifico' },
+            { id: 'anno', label: '📆 Anno' },
+            { id: 'tutto', label: '📋 Tutto' },
+            { id: 'custom', label: '⚙️ Custom' },
+          ] as const).map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPeriodoTipo(p.id)}
+              className={`px-3 py-1.5 rounded-apple text-[11px] font-semibold transition-all ${
+                periodoTipo === p.id
+                  ? 'bg-white text-apple-darkgray shadow-sm'
+                  : 'text-apple-gray hover:text-apple-darkgray'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {periodoTipo === 'mese' && (
+          <div className="flex gap-2">
+            <select
+              value={meseSelezionato}
+              onChange={(e) => setMeseSelezionato(parseInt(e.target.value))}
+              className="px-2 py-1.5 bg-white rounded-apple shadow-apple text-xs border border-gray-100"
+            >
+              {['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'].map((m, i) => (
+                <option key={i} value={i}>{m}</option>
+              ))}
+            </select>
+            <select
+              value={annoSelezionato}
+              onChange={(e) => setAnnoSelezionato(parseInt(e.target.value))}
+              className="px-2 py-1.5 bg-white rounded-apple shadow-apple text-xs border border-gray-100"
+            >
+              {[2024, 2025, 2026, 2027, 2028].map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {periodoTipo === 'anno' && (
+          <select
+            value={annoSelezionato}
+            onChange={(e) => setAnnoSelezionato(parseInt(e.target.value))}
+            className="px-2 py-1.5 bg-white rounded-apple shadow-apple text-xs border border-gray-100"
+          >
+            {[2024, 2025, 2026, 2027, 2028].map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+        )}
+
+        {periodoTipo === 'custom' && (
+          <div className="flex gap-2 items-center flex-wrap">
+            <input
+              type="date"
+              value={dataCustomInizio}
+              onChange={(e) => setDataCustomInizio(e.target.value)}
+              className="px-2 py-1.5 bg-white rounded-apple shadow-apple text-xs border border-gray-100"
+            />
+            <span className="text-xs text-apple-gray">→</span>
+            <input
+              type="date"
+              value={dataCustomFine}
+              onChange={(e) => setDataCustomFine(e.target.value)}
+              className="px-2 py-1.5 bg-white rounded-apple shadow-apple text-xs border border-gray-100"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Filtri */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
