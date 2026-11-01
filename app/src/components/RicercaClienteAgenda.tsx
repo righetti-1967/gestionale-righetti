@@ -162,7 +162,7 @@ export function RicercaClienteAgenda({ onVaiAAppuntamento }: RicercaClienteAgend
         </button>
 
         {popoverAperto && (
-          <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-apple shadow-apple-lg border border-gray-200/60 z-40 overflow-hidden">
+          <div className="absolute top-full right-0 sm:left-0 sm:right-auto mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm bg-white rounded-apple shadow-apple-lg border border-gray-200/60 z-40 overflow-hidden">
             {/* Input ricerca */}
             <div className="p-3 border-b border-gray-100">
               <div className="relative">
