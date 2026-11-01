@@ -12,7 +12,7 @@ import { caricaAgendaConfig, type OperatoreConfig } from '../lib/agenda-config';
 import { Toast, type ToastTipo } from './Toast';
 
 interface EconomiaTabProps {
-  registraSalva: (fn: () => Promise<void>) => void;
+  registraSalva: (fn: () => void, salvando: boolean) => void;
 }
 
 const CATEGORIE_DISPONIBILI = [
@@ -70,7 +70,7 @@ export function EconomiaTab({ registraSalva }: EconomiaTabProps) {
   }
 
   useEffect(() => {
-    registraSalva(handleSalva);
+    registraSalva(handleSalva, false);
   }, [config]);
 
   function aggiornaOperatore(id: string, patch: Partial<EconomiaOperatore>) {

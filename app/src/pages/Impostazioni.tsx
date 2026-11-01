@@ -1100,6 +1100,7 @@ export function Impostazioni() {
         {tabAttiva === 'automazioni' && <AutomazioniTab />}
         {tabAttiva === 'sicurezza' && <SicurezzaTab />}
         {tabAttiva === 'app_cliente' && <AppClienteTab />}
+        {tabAttiva === 'economia' && <EconomiaTab registraSalva={registraSalva} />}
         {tabAttiva === 'licenze' && isAdmin && <TabLicenze adminEmail={user?.email || ''} />}
       </div>
     </div>
