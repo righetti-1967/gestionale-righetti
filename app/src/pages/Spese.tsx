@@ -364,7 +364,68 @@ export function Spese() {
             {tab === 'scadenze' ? '🎉 Nessuna scadenza in sospeso' : 'Nessuna spesa registrata'}
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <>
+            {/* Card view mobile */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {speseOrdinate.map((s) => {
+                const scaduta = s.data_scadenza && s.data_scadenza < oggi && !s.pagata;
+                return (
+                  <div
+                    key={s.id}
+                    className="p-4 hover:bg-apple-lightgray/40 cursor-pointer"
+                    onClick={() => setSpesaInModifica(s)}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-apple-darkgray truncate">{s.descrizione}</p>
+                        <p className="text-xs text-apple-gray mt-0.5">
+                          {formatData(s.data)}{s.categoria ? ` · ${s.categoria}` : ''}
+                        </p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); eliminaSpesa(s); }}
+                        className="text-red-500 hover:text-red-700 text-lg shrink-0"
+                        title="Elimina"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                    <div className="flex items-end justify-between gap-2 mt-2">
+                      <div className="text-xs">
+                        <p className="text-apple-gray">
+                          Scadenza:{' '}
+                          <span className={scaduta ? 'text-red-600 font-semibold' : 'text-apple-darkgray'}>
+                            {formatData(s.data_scadenza)}
+                          </span>
+                          {scaduta && ' ⚠️'}
+                        </p>
+                        <p className="text-apple-darkgray font-semibold mt-1">
+                          {formatEuro(s.importo)}
+                          {s.iva != null && s.iva > 0 && (
+                            <span className="text-[10px] text-apple-gray font-normal ml-1">
+                              (IVA {formatEuro(s.iva)})
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); togglePagata(s); }}
+                        className={`text-[10px] px-2.5 py-1.5 rounded font-semibold transition-colors shrink-0 ${
+                          s.pagata
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-amber-100 text-amber-700'
+                        }`}
+                      >
+                        {s.pagata ? '✅ Pagata' : '⏳ Da pagare'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Tabella desktop */}
+            <table className="w-full text-sm hidden md:table">
             <thead className="bg-apple-lightgray/60 border-b border-gray-200/60">
               <tr>
                 <th
@@ -436,6 +497,7 @@ export function Spese() {
               })}
             </tbody>
           </table>
+          </>
         )}
       </div>
 
