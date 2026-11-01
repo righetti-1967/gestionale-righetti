@@ -161,7 +161,7 @@ export function EconomiaTab({ registraSalva }: EconomiaTabProps) {
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Contributi fissi mensili (€)</label>
+                          <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Contributi titolare INPS (€/mese)</label>
                           <input
                             type="number"
                             step="0.01"
@@ -171,9 +171,49 @@ export function EconomiaTab({ registraSalva }: EconomiaTabProps) {
                             placeholder="0.00"
                           />
                           <p className="text-[9px] text-apple-gray mt-0.5 italic">
-                            ℹ️ Quota INPS fissa mensile (artigiani/commercianti)
+                            ℹ️ Quota INPS artigiani/commercianti (es. 449.12 se 1347.36/3)
                           </p>
                         </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Lordo busta paga dipendente (€/mese)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={op.busta_paga_lorda || ''}
+                            onChange={(e) => aggiornaOperatore(op.operatore_id, { busta_paga_lorda: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
+                            placeholder="0.00"
+                          />
+                          <p className="text-[9px] text-apple-gray mt-0.5 italic">
+                            ℹ️ Se sei ANCHE dipendente della SRL, inserisci il lordo busta paga
+                          </p>
+                        </div>
+                        {op.busta_paga_lorda > 0 && (
+                          <>
+                            <div>
+                              <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">Contributi dipendente (%)</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={op.contributi_pct || ''}
+                                onChange={(e) => aggiornaOperatore(op.operatore_id, { contributi_pct: parseFloat(e.target.value) || 0 })}
+                                className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
+                                placeholder="30"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-semibold text-apple-gray uppercase mb-1">TFR dipendente (%)</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={op.tfr_pct || ''}
+                                onChange={(e) => aggiornaOperatore(op.operatore_id, { tfr_pct: parseFloat(e.target.value) || 0 })}
+                                className="w-full px-3 py-2 rounded-apple bg-gray-50 border border-gray-200 text-sm"
+                                placeholder="7"
+                              />
+                            </div>
+                          </>
+                        )}
                       </>
                     ) : (
                       <>

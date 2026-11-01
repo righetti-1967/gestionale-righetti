@@ -106,10 +106,19 @@ export function calcolaCostoOrario(op: EconomiaOperatore): number {
 
 export function calcolaCostoMensile(op: EconomiaOperatore): number {
   if (op.tipo === 'titolare') {
-    // Titolare: netto + contributi fissi + (TFR opzionale)
-    const base = op.busta_paga_netta + (op.contributi_fissi_mensili || 0);
-    return Math.round(base * (1 + (op.tfr_pct || 0) / 100) * 100) / 100;
+    // Titolare: se ha anche busta paga dipendente, somma entrambi
+    const lordoDipendente = op.busta_paga_lorda || 0;
+    const contributiDipendente = lordoDipendente * (op.contributi_pct || 0) / 100;
+    const tfrDipendente = lordoDipendente * (op.tfr_pct || 0) / 100;
+    const quotaTitolare = op.contributi_fissi_mensili || 0;
+    
+    // Se ha busta paga lorda > 0 → è anche dipendente
+    if (lordoDipendente > 0) {
+      return Math.round((lordoDipendente + contributiDipendente + tfrDipendente + quotaTitolare) * 100) / 100;
+    }
+    // Solo titolare (senza busta paga)
+    return Math.round((op.busta_paga_netta + quotaTitolare) * 100) / 100;
   }
-  // Dipendente/Collaboratore: lordo * (1 + contributi% + TFR%)
+  // Dipendente/Collaboratore
   return Math.round(op.busta_paga_lorda * (1 + op.contributi_pct / 100 + op.tfr_pct / 100) * 100) / 100;
 }
