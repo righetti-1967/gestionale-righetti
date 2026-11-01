@@ -646,8 +646,8 @@ export function Agenda({
           {titoloData()}
         </div>
 
-        {/* Riga 2: Barra comandi orizzontale compatta in un unico livello */}
-        <div className="flex items-center justify-between gap-1.5 w-full">
+        {/* Riga 1: Navigazione + Viste + Nuovo */}
+        <div className="flex items-center justify-between gap-1.5 w-full mb-2">
           {/* Pillola < Oggi > */}
           <div className="inline-flex items-center rounded-apple bg-apple-blue text-white shadow-apple overflow-hidden h-9">
             <button onClick={() => vai(-1)} className="px-2.5 h-full hover:bg-blue-600 active:bg-blue-700 font-bold text-sm">‹</button>
@@ -656,7 +656,7 @@ export function Agenda({
           </div>
 
           {/* Switcher M | S | G */}
-          <div className="inline-flex rounded-apple bg-apple-blue text-white shadow-apple overflow-hidden h-9">
+          <div className="inline-flex rounded-apple bg-apple-blue text-white shadow-apple overflow-hidden h-9 shrink-0">
             {[
               { id: 'mensile', label: 'M' },
               { id: 'settimanale', label: 'S' },
@@ -674,21 +674,8 @@ export function Agenda({
             ))}
           </div>
 
-          {/* Azioni rapide: Cerca + Blocco */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <RicercaClienteAgenda onVaiAAppuntamento={handleVaiAAppuntamento} />
-            <button
-              type="button"
-              onClick={() => setShowFormBlocco(true)}
-              className="w-9 h-9 rounded-apple bg-gray-700 text-white shadow-apple flex items-center justify-center text-sm shrink-0"
-              title="Nuovo Blocco"
-            >
-              🚫
-            </button>
-          </div>
-
           {/* Date picker 📅 & Nuovo + */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             <label className="w-9 h-9 rounded-apple bg-apple-blue text-white shadow-apple flex items-center justify-center cursor-pointer hover:bg-blue-600 active:bg-blue-700 relative shrink-0">
               <span className="text-sm">📅</span>
               <input
@@ -706,17 +693,6 @@ export function Agenda({
             </label>
 
             <button
-              type="button"
-              onClick={toggleRaggruppaSeduta}
-              className={`w-9 h-9 rounded-apple flex items-center justify-center text-sm font-bold shadow-apple transition-all shrink-0 ${
-                raggruppaSeduta ? 'bg-orange-500 text-white' : 'bg-white text-apple-darkgray border border-gray-200'
-              }`}
-              title="Toggle Blocco Unico"
-            >
-              {raggruppaSeduta ? '🧩' : '🗂️'}
-            </button>
-
-            <button
               onClick={apriNuovoGenerico}
               className="w-9 h-9 rounded-apple bg-apple-blue text-white shadow-apple flex items-center justify-center text-lg font-bold hover:bg-blue-600 active:bg-blue-700 shrink-0"
               title="Nuovo Appuntamento"
@@ -724,6 +700,48 @@ export function Agenda({
               +
             </button>
           </div>
+        </div>
+
+        {/* Riga 2: Azioni rapide (Cerca, Blocco, Promemoria, Raggruppa) */}
+        <div className="flex items-center gap-1.5 w-full">
+          <RicercaClienteAgenda onVaiAAppuntamento={handleVaiAAppuntamento} />
+          <button
+            type="button"
+            onClick={() => setShowFormBlocco(true)}
+            className="w-9 h-9 rounded-apple bg-gray-700 text-white shadow-apple flex items-center justify-center text-sm shrink-0"
+            title="Nuovo Blocco"
+          >
+            🚫
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const cfg = await caricaConfigPromemoria();
+                setConfigProm(cfg);
+                setShowPromemoriaBatch(true);
+              } catch (err: any) {
+                setToast({
+                  message: '❌ Errore caricamento config promemoria',
+                  tipo: 'error',
+                });
+              }
+            }}
+            className="w-9 h-9 rounded-apple bg-amber-500 text-white shadow-apple flex items-center justify-center text-sm shrink-0"
+            title="Promemoria batch"
+          >
+            ⏰
+          </button>
+          <button
+            type="button"
+            onClick={toggleRaggruppaSeduta}
+            className={`w-9 h-9 rounded-apple flex items-center justify-center text-sm font-bold shadow-apple transition-all shrink-0 ${
+              raggruppaSeduta ? 'bg-orange-500 text-white' : 'bg-white text-apple-darkgray border border-gray-200'
+            }`}
+            title="Toggle Blocco Unico"
+          >
+            {raggruppaSeduta ? '🧩' : '🗂️'}
+          </button>
         </div>
       </div>
 
