@@ -52,6 +52,7 @@ export function Spese() {
   const [filtroStato, setFiltroStato] = useState<FiltroStato>('tutte');
   const [filtroCategoria, setFiltroCategoria] = useState<string>('tutte');
   const [periodoTipo, setPeriodoTipo] = useState<'corrente' | 'mese' | 'anno' | 'tutto' | 'custom'>('corrente');
+  const [filtroKpi, setFiltroKpi] = useState<'spese_mese' | 'scadenze_30gg' | 'pagate' | 'non_pagate' | null>(null);
   const [meseSelezionato, setMeseSelezionato] = useState<number>(new Date().getMonth());
   const [annoSelezionato, setAnnoSelezionato] = useState<number>(new Date().getFullYear());
   const [dataCustomInizio, setDataCustomInizio] = useState('');
@@ -235,6 +236,24 @@ export function Spese() {
     if (filtroStato === 'non-pagate' && s.pagata) return false;
     if (filtroCategoria !== 'tutte' && s.categoria !== filtroCategoria) return false;
 
+    // Filtro KPI attivo (dalle card in alto)
+    if (filtroKpi) {
+      if (!s.data_scadenza) return false;
+      const oggi = new Date();
+      oggi.setHours(0, 0, 0, 0);
+      const dScad = new Date(s.data_scadenza + 'T00:00:00');
+
+      if (filtroKpi === 'scadenze_30gg') {
+        const tra30 = new Date(oggi.getTime() + 30 * 24 * 60 * 60 * 1000);
+        if (s.pagata || dScad < oggi || dScad > tra30) return false;
+      } else if (filtroKpi === 'pagate') {
+        if (!s.pagata) return false;
+      } else if (filtroKpi === 'non_pagate') {
+        if (s.pagata) return false;
+      }
+      // 'spese_mese' → nessun filtro extra (già filtrato dal periodo)
+    }
+
     // Filtro periodo: usa SEMPRE data_scadenza (sia tab Spese che Scadenze)
     const dataRif = s.data_scadenza;
     if (!dataRif) return false;
@@ -302,25 +321,45 @@ export function Spese() {
       {/* KPI */}
       {kpi && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <div className="bg-white rounded-apple shadow-apple p-4">
+          <button
+            onClick={() => setFiltroKpi(filtroKpi === 'spese_mese' ? null : 'spese_mese')}
+            className={`bg-white rounded-apple shadow-apple p-4 text-left transition-all ${
+              filtroKpi === 'spese_mese' ? 'ring-2 ring-apple-blue' : 'hover:shadow-apple-lg'
+            }`}
+          >
             <p className="text-[10px] font-semibold text-apple-gray uppercase tracking-wider mb-1">Spese Mese</p>
             <p className="text-xl font-bold text-apple-darkgray">{formatEuro(kpi.totale_mese)}</p>
-          </div>
-          <div className="bg-white rounded-apple shadow-apple p-4">
+          </button>
+          <button
+            onClick={() => setFiltroKpi(filtroKpi === 'scadenze_30gg' ? null : 'scadenze_30gg')}
+            className={`bg-white rounded-apple shadow-apple p-4 text-left transition-all ${
+              filtroKpi === 'scadenze_30gg' ? 'ring-2 ring-apple-blue' : 'hover:shadow-apple-lg'
+            }`}
+          >
             <p className="text-[10px] font-semibold text-apple-gray uppercase tracking-wider mb-1">Scadenze 30gg</p>
             <p className="text-xl font-bold text-amber-600">{formatEuro(kpi.scadenze_prossimi_30gg.totale)}</p>
             <p className="text-[10px] text-apple-gray mt-1">{kpi.scadenze_prossimi_30gg.numero} scadenze</p>
-          </div>
-          <div className="bg-white rounded-apple shadow-apple p-4">
+          </button>
+          <button
+            onClick={() => setFiltroKpi(filtroKpi === 'pagate' ? null : 'pagate')}
+            className={`bg-white rounded-apple shadow-apple p-4 text-left transition-all ${
+              filtroKpi === 'pagate' ? 'ring-2 ring-apple-blue' : 'hover:shadow-apple-lg'
+            }`}
+          >
             <p className="text-[10px] font-semibold text-apple-gray uppercase tracking-wider mb-1">Pagate</p>
             <p className="text-xl font-bold text-green-600">{formatEuro(kpi.pagate.totale)}</p>
             <p className="text-[10px] text-apple-gray mt-1">{kpi.pagate.numero} pagate</p>
-          </div>
-          <div className="bg-white rounded-apple shadow-apple p-4">
+          </button>
+          <button
+            onClick={() => setFiltroKpi(filtroKpi === 'non_pagate' ? null : 'non_pagate')}
+            className={`bg-white rounded-apple shadow-apple p-4 text-left transition-all ${
+              filtroKpi === 'non_pagate' ? 'ring-2 ring-apple-blue' : 'hover:shadow-apple-lg'
+            }`}
+          >
             <p className="text-[10px] font-semibold text-apple-gray uppercase tracking-wider mb-1">Da Pagare</p>
             <p className="text-xl font-bold text-red-600">{formatEuro(kpi.non_pagate.totale)}</p>
             <p className="text-[10px] text-apple-gray mt-1">{kpi.non_pagate.numero} non pagate</p>
-          </div>
+          </button>
         </div>
       )}
 
