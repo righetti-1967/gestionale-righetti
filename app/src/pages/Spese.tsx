@@ -771,6 +771,10 @@ function FormModificaSpesa({
   const [importoIvato, setImportoIvato] = useState(true);
   const [categoria, setCategoria] = useState(spesa.categoria || '');
   const [dataScadenza, setDataScadenza] = useState(spesa.data_scadenza || '');
+  const [tipo, setTipo] = useState<'una_tantum' | 'ricorrente'>((spesa.tipo as any) || 'una_tantum');
+  const [ricorrenza, setRicorrenza] = useState<'settimanale' | 'quindicinale' | 'mensile' | 'bimestrale' | 'trimestrale' | 'semestrale' | 'annuale'>((spesa.ricorrenza as any) || 'mensile');
+  const [giornoScadenza, setGiornoScadenza] = useState<number>(spesa.giorno_scadenza || 1);
+  const [mesiAnticipo, setMesiAnticipo] = useState<number>(12);
   const [note, setNote] = useState(spesa.note || '');
   const [salvando, setSalvando] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
@@ -794,7 +798,11 @@ function FormModificaSpesa({
         imponibile,
         iva,
         categoria: categoria || null,
+        tipo,
+        ricorrenza: tipo === 'ricorrente' ? ricorrenza : null,
         data_scadenza: dataScadenza || null,
+        giorno_scadenza: tipo === 'ricorrente' ? giornoScadenza : null,
+        mesi_anticipo: tipo === 'ricorrente' ? mesiAnticipo : null,
         note: note.trim() || null,
       };
 
@@ -866,10 +874,45 @@ function FormModificaSpesa({
               </div>
             )}
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Data scadenza (opzionale)</label>
-            <input type="date" value={dataScadenza} onChange={(e) => setDataScadenza(e.target.value)} className="w-full px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm" />
+          {/* Tipo: una tantum / ricorrente */}
+          <div className="border-t border-gray-100 pt-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={tipo === 'ricorrente'} onChange={(e) => setTipo(e.target.checked ? 'ricorrente' : 'una_tantum')} className="w-4 h-4" />
+              <span className="text-sm font-medium text-apple-darkgray">🔄 Spesa ricorrente</span>
+            </label>
           </div>
+
+          {tipo === 'ricorrente' && (
+            <div className="grid grid-cols-2 gap-3 pl-6 bg-purple-50 p-3 rounded-apple">
+              <div>
+                <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Ricorrenza</label>
+                <select value={ricorrenza} onChange={(e) => setRicorrenza(e.target.value as any)} className="w-full px-3 py-2 rounded-apple bg-white border border-purple-200 text-sm">
+                  <option value="settimanale">Settimanale (ogni 7gg)</option>
+                  <option value="quindicinale">Quindicinale (ogni 15gg)</option>
+                  <option value="mensile">Mensile (ogni mese)</option>
+                  <option value="bimestrale">Bimestrale (ogni 2 mesi)</option>
+                  <option value="trimestrale">Trimestrale (ogni 3 mesi)</option>
+                  <option value="semestrale">Semestrale (ogni 6 mesi)</option>
+                  <option value="annuale">Annuale (ogni anno)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Giorno scadenza</label>
+                <input type="number" min="1" max="31" value={giornoScadenza} onChange={(e) => setGiornoScadenza(parseInt(e.target.value) || 1)} className="w-full px-3 py-2 rounded-apple bg-white border border-purple-200 text-sm" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Prima scadenza</label>
+                <input type="date" value={dataScadenza} onChange={(e) => setDataScadenza(e.target.value)} className="w-full px-3 py-2 rounded-apple bg-white border border-purple-200 text-sm" />
+              </div>
+            </div>
+          )}
+
+          {tipo === 'una_tantum' && (
+            <div>
+              <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Data scadenza (opzionale)</label>
+              <input type="date" value={dataScadenza} onChange={(e) => setDataScadenza(e.target.value)} className="w-full px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm" />
+            </div>
+          )}
           <div>
             <label className="block text-xs font-semibold text-apple-gray uppercase mb-1">Note</label>
             <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-apple bg-apple-lightgray border border-transparent text-sm" />
