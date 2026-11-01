@@ -1297,10 +1297,52 @@ function TabIvaConfronto() {
             📭 Nessun dato IVA per il periodo selezionato
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-apple-lightgray/60 border-b border-gray-200/60">
-              <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Periodo</th>
+          <>
+            {/* Card view mobile */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {dati.map((d) => (
+                <div key={d.periodo} className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-bold text-apple-darkgray">{d.periodo}</p>
+                    <span className={`text-[10px] px-2 py-1 rounded font-semibold ${
+                      d.da_versare
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-green-100 text-green-700'
+                    }`}>
+                      {d.da_versare ? '💸 Da versare' : '✅ A credito'}
+                    </span>
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-apple-gray">IVA Debito</span>
+                      <span className="text-green-700 font-semibold">{formatEuro(d.iva_debito)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-apple-gray">IVA Credito</span>
+                      <span className="text-blue-700 font-semibold">{formatEuro(d.iva_credito)}</span>
+                    </div>
+                    {d.iva_ordini != null && d.iva_ordini !== 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-apple-gray">IVA Ordini</span>
+                        <span className="text-purple-600 italic">{formatEuro(d.iva_ordini)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between pt-1 border-t border-gray-100 mt-1">
+                      <span className="text-apple-gray font-semibold">Saldo</span>
+                      <span className={`font-bold ${d.saldo > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {formatEuro(d.saldo)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tabella desktop */}
+            <table className="w-full text-sm hidden md:table">
+              <thead className="bg-apple-lightgray/60 border-b border-gray-200/60">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Periodo</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase">IVA Debito</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase">IVA Credito</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-apple-gray uppercase" title="IVA da ordini fornitori (in attesa di fattura, non nel saldo)">IVA Ordini ℹ️</th>
@@ -1343,6 +1385,7 @@ function TabIvaConfronto() {
               </tr>
             </tfoot>
           </table>
+          </>
         )}
       </div>
     </div>
