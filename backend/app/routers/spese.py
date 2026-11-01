@@ -295,7 +295,7 @@ async def kpi_spese(
     user_id: str = Query(...),
     mese: Optional[str] = Query(None, description="YYYY-MM (default: mese corrente)"),
 ):
-    """KPI spese: totale mese, scadenze prossime 30gg, pagate/non pagate."""
+    """KPI spese: totale mese (per data_scadenza), scadenze prossime 30gg, pagate/non pagate."""
     try:
         sb = get_supabase()
         oggi = date.today()
@@ -305,8 +305,8 @@ async def kpi_spese(
             inizio_mese = oggi.replace(day=1)
         fine_mese = inizio_mese + relativedelta(months=1, days=-1)
 
-        # Totale spese mese
-        res_mese = sb.table("spese").select("importo").eq("user_id", user_id).gte("data", inizio_mese.isoformat()).lte("data", fine_mese.isoformat()).execute()
+        # Totale spese del mese (per data_scadenza nel mese corrente)
+        res_mese = sb.table("spese").select("importo").eq("user_id", user_id).not_.is_("data_scadenza", "null").gte("data_scadenza", inizio_mese.isoformat()).lte("data_scadenza", fine_mese.isoformat()).execute()
         totale_mese = sum(float(s.get("importo") or 0) for s in (res_mese.data or []))
 
         # Scadenze prossimi 7 giorni (non pagate)
@@ -321,8 +321,8 @@ async def kpi_spese(
         totale_scadenze_30gg = sum(float(s.get("importo") or 0) for s in (res_scadenze.data or []))
         n_scadenze_30gg = len(res_scadenze.data or [])
 
-        # Pagate/non pagate nel mese
-        res_mese_full = sb.table("spese").select("pagata, importo").eq("user_id", user_id).gte("data", inizio_mese.isoformat()).lte("data", fine_mese.isoformat()).execute()
+        # Pagate/non pagate nel mese (per data_scadenza)
+        res_mese_full = sb.table("spese").select("pagata, importo").eq("user_id", user_id).not_.is_("data_scadenza", "null").gte("data_scadenza", inizio_mese.isoformat()).lte("data_scadenza", fine_mese.isoformat()).execute()
         pagate = [s for s in (res_mese_full.data or []) if s.get("pagata")]
         non_pagate = [s for s in (res_mese_full.data or []) if not s.get("pagata")]
 
@@ -350,7 +350,6 @@ async def kpi_spese(
     except Exception as e:
         logger.exception("Errore KPI spese")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # ============================================================================
 # CATEGORIE
