@@ -203,23 +203,80 @@ async def crea_spesa(spesa: SpesaCreate):
 
 @router.put("/{spesa_id}")
 async def aggiorna_spesa(spesa_id: int, spesa: SpesaUpdate):
-    """Aggiorna una spesa esistente."""
+    """Aggiorna una spesa esistente. Se ricorrente, rigenera le scadenze future."""
     try:
         sb = get_supabase()
         update_dict = {k: v for k, v in spesa.model_dump().items() if v is not None}
         if not update_dict:
             raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
 
+        # 1. Aggiorna il record principale
         res = sb.table("spese").update(update_dict).eq("id", spesa_id).execute()
         if not res.data:
             raise HTTPException(status_code=404, detail="Spesa non trovata")
-        return {"success": True, "spesa": res.data[0]}
+
+        spesa_aggiornata = res.data[0]
+
+        # 2. Se ricorrente → rigenera scadenze figlie (non pagate)
+        tipo = update_dict.get("tipo", spesa_aggiornata.get("tipo"))
+        ricorrenza = update_dict.get("ricorrenza", spesa_aggiornata.get("ricorrenza"))
+        data_scadenza = update_dict.get("data_scadenza", spesa_aggiornata.get("data_scadenza"))
+        giorno_scadenza = update_dict.get("giorno_scadenza", spesa_aggiornata.get("giorno_scadenza"))
+        mesi_anticipo = update_dict.get("mesi_anticipo", spesa_aggiornata.get("mesi_anticipo")) or 12
+        user_id = spesa_aggiornata.get("user_id")
+        importo = update_dict.get("importo", spesa_aggiornata.get("importo"))
+        categoria = update_dict.get("categoria", spesa_aggiornata.get("categoria"))
+        descrizione = update_dict.get("descrizione", spesa_aggiornata.get("descrizione"))
+
+        scadenze_generate = 0
+        if tipo == "ricorrente" and ricorrenza and data_scadenza and user_id:
+            # 2a. Elimina scadenze figlie NON pagate collegate a questa spesa madre
+            sb.table("spese").delete() \
+                .eq("user_id", user_id) \
+                .eq("pagata", False) \
+                .like("note", f"Generata automaticamente da ricorrenza (spesa #{spesa_id})%") \
+                .execute()
+
+            # 2b. Genera nuove scadenze
+            step_mesi = _calcola_step_mesi(ricorrenza)
+            try:
+                data_base = datetime.strptime(str(data_scadenza), "%Y-%m-%d").date()
+            except Exception:
+                data_base = None
+
+            if data_base and step_mesi > 0:
+                n_scadenze = mesi_anticipo // step_mesi
+
+                for i in range(1, n_scadenze + 1):
+                    data_futura = _calcola_data_scadenza(data_base, giorno_scadenza, i * step_mesi)
+                    scadenza_dict = {
+                        "user_id": user_id,
+                        "data": data_futura.isoformat(),
+                        "descrizione": f"{descrizione} ({data_futura.strftime('%m/%Y')})",
+                        "importo": importo,
+                        "categoria": categoria,
+                        "fornitore_id": spesa_aggiornata.get("fornitore_id"),
+                        "tipo": "ricorrente",
+                        "ricorrenza": ricorrenza,
+                        "data_scadenza": data_futura.isoformat(),
+                        "pagata": False,
+                        "note": f"Generata automaticamente da ricorrenza (spesa #{spesa_id})",
+                        "ricorrenza_attiva": False,
+                        "giorno_scadenza": giorno_scadenza,
+                    }
+                    sb.table("spese").insert(scadenza_dict).execute()
+                    scadenze_generate += 1
+
+        return {
+            "success": True,
+            "spesa": spesa_aggiornata,
+            "scadenze_generate": scadenze_generate,
+        }
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("Errore aggiornamento spesa")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.delete("/{spesa_id}")
 async def elimina_spesa(spesa_id: int):
