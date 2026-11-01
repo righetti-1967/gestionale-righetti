@@ -676,18 +676,7 @@ export function Agenda({
 
           {/* Azioni rapide: Cerca + Blocco */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                // Apre il popover di RicercaClienteAgenda (simula click)
-                const btn = document.querySelector('[data-cerca-cliente-mobile]') as HTMLElement;
-                btn?.click();
-              }}
-              className="w-9 h-9 rounded-apple bg-white text-apple-darkgray border border-gray-200 shadow-apple flex items-center justify-center text-sm shrink-0"
-              title="Cerca cliente"
-            >
-              🔍
-            </button>
+            <RicercaClienteAgenda onVaiAAppuntamento={handleVaiAAppuntamento} />
             <button
               type="button"
               onClick={() => setShowFormBlocco(true)}
