@@ -51,6 +51,11 @@ export function Spese() {
   const [ricerca, setRicerca] = useState('');
   const [filtroStato, setFiltroStato] = useState<FiltroStato>('tutte');
   const [filtroCategoria, setFiltroCategoria] = useState<string>('tutte');
+  const [periodoTipo, setPeriodoTipo] = useState<'corrente' | 'mese' | 'anno' | 'tutto' | 'custom'>('corrente');
+  const [meseSelezionato, setMeseSelezionato] = useState<number>(new Date().getMonth());
+  const [annoSelezionato, setAnnoSelezionato] = useState<number>(new Date().getFullYear());
+  const [dataCustomInizio, setDataCustomInizio] = useState('');
+  const [dataCustomFine, setDataCustomFine] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [spesaInModifica, setSpesaInModifica] = useState<Spesa | null>(null);
   const [importando, setImportando] = useState(false);
@@ -229,6 +234,28 @@ export function Spese() {
     if (filtroStato === 'pagate' && !s.pagata) return false;
     if (filtroStato === 'non-pagate' && s.pagata) return false;
     if (filtroCategoria !== 'tutte' && s.categoria !== filtroCategoria) return false;
+
+    // Filtro periodo
+    const dataRif = tab === 'scadenze' ? s.data_scadenza : s.data;
+    if (!dataRif) return false;
+
+    if (periodoTipo === 'corrente') {
+      const oggi = new Date();
+      const inizioMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+      const fineMese = new Date(oggi.getFullYear(), oggi.getMonth() + 1, 0, 23, 59, 59);
+      const d = new Date(dataRif + 'T00:00:00');
+      if (d < inizioMese || d > fineMese) return false;
+    } else if (periodoTipo === 'mese') {
+      const d = new Date(dataRif + 'T00:00:00');
+      if (d.getMonth() !== meseSelezionato || d.getFullYear() !== annoSelezionato) return false;
+    } else if (periodoTipo === 'anno') {
+      const d = new Date(dataRif + 'T00:00:00');
+      if (d.getFullYear() !== annoSelezionato) return false;
+    } else if (periodoTipo === 'custom' && dataCustomInizio && dataCustomFine) {
+      if (dataRif < dataCustomInizio || dataRif > dataCustomFine) return false;
+    }
+    // 'tutto' → nessun filtro
+
     return true;
   });
 
