@@ -162,8 +162,15 @@ export function RicercaClienteAgenda({ onVaiAAppuntamento }: RicercaClienteAgend
         </button>
 
         {popoverAperto && (
-          <div className="absolute top-full right-0 sm:left-0 sm:right-auto mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm bg-white rounded-apple shadow-apple-lg border border-gray-200/60 z-40 overflow-hidden">
-            {/* Input ricerca */}
+          <>
+            {/* Overlay su mobile (chiude cliccando fuori) */}
+            <div
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[70] sm:hidden"
+              onClick={() => setPopoverAperto(false)}
+            />
+            {/* Popover: fixed centrato su mobile, absolute accanto al pulsante su desktop */}
+            <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-[80] bg-white rounded-apple shadow-apple-lg border border-gray-200/60 overflow-hidden sm:absolute sm:inset-auto sm:top-full sm:left-0 sm:mt-2 sm:translate-y-0 sm:w-80 sm:z-40">
+              {/* Input ricerca */}
             <div className="p-3 border-b border-gray-100">
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-apple-gray text-sm">
@@ -232,6 +239,7 @@ export function RicercaClienteAgenda({ onVaiAAppuntamento }: RicercaClienteAgend
               )}
             </div>
           </div>
+          </>
         )}
       </div>
 
