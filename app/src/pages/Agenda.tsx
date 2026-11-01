@@ -674,6 +674,30 @@ export function Agenda({
             ))}
           </div>
 
+          {/* Azioni rapide: Cerca + Blocco */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                // Apre il popover di RicercaClienteAgenda (simula click)
+                const btn = document.querySelector('[data-cerca-cliente-mobile]') as HTMLElement;
+                btn?.click();
+              }}
+              className="w-9 h-9 rounded-apple bg-white text-apple-darkgray border border-gray-200 shadow-apple flex items-center justify-center text-sm shrink-0"
+              title="Cerca cliente"
+            >
+              🔍
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowFormBlocco(true)}
+              className="w-9 h-9 rounded-apple bg-gray-700 text-white shadow-apple flex items-center justify-center text-sm shrink-0"
+              title="Nuovo Blocco"
+            >
+              🚫
+            </button>
+          </div>
+
           {/* Date picker 📅 & Nuovo + */}
           <div className="flex items-center gap-1.5">
             <label className="w-9 h-9 rounded-apple bg-apple-blue text-white shadow-apple flex items-center justify-center cursor-pointer hover:bg-blue-600 active:bg-blue-700 relative shrink-0">
@@ -722,7 +746,7 @@ export function Agenda({
         <p className="text-xs text-apple-gray capitalize">{titoloData()}</p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 mb-4">
+      <div className="hidden sm:flex flex-wrap items-center gap-2 mb-4">
         {/* Azioni */}
         <RicercaClienteAgenda onVaiAAppuntamento={handleVaiAAppuntamento} />
         <button
