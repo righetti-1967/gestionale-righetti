@@ -433,7 +433,7 @@ export function Spese() {
                   className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase cursor-pointer hover:text-apple-darkgray transition-colors select-none"
                   title={sortData === 'asc' ? 'Crescente (clicca per decrescente)' : 'Decrescente (clicca per crescente)'}
                 >
-                  {tab === 'scadenze' ? 'Scadenza' : 'Data'} {sortData === 'asc' ? '↑' : '↓'}
+                  Data {sortData === 'asc' ? '↑' : '↓'}
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Descrizione</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-apple-gray uppercase">Categoria</th>
