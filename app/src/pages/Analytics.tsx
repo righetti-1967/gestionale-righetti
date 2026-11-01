@@ -520,6 +520,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
               dataFineClienti={dataFineClienti}
               setDataFineClienti={setDataFineClienti}
               reportClientiPeriodo={reportClientiPeriodo}
+              calcolaDatePeriodoClienti={calcolaDatePeriodoClienti}
             />
           ) : null}
         </div>
@@ -706,6 +707,7 @@ function ReportAggregatoView({
   dataFineClienti,
   setDataFineClienti,
   reportClientiPeriodo,
+  calcolaDatePeriodoClienti,
 }: {
   report: ReportAggregato;
   onEsportaPdf: () => void;
@@ -733,6 +735,7 @@ function ReportAggregatoView({
   dataFineClienti: string;
   setDataFineClienti: (v: string) => void;
   reportClientiPeriodo: any;
+  calcolaDatePeriodoClienti: (periodo: string) => { inizio: string; fine: string };
 }) {
 
   // Funzione per aprire modale clienti filtrati
@@ -1097,14 +1100,19 @@ function ReportAggregatoView({
       </div>
 
       {/* Modale clienti filtrati */}
-      {modaleFiltro !== null && (
-        <ModaleClientiFiltrati
-          tipo={modaleFiltro.tipo}
-          soglia={modaleFiltro.soglia}
-          onClose={() => setModaleFiltro(null)}
-          onClienteClick={(c) => setClienteDaContattare(c)}
-        />
-      )}
+      {modaleFiltro !== null && (() => {
+        const { inizio, fine } = calcolaDatePeriodoClienti(periodoClienti);
+        return (
+          <ModaleClientiFiltrati
+            tipo={modaleFiltro.tipo}
+            soglia={modaleFiltro.soglia}
+            dataInizio={inizio}
+            dataFine={fine}
+            onClose={() => setModaleFiltro(null)}
+            onClienteClick={(c) => setClienteDaContattare(c)}
+          />
+        );
+      })()}
 
       {/* Modale invio template (WhatsApp / Email) */}
       {clienteDaContattare && modaleFiltro && (
@@ -1518,11 +1526,15 @@ function TabIvaConfronto() {
 function ModaleClientiFiltrati({
   tipo,
   soglia,
+  dataInizio,
+  dataFine,
   onClose,
   onClienteClick,
 }: {
   tipo: 'nuovi' | 'dormienti' | 'persi' | 'frequenza';
   soglia?: number;
+  dataInizio?: string;
+  dataFine?: string;
   onClose: () => void;
   onClienteClick: (c: Cliente) => void;
 }) {
@@ -1539,12 +1551,20 @@ function ModaleClientiFiltrati({
         const { supabase } = await import('../lib/supabase');
 
         if (tipo === 'nuovi') {
-          const oggi = new Date();
-          const inizioMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1).toISOString();
-          const fineMese = new Date(oggi.getFullYear(), oggi.getMonth() + 1, 0, 23, 59, 59).toISOString();
+          // Usa il periodo passato dalla modale (o mese corrente come fallback)
+          let inizio: string;
+          let fine: string;
+          if (dataInizio && dataFine) {
+            inizio = dataInizio + 'T00:00:00';
+            fine = dataFine + 'T23:59:59';
+          } else {
+            const oggi = new Date();
+            inizio = new Date(oggi.getFullYear(), oggi.getMonth(), 1).toISOString();
+            fine = new Date(oggi.getFullYear(), oggi.getMonth() + 1, 0, 23, 59, 59).toISOString();
+          }
           const filtrati = tutti.filter((c: any) => {
             const created = c.created_at as string | null;
-            return created && created >= inizioMese && created <= fineMese;
+            return created && created >= inizio && created <= fine;
           });
           setClienti(filtrati);
           return;
