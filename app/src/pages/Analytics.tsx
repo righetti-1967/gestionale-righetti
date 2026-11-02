@@ -82,7 +82,9 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
   const [kpiOperatori, setKpiOperatori] = useState<KpiOperatore[]>([]);
   const [breakEven, setBreakEven] = useState<BreakEven | null>(null);
   const [reportKpiAvanzati, setReportKpiAvanzati] = useState<any>(null);
-  const [periodoKpiAvanzati, setPeriodoKpiAvanzati] = useState<'mese' | 'trimestre' | 'semestre' | 'anno'>('mese');
+  const [periodoKpiAvanzati, setPeriodoKpiAvanzati] = useState<'mese' | 'trimestre' | 'semestre' | 'anno' | 'custom'>('mese');
+  const [dataInizioKpiAvanzati, setDataInizioKpiAvanzati] = useState('');
+  const [dataFineKpiAvanzati, setDataFineKpiAvanzati] = useState('');
   const [configEconomia, setConfigEconomia] = useState<ConfigEconomia | null>(null);
   const [caricandoKpiOp, setCaricandoKpiOp] = useState(false);
 
@@ -248,6 +250,37 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
     return { inizio, fine };
   }
 
+  // Calcola date periodo KPI Avanzati
+  function calcolaDatePeriodoKpiAvanzati(periodo: string): { inizio: string; fine: string } {
+    const oggi = new Date();
+    const fine = oggi.toISOString().split('T')[0];
+    let inizio = fine;
+    if (periodo === 'mese') {
+      inizio = new Date(oggi.getFullYear(), oggi.getMonth(), 1).toISOString().split('T')[0];
+    } else if (periodo === 'trimestre') {
+      const d = new Date(oggi);
+      d.setMonth(d.getMonth() - 3);
+      inizio = d.toISOString().split('T')[0];
+    } else if (periodo === 'semestre') {
+      const d = new Date(oggi);
+      d.setMonth(d.getMonth() - 6);
+      inizio = d.toISOString().split('T')[0];
+    } else if (periodo === 'anno') {
+      inizio = `${oggi.getFullYear()}-01-01`;
+    } else if (periodo === 'custom') {
+      return { inizio: dataInizioKpiAvanzati || fine, fine: dataFineKpiAvanzati || fine };
+    }
+    return { inizio, fine };
+  }
+
+  // Sincronizza date custom con preset quando cambia periodoKpiAvanzati
+  useEffect(() => {
+    if (periodoKpiAvanzati === 'custom') return;
+    const { inizio, fine } = calcolaDatePeriodoKpiAvanzati(periodoKpiAvanzati);
+    setDataInizioKpiAvanzati(inizio);
+    setDataFineKpiAvanzati(fine);
+  }, [periodoKpiAvanzati]);
+
   // Carica report KPI clienti per periodo
   useEffect(() => {
     const { inizio, fine } = calcolaDatePeriodoClienti(periodoClienti);
@@ -272,8 +305,8 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
     async function caricaBreakEven() {
       try {
         const config = await caricaEconomia();
-        const report = await calcolaReportAggregato(dataInizio, dataFine, soglieDebounced);
-        const be = await calcolaBreakEven(config, dataInizio, dataFine, report.spesaTotale);
+        const report = await calcolaReportAggregato(dataInizioKpiAvanzati, dataFineKpiAvanzati, soglieDebounced);
+        const be = await calcolaBreakEven(config, dataInizioKpiAvanzati, dataFineKpiAvanzati, report.spesaTotale);
         if (!annullato) setBreakEven(be);
       } catch (e) {
         console.error('Errore Break-Even:', e);
@@ -281,7 +314,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
     }
     caricaBreakEven();
     return () => { annullato = true; };
-  }, [dataInizio, dataFine, soglieDebounced]);
+  }, [dataInizioKpiAvanzati, dataFineKpiAvanzati, soglieDebounced]);
 
   // Carica KPI operatori (ricavo/costo/margine)
   useEffect(() => {
@@ -295,7 +328,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
         
         const { getAgendaConfigSync } = await import('../lib/agenda-config');
         const agendaConfig = getAgendaConfigSync();
-        const kpi = await calcolaKpiOperatori(config, agendaConfig.operatori || [], dataInizio, dataFine);
+        const kpi = await calcolaKpiOperatori(config, agendaConfig.operatori || [], dataInizioKpiAvanzati, dataFineKpiAvanzati);
         if (!annullato) setKpiOperatori(kpi);
       } catch (e) {
         console.error('Errore KPI operatori:', e);
@@ -305,7 +338,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
     }
     caricaKpiOperatori();
     return () => { annullato = true; };
-  }, [dataInizio, dataFine]);
+  }, [dataInizioKpiAvanzati, dataFineKpiAvanzati]);
 
   // Carica report per ogni operatore
   useEffect(() => {
@@ -602,30 +635,13 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
                 { id: 'trimestre', label: '📊 Trimestre' },
                 { id: 'semestre', label: '📈 Semestre' },
                 { id: 'anno', label: '🗓️ Anno' },
+                { id: 'custom', label: '⚙️ Custom' },
               ] as const).map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => {
-                    const oggi = new Date();
-                    const fine = oggi.toISOString().split('T')[0];
-                    let inizio = fine;
-                    if (p.id === 'mese') {
-                      inizio = new Date(oggi.getFullYear(), oggi.getMonth(), 1).toISOString().split('T')[0];
-                    } else if (p.id === 'trimestre') {
-                      const d = new Date(oggi);
-                      d.setMonth(d.getMonth() - 3);
-                      inizio = d.toISOString().split('T')[0];
-                    } else if (p.id === 'semestre') {
-                      const d = new Date(oggi);
-                      d.setMonth(d.getMonth() - 6);
-                      inizio = d.toISOString().split('T')[0];
-                    } else if (p.id === 'anno') {
-                      inizio = `${oggi.getFullYear()}-01-01`;
-                    }
-                    // Per ora usa il preset del report principale (le date sono già gestite da Analytics)
-                  }}
+                  onClick={() => setPeriodoKpiAvanzati(p.id)}
                   className={`px-3 py-1.5 rounded-apple text-[11px] font-semibold transition-all ${
-                    preset === p.id
+                    periodoKpiAvanzati === p.id
                       ? 'bg-white text-apple-darkgray shadow-sm'
                       : 'text-apple-gray hover:text-apple-darkgray'
                   }`}
@@ -635,6 +651,35 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
               ))}
             </div>
           </div>
+
+          {/* Input date custom per KPI Avanzati */}
+          {periodoKpiAvanzati === 'custom' && (
+            <div className="bg-white rounded-apple shadow-apple p-4 mt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-apple-gray mb-1.5">Data inizio</label>
+                  <input
+                    type="date"
+                    value={dataInizioKpiAvanzati}
+                    onChange={(e) => setDataInizioKpiAvanzati(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-apple text-sm focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-apple-gray mb-1.5">Data fine</label>
+                  <input
+                    type="date"
+                    value={dataFineKpiAvanzati}
+                    onChange={(e) => setDataFineKpiAvanzati(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-apple text-sm focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
+                  />
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-apple-gray">
+                Periodo: <strong>{formatDataIT(dataInizioKpiAvanzati)}</strong> → <strong>{formatDataIT(dataFineKpiAvanzati)}</strong>
+              </p>
+            </div>
+          )}
 
           {/* BLOCCO SPOSTATO (Economia + Break-Even + KPI Operatori) */}
       {/* KPI Economia - Margine Lordo */}
