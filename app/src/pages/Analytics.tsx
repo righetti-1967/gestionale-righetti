@@ -721,6 +721,38 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
         </div>
       )}
 
+      {/* Confronto Anno su Anno (YoY) */}
+      {reportKpiAvanzati && (
+        <div>
+          <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
+            📊 Confronto anno precedente
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <KpiCard
+              label="Incassi"
+              value={`${(reportKpiAvanzati.deltaIncassiPct ?? 0) >= 0 ? '+' : ''}${reportKpiAvanzati.deltaIncassiPct ?? 0}%`}
+              icon={(reportKpiAvanzati.deltaIncassiPct ?? 0) >= 0 ? '📈' : '📉'}
+              colore={(reportKpiAvanzati.deltaIncassiPct ?? 0) >= 0 ? 'green' : 'orange'}
+            />
+            <KpiCard
+              label="Clienti"
+              value={`${(reportKpiAvanzati.deltaClientiPct ?? 0) >= 0 ? '+' : ''}${reportKpiAvanzati.deltaClientiPct ?? 0}%`}
+              icon={(reportKpiAvanzati.deltaClientiPct ?? 0) >= 0 ? '📈' : '📉'}
+              colore={(reportKpiAvanzati.deltaClientiPct ?? 0) >= 0 ? 'green' : 'orange'}
+            />
+            <KpiCard
+              label="Scontrino medio"
+              value={`${(reportKpiAvanzati.deltaScontrinoPct ?? 0) >= 0 ? '+' : ''}${reportKpiAvanzati.deltaScontrinoPct ?? 0}%`}
+              icon={(reportKpiAvanzati.deltaScontrinoPct ?? 0) >= 0 ? '📈' : '📉'}
+              colore={(reportKpiAvanzati.deltaScontrinoPct ?? 0) >= 0 ? 'green' : 'orange'}
+            />
+          </div>
+          <p className="text-[10px] text-apple-gray italic mt-2">
+            ℹ️ Anno scorso: €{formatEuro(reportKpiAvanzati.incassiAnnoScorso ?? 0)} · {reportKpiAvanzati.clientiAnnoScorso ?? 0} clienti
+          </p>
+        </div>
+      )}
+
       {/* KPI Operatori (Ricavo / Costo / Margine) */}
       {kpiOperatori && kpiOperatori.length > 0 && (
         <div>

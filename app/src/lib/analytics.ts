@@ -116,6 +116,14 @@ export interface ReportAggregato {
   totaleSpese: number;
   margineLordo: number;
   margineLordoPct: number;
+
+  // KPI Confronto anno su anno (YoY)
+  incassiAnnoScorso: number;
+  clientiAnnoScorso: number;
+  scontrinoMedioAnnoScorso: number;
+  deltaIncassiPct: number;
+  deltaClientiPct: number;
+  deltaScontrinoPct: number;
 }
 
 // ============================================================
@@ -287,8 +295,7 @@ export async function calcolaReportCliente(
 
   // 11. Medie
   const numeroDocumenti = scontriniMadre.length + fattureCliente.length;
-  const scontrinoMedio = numeroDocumenti > 0 ? r2(spesaTotale / numeroDocumenti) : 0;
-  const fichesMedia = totaleFiches > 0 ? r2(spesaTotale / totaleFiches) : 0;
+  const scontrinoMedio = numeroDocumenti > 0 ? r2(spesaTotale / numeroDocumenti) : 0;  const fichesMedia = totaleFiches > 0 ? r2(spesaTotale / totaleFiches) : 0;
 
   return {
     clienteId,
@@ -680,6 +687,46 @@ export async function calcolaReportAggregato(
   const fichesMedia = totaleFiches > 0 ? r2(spesaTotale / totaleFiches) : 0;
   const passaggiPerCliente = numeroClientiPassati > 0 ? r2(numeroPassaggi / numeroClientiPassati) : 0;
 
+
+  // ============================================================
+  // CONFRONTO ANNO SU ANNO (YoY)
+  // ============================================================
+  const yoyDataInizio = new Date(dataInizio + 'T00:00:00');
+  const yoyDataFine = new Date(dataFine + 'T00:00:00');
+  yoyDataInizio.setFullYear(yoyDataInizio.getFullYear() - 1);
+  yoyDataFine.setFullYear(yoyDataFine.getFullYear() - 1);
+  const yoyInizioISO = yoyDataInizio.toISOString().split('T')[0];
+  const yoyFineISO = yoyDataFine.toISOString().split('T')[0];
+
+  let incassiAnnoScorso = 0;
+  let clientiAnnoScorso = 0;
+  let scontrinoMedioAnnoScorso = 0;
+  try {
+    const userYoY = await supabase.auth.getUser();
+    const userIdYoY = userYoY.data.user?.id ?? '';
+    const [resFattureYoY, resScontriniYoY] = await Promise.all([
+      supabase.from('fatture').select('lordo_ivato, cliente_id').eq('user_id', userIdYoY).gte('data_inizio', yoyInizioISO).lte('data_inizio', yoyFineISO),
+      supabase.from('scontrini').select('totale_lordo, cliente_id').eq('tipo', 'madre').not('annullato', 'is', true).gte('data_emissione', yoyInizioISO).lte('data_emissione', yoyFineISO),
+    ]);
+    const fattureYoY = resFattureYoY.data || [];
+    const scontriniYoY = resScontriniYoY.data || [];
+    const speseScontriniYoY = scontriniYoY.reduce((s: number, x: any) => s + Number(x.totale_lordo || 0), 0);
+    const speseFattureYoY = fattureYoY.reduce((s: number, x: any) => s + Number(x.lordo_ivato || 0), 0);
+    incassiAnnoScorso = speseScontriniYoY + speseFattureYoY;
+    const clientiYoYSet = new Set<number>();
+    for (const s of scontriniYoY) if (s.cliente_id) clientiYoYSet.add(s.cliente_id);
+    for (const f of fattureYoY) if (f.cliente_id) clientiYoYSet.add(f.cliente_id);
+    clientiAnnoScorso = clientiYoYSet.size;
+    const numDocYoY = scontriniYoY.length + fattureYoY.length;
+    scontrinoMedioAnnoScorso = numDocYoY > 0 ? Math.round((incassiAnnoScorso / numDocYoY) * 100) / 100 : 0;
+  } catch (e) {
+    console.error('Errore calcolo YoY:', e);
+  }
+
+  const deltaIncassiPct = incassiAnnoScorso > 0 ? Math.round(((spesaTotale - incassiAnnoScorso) / incassiAnnoScorso) * 1000) / 10 : 0;
+  const deltaClientiPct = clientiAnnoScorso > 0 ? Math.round(((numeroClientiPassati - clientiAnnoScorso) / clientiAnnoScorso) * 1000) / 10 : 0;
+  const deltaScontrinoPct = scontrinoMedioAnnoScorso > 0 ? Math.round(((scontrinoMedio - scontrinoMedioAnnoScorso) / scontrinoMedioAnnoScorso) * 1000) / 10 : 0;
+
   return {
     dataInizio,
     dataFine,
@@ -713,6 +760,12 @@ export async function calcolaReportAggregato(
     totaleSpese,
     margineLordo,
     margineLordoPct,
+    incassiAnnoScorso,
+    clientiAnnoScorso,
+    scontrinoMedioAnnoScorso,
+    deltaIncassiPct,
+    deltaClientiPct,
+    deltaScontrinoPct,
   };
 }
 
@@ -819,6 +872,7 @@ export async function getKpiCliente(clienteId: number): Promise<KpiCliente> {
   const numeroDocumenti = scontriniMadre.length + fattureCliente.length;
   const scontrinoMedio = numeroDocumenti > 0 ? Number((spesaTotale / numeroDocumenti).toFixed(2)) : 0;
   const fichesMedia = totaleFiches > 0 ? Number((spesaTotale / totaleFiches).toFixed(2)) : 0;
+
 
   return {
     spesaScontrini: Number(spesaScontrini.toFixed(2)),
