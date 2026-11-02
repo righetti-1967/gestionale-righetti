@@ -152,6 +152,7 @@ export function calcolaCostoMensile(op: EconomiaOperatore): number {
  */
 export async function calcolaKpiOperatori(
   config: ConfigEconomia,
+  operatoriAgenda: Array<{ id: string; label: string }>,
   dataInizio: string,
   dataFine: string
 ): Promise<KpiOperatore[]> {
@@ -217,10 +218,13 @@ export async function calcolaKpiOperatori(
     const oreLavorate = Math.round((agg.minuti / 60) * 10) / 10;
     const margine = agg.ricavo - costoPeriodo;
 
-    // Nome operatore (da agenda-config, ma qui non lo abbiamo → uso operatore_id)
+    // Cerca il nome completo in operatoriAgenda
+    const opAgenda = operatoriAgenda.find((o) => o.id === op.operatore_id);
+    const label = opAgenda?.label || op.operatore_id.charAt(0).toUpperCase() + op.operatore_id.slice(1);
+
     return {
       operatore_id: op.operatore_id,
-      operatore_label: op.operatore_id.charAt(0).toUpperCase() + op.operatore_id.slice(1),
+      operatore_label: label,
       ricavo: Math.round(agg.ricavo * 100) / 100,
       costo: Math.round(costoPeriodo * 100) / 100,
       margine: Math.round(margine * 100) / 100,

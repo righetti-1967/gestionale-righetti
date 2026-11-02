@@ -272,7 +272,9 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
         const config = await caricaEconomia();
         if (!annullato) setConfigEconomia(config);
         
-        const kpi = await calcolaKpiOperatori(config, dataInizio, dataFine);
+        const { getAgendaConfigSync } = await import('../lib/agenda-config');
+        const agendaConfig = getAgendaConfigSync();
+        const kpi = await calcolaKpiOperatori(config, agendaConfig.operatori || [], dataInizio, dataFine);
         if (!annullato) setKpiOperatori(kpi);
       } catch (e) {
         console.error('Errore KPI operatori:', e);
