@@ -1093,7 +1093,71 @@ function ReportAggregatoView({
         </div>
       </div>
 
-      {/* Ripartizione */}
+      
+      {/* KPI Operatori (Ricavo / Costo / Margine) */}
+      {kpiOperatori && kpiOperatori.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
+            💼 KPI Operatori
+          </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {kpiOperatori.map((op) => {
+              const positivo = op.margine >= 0;
+              return (
+                <div key={op.operatore_id} className="bg-white rounded-apple shadow-apple p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-bold text-apple-darkgray">
+                      👤 {op.operatore_label}
+                    </h4>
+                    <span className={`text-[10px] px-2 py-1 rounded font-semibold ${
+                      positivo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {positivo ? '✅ Margine positivo' : '⚠️ Margine negativo'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    <div>
+                      <p className="text-[10px] text-apple-gray uppercase">Ricavo</p>
+                      <p className="text-sm font-bold text-green-700">{formatEuro(op.ricavo)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-apple-gray uppercase">Costo</p>
+                      <p className="text-sm font-bold text-red-600">{formatEuro(op.costo)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-apple-gray uppercase">Margine</p>
+                      <p className={`text-sm font-bold ${positivo ? 'text-purple-700' : 'text-red-700'}`}>
+                        {formatEuro(op.margine)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-100">
+                    <div>
+                      <p className="text-[10px] text-apple-gray uppercase">Ore lavorate</p>
+                      <p className="text-xs font-semibold text-apple-darkgray">{op.ore_lavorate}h</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-apple-gray uppercase">Costo/h</p>
+                      <p className="text-xs font-semibold text-red-600">{formatEuro(op.costo_orario)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-apple-gray uppercase">Ricavo/h</p>
+                      <p className="text-xs font-semibold text-green-700">{formatEuro(op.ricavo_orario)}</p>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-apple-gray italic mt-2">
+                    {op.num_appuntamenti} appuntamenti · Margine/h: {formatEuro(op.margine_orario)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+{/* Ripartizione */}
       <div className="bg-white rounded-apple shadow-apple p-4 sm:p-6">
         <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-3">
           📈 Ripartizione spesa
