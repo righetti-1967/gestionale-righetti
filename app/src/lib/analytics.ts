@@ -344,6 +344,17 @@ export async function calcolaReportAggregato(
   ]);
   const tutteFattureRaw: any[] = resFatture.data || [];
 
+  // 🔍 DEBUG TEMPORANEO
+  console.log('[DEBUG calcolaReportAggregato]', {
+    dataInizio,
+    dataFine,
+    scontriniTrovati: tuttiScontrini.length,
+    fattureTrovate: tutteFattureRaw.length,
+    fattureErrore: resFatture.error?.message || null,
+    primeFatture: tutteFattureRaw.slice(0, 2),
+    primiScontrini: tuttiScontrini.slice(0, 2),
+  });
+
   // 2. Filtra madre non annullati + figli
   const scontriniPeriodo = tuttiScontrini.filter((s) => !s.annullato);
   const scontriniMadre = scontriniPeriodo.filter((s) => s.tipo === 'madre');

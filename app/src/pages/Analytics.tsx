@@ -298,9 +298,25 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
     return () => { annullato = true; };
   }, [periodoClienti, dataInizioClienti, dataFineClienti, soglieDebounced]);
 
-    // Carica Break-Even (costi fissi / margine contribuzione)
+    // Carica report KPI Avanzati (Economia, YoY, ecc.)
   useEffect(() => {
-    if (!dataInizio || !dataFine) return;
+    if (!dataInizioKpiAvanzati || !dataFineKpiAvanzati) return;
+    let annullato = false;
+    async function caricaReportKpiAvanzati() {
+      try {
+        const r = await calcolaReportAggregato(dataInizioKpiAvanzati, dataFineKpiAvanzati, soglieDebounced);
+        if (!annullato) setReportKpiAvanzati(r);
+      } catch (e) {
+        console.error('Errore calcolo KPI Avanzati:', e);
+      }
+    }
+    caricaReportKpiAvanzati();
+    return () => { annullato = true; };
+  }, [dataInizioKpiAvanzati, dataFineKpiAvanzati, soglieDebounced]);
+
+  // Carica Break-Even (costi fissi / margine contribuzione)
+  useEffect(() => {
+    if (!dataInizioKpiAvanzati || !dataFineKpiAvanzati) return;
     let annullato = false;
     async function caricaBreakEven() {
       try {
@@ -318,7 +334,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
 
   // Carica KPI operatori (ricavo/costo/margine)
   useEffect(() => {
-    if (!dataInizio || !dataFine) return;
+    if (!dataInizioKpiAvanzati || !dataFineKpiAvanzati) return;
     let annullato = false;
     async function caricaKpiOperatori() {
       setCaricandoKpiOp(true);
