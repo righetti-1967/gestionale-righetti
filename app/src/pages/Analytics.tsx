@@ -16,7 +16,7 @@ import { formatEuro } from '../lib/fatture';
 import { Toast, type ToastTipo } from '../components/Toast';
 import { supabase } from '../lib/supabase';
 import { ModaleInviaTemplate } from '../components/ModaleInviaTemplate';
-import { caricaEconomia, calcolaKpiOperatori, type KpiOperatore, type ConfigEconomia } from '../lib/economia';
+import { caricaEconomia, calcolaKpiOperatori, type KpiOperatore, type ConfigEconomia , calcolaBreakEven, type BreakEven } from '../lib/economia';
 
 // ============================================================
 // HELPER: formattazione date in italiano
@@ -80,6 +80,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
   const [dataFineClienti, setDataFineClienti] = useState('');
   const [reportClientiPeriodo, setReportClientiPeriodo] = useState<any>(null);
   const [kpiOperatori, setKpiOperatori] = useState<KpiOperatore[]>([]);
+  const [breakEven, setBreakEven] = useState<BreakEven | null>(null);
   const [configEconomia, setConfigEconomia] = useState<ConfigEconomia | null>(null);
   const [caricandoKpiOp, setCaricandoKpiOp] = useState(false);
 
@@ -262,7 +263,25 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
     return () => { annullato = true; };
   }, [periodoClienti, dataInizioClienti, dataFineClienti, soglieDebounced]);
 
-    // Carica KPI operatori (ricavo/costo/margine)
+    // Carica Break-Even (costi fissi / margine contribuzione)
+  useEffect(() => {
+    if (!dataInizio || !dataFine) return;
+    let annullato = false;
+    async function caricaBreakEven() {
+      try {
+        const config = await caricaEconomia();
+        const report = await calcolaReportAggregato(dataInizio, dataFine, soglieDebounced);
+        const be = await calcolaBreakEven(config, dataInizio, dataFine, report.spesaTotale);
+        if (!annullato) setBreakEven(be);
+      } catch (e) {
+        console.error('Errore Break-Even:', e);
+      }
+    }
+    caricaBreakEven();
+    return () => { annullato = true; };
+  }, [dataInizio, dataFine, soglieDebounced]);
+
+  // Carica KPI operatori (ricavo/costo/margine)
   useEffect(() => {
     if (!dataInizio || !dataFine) return;
     let annullato = false;
@@ -550,6 +569,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
               reportClientiPeriodo={reportClientiPeriodo}
               calcolaDatePeriodoClienti={calcolaDatePeriodoClienti}
               kpiOperatori={kpiOperatori}
+              breakEven={breakEven}
             />
           ) : null}
         </div>
@@ -738,6 +758,7 @@ function ReportAggregatoView({
   reportClientiPeriodo,
   calcolaDatePeriodoClienti,
   kpiOperatori,
+  breakEven,
 }: {
   report: ReportAggregato;
   onEsportaPdf: () => void;
@@ -767,6 +788,7 @@ function ReportAggregatoView({
   reportClientiPeriodo: any;
   calcolaDatePeriodoClienti: (periodo: string) => { inizio: string; fine: string };
   kpiOperatori: KpiOperatore[];
+  breakEven: BreakEven | null;
 }) {
 
   // Funzione per aprire modale clienti filtrati
@@ -1095,7 +1117,63 @@ function ReportAggregatoView({
         </div>
       </div>
 
-      
+      {/* Break-Even Point */}
+      {breakEven && (
+        <div>
+          <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
+            🎯 Break-Even Point
+          </h3>
+          <div className="bg-white rounded-apple shadow-apple p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div>
+                <p className="text-[10px] text-apple-gray uppercase">Costi Fissi</p>
+                <p className="text-lg font-bold text-red-600">{formatEuro(breakEven.costiFissi)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-apple-gray uppercase">Costi Variabili</p>
+                <p className="text-lg font-bold text-orange-600">{formatEuro(breakEven.costiVariabili)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-apple-gray uppercase">Margine Contribuzione</p>
+                <p className="text-lg font-bold text-blue-700">{breakEven.margineContribuzione}%</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-apple-gray uppercase">Break-Even</p>
+                <p className="text-lg font-bold text-purple-700">{formatEuro(breakEven.breakEven)}</p>
+              </div>
+            </div>
+
+            <div className={`p-4 rounded-apple border-2 ${
+              breakEven.inPareggio
+                ? 'bg-green-50 border-green-200'
+                : 'bg-red-50 border-red-200'
+            }`}>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <p className={`text-sm font-bold ${
+                    breakEven.inPareggio ? 'text-green-900' : 'text-red-900'
+                  }`}>
+                    {breakEven.inPareggio ? '✅ Sopra il pareggio' : '⚠️ Sotto il pareggio'}
+                  </p>
+                  <p className={`text-xs mt-1 ${
+                    breakEven.inPareggio ? 'text-green-700' : 'text-red-700'
+                  }`}>
+                    {breakEven.inPareggio
+                      ? `Incassi: ${formatEuro(breakEven.incassi)} · Sopra break-even di ${formatEuro(breakEven.sopraSottoPareggio)}`
+                      : `Incassi: ${formatEuro(breakEven.incassi)} · Mancano ${formatEuro(Math.abs(breakEven.sopraSottoPareggio))} per andare in pari`
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-apple-gray italic mt-3">
+              ℹ️ Il break-even è il fatturato minimo per coprire i costi fissi del periodo.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* KPI Operatori (Ricavo / Costo / Margine) */}
       {kpiOperatori && kpiOperatori.length > 0 && (
         <div>

@@ -6,6 +6,7 @@ import { supabase } from './supabase';
 import { getAppuntamenti, type AppuntamentoConCliente } from './appuntamenti';
 import { getServizi } from './servizi';
 import { getProdotti } from './prodotti';
+import { getSpesePeriodo } from './spese';
 
 // ============================================================
 // TIPI
@@ -27,6 +28,16 @@ export interface EconomiaOperatore {
 export interface ConfigCostiFissi {
   categorie_fisse: string[];     // es. ['Affitto', 'Utenze', 'Stipendi', 'Assicurazioni']
   aliquota_titolare_pct: number; // % contributi titolare (es. 26)
+}
+
+export interface BreakEven {
+  costiFissi: number;
+  costiVariabili: number;
+  incassi: number;
+  margineContribuzione: number;    // percentuale (0-100)
+  breakEven: number;               // fatturato minimo per pareggio
+  sopraSottoPareggio: number;      // incassi - breakEven (positivo = sopra, negativo = sotto)
+  inPareggio: boolean;
 }
 
 export interface KpiOperatore {
@@ -235,4 +246,78 @@ export async function calcolaKpiOperatori(
       num_appuntamenti: agg.numApp,
     };
   });
+}
+
+
+// ============================================================
+// BREAK-EVEN POINT
+// ============================================================
+
+/**
+ * Calcola il Break-Even Point per il periodo.
+ * - Costi fissi: da economia.costi_fissi.categorie_fisse
+ * - Costi variabili: spese NON fisse
+ * - Margine contribuzione: (incassi - costi variabili) / incassi
+ * - Break-even: costi fissi / margine contribuzione
+ */
+export async function calcolaBreakEven(
+  config: ConfigEconomia,
+  dataInizio: string,
+  dataFine: string,
+  incassiPeriodo: number
+): Promise<BreakEven> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      costiFissi: 0,
+      costiVariabili: 0,
+      incassi: incassiPeriodo,
+      margineContribuzione: 0,
+      breakEven: 0,
+      sopraSottoPareggio: 0,
+      inPareggio: false,
+    };
+  }
+
+  // Carica spese del periodo (solo pagate)
+  const spese = await getSpesePeriodo(user.id, dataInizio, dataFine, { soloPagate: true });
+
+  // Separa fisse vs variabili
+  const categorieFisse = config.costi_fissi.categorie_fisse || [];
+  let costiFissi = 0;
+  let costiVariabili = 0;
+
+  for (const s of spese) {
+    const cat = s.categoria || '';
+    const importo = Number(s.importo || 0);
+    if (categorieFisse.includes(cat)) {
+      costiFissi += importo;
+    } else {
+      costiVariabili += importo;
+    }
+  }
+
+  // Margine di contribuzione (%)
+  const margineContribuzione = incassiPeriodo > 0
+    ? Math.round(((incassiPeriodo - costiVariabili) / incassiPeriodo) * 1000) / 10
+    : 0;
+
+  // Break-even (fatturato minimo per coprire i costi fissi)
+  const margineDecimal = margineContribuzione / 100;
+  const breakEven = margineDecimal > 0
+    ? Math.round((costiFissi / margineDecimal) * 100) / 100
+    : 0;
+
+  // Sopra/sotto pareggio
+  const sopraSottoPareggio = Math.round((incassiPeriodo - breakEven) * 100) / 100;
+
+  return {
+    costiFissi: Math.round(costiFissi * 100) / 100,
+    costiVariabili: Math.round(costiVariabili * 100) / 100,
+    incassi: Math.round(incassiPeriodo * 100) / 100,
+    margineContribuzione,
+    breakEven,
+    sopraSottoPareggio,
+    inPareggio: sopraSottoPareggio >= 0,
+  };
 }
