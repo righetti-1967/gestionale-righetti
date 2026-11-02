@@ -706,13 +706,13 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <KpiCard
             label="Incassi"
-            value={formatEuro(reportKpiAvanzati?.spesaTotale ?? 0)}
+            value={formatEuro(breakEven?.incassi ?? reportKpiAvanzati?.spesaTotale ?? 0)}
             icon="📈"
             colore="green"
           />
           <KpiCard
             label="Spese"
-            value={formatEuro(reportKpiAvanzati?.totaleSpese ?? 0)}
+            value={formatEuro(reportKpiAvanzati?.totaleSpese ?? breakEven?.costiVariabili ?? 0)}
             icon="📉"
             colore="orange"
           />
@@ -720,7 +720,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
             label="Margine Lordo"
             value={`${formatEuro(reportKpiAvanzati?.margineLordo ?? 0)} (${reportKpiAvanzati?.margineLordoPct ?? 0}%)`}
             icon="💰"
-            colore={reportKpiAvanzati?.margineLordo >= 0 ? 'purple' : 'orange'}
+            colore={(reportKpiAvanzati?.margineLordo ?? 0) >= 0 ? 'purple' : 'orange'}
           />
         </div>
       </div>
