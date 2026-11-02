@@ -35,7 +35,7 @@ function formatDataIT(iso: string): string {
   }
 }
 
-type Tab = 'singolo' | 'aggregato' | 'iva';
+type Tab = 'singolo' | 'aggregato' | 'kpi_avanzati' | 'iva';
 type PresetPeriodo = 'settimana' | 'mese' | 'anno' | 'custom';
 
 interface AnalyticsProps {
@@ -81,6 +81,8 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
   const [reportClientiPeriodo, setReportClientiPeriodo] = useState<any>(null);
   const [kpiOperatori, setKpiOperatori] = useState<KpiOperatore[]>([]);
   const [breakEven, setBreakEven] = useState<BreakEven | null>(null);
+  const [reportKpiAvanzati, setReportKpiAvanzati] = useState<any>(null);
+  const [periodoKpiAvanzati, setPeriodoKpiAvanzati] = useState<'mese' | 'trimestre' | 'semestre' | 'anno'>('mese');
   const [configEconomia, setConfigEconomia] = useState<ConfigEconomia | null>(null);
   const [caricandoKpiOp, setCaricandoKpiOp] = useState(false);
 
@@ -413,6 +415,16 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
           👥 Aggregato Periodo
         </button>
         <button
+          onClick={() => setTab('kpi_avanzati')}
+          className={`px-5 py-2 rounded-apple text-sm font-semibold transition-all ${
+            tab === 'kpi_avanzati'
+              ? 'bg-white text-apple-darkgray shadow-apple'
+              : 'text-apple-gray hover:text-apple-darkgray'
+          }`}
+        >
+          💼 KPI Avanzati
+        </button>
+        <button
           onClick={() => setTab('iva')}
           className={`px-5 py-2 rounded-apple text-sm font-semibold transition-all ${
             tab === 'iva'
@@ -576,6 +588,206 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
       )}
 
       {/* === TAB IVA === */}
+            {/* === TAB KPI AVANZATI === */}
+      {tab === 'kpi_avanzati' && (
+        <div className="space-y-4">
+          {/* Selettore periodo per KPI Avanzati */}
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+            <h3 className="text-sm font-bold text-apple-darkgray">
+              💼 KPI Avanzati
+            </h3>
+            <div className="flex gap-1 bg-gray-100 rounded-apple p-1 flex-wrap">
+              {([
+                { id: 'mese', label: '📅 Mese' },
+                { id: 'trimestre', label: '📊 Trimestre' },
+                { id: 'semestre', label: '📈 Semestre' },
+                { id: 'anno', label: '🗓️ Anno' },
+              ] as const).map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    const oggi = new Date();
+                    const fine = oggi.toISOString().split('T')[0];
+                    let inizio = fine;
+                    if (p.id === 'mese') {
+                      inizio = new Date(oggi.getFullYear(), oggi.getMonth(), 1).toISOString().split('T')[0];
+                    } else if (p.id === 'trimestre') {
+                      const d = new Date(oggi);
+                      d.setMonth(d.getMonth() - 3);
+                      inizio = d.toISOString().split('T')[0];
+                    } else if (p.id === 'semestre') {
+                      const d = new Date(oggi);
+                      d.setMonth(d.getMonth() - 6);
+                      inizio = d.toISOString().split('T')[0];
+                    } else if (p.id === 'anno') {
+                      inizio = `${oggi.getFullYear()}-01-01`;
+                    }
+                    // Per ora usa il preset del report principale (le date sono già gestite da Analytics)
+                  }}
+                  className={`px-3 py-1.5 rounded-apple text-[11px] font-semibold transition-all ${
+                    preset === p.id
+                      ? 'bg-white text-apple-darkgray shadow-sm'
+                      : 'text-apple-gray hover:text-apple-darkgray'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* BLOCCO SPOSTATO (Economia + Break-Even + KPI Operatori) */}
+      {/* KPI Economia - Margine Lordo */}
+      <div>
+        <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
+          💰 Economia
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <KpiCard
+            label="Incassi"
+            value={formatEuro(reportKpiAvanzati?.spesaTotale ?? 0)}
+            icon="📈"
+            colore="green"
+          />
+          <KpiCard
+            label="Spese"
+            value={formatEuro(reportKpiAvanzati?.totaleSpese ?? 0)}
+            icon="📉"
+            colore="orange"
+          />
+          <KpiCard
+            label="Margine Lordo"
+            value={`${formatEuro(reportKpiAvanzati?.margineLordo ?? 0)} (${reportKpiAvanzati?.margineLordoPct ?? 0}%)`}
+            icon="💰"
+            colore={reportKpiAvanzati?.margineLordo >= 0 ? 'purple' : 'orange'}
+          />
+        </div>
+      </div>
+
+      {/* Break-Even Point */}
+      {breakEven && (
+        <div>
+          <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
+            🎯 Break-Even Point
+          </h3>
+          <div className="bg-white rounded-apple shadow-apple p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div>
+                <p className="text-[10px] text-apple-gray uppercase">Costi Fissi</p>
+                <p className="text-lg font-bold text-red-600">{formatEuro(breakEven.costiFissi)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-apple-gray uppercase">Costi Variabili</p>
+                <p className="text-lg font-bold text-orange-600">{formatEuro(breakEven.costiVariabili)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-apple-gray uppercase">Margine Contribuzione</p>
+                <p className="text-lg font-bold text-blue-700">{breakEven.margineContribuzione}%</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-apple-gray uppercase">Break-Even</p>
+                <p className="text-lg font-bold text-purple-700">{formatEuro(breakEven.breakEven)}</p>
+              </div>
+            </div>
+
+            <div className={`p-4 rounded-apple border-2 ${
+              breakEven.inPareggio
+                ? 'bg-green-50 border-green-200'
+                : 'bg-red-50 border-red-200'
+            }`}>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <p className={`text-sm font-bold ${
+                    breakEven.inPareggio ? 'text-green-900' : 'text-red-900'
+                  }`}>
+                    {breakEven.inPareggio ? '✅ Sopra il pareggio' : '⚠️ Sotto il pareggio'}
+                  </p>
+                  <p className={`text-xs mt-1 ${
+                    breakEven.inPareggio ? 'text-green-700' : 'text-red-700'
+                  }`}>
+                    {breakEven.inPareggio
+                      ? `Incassi: ${formatEuro(breakEven.incassi)} · Sopra break-even di ${formatEuro(breakEven.sopraSottoPareggio)}`
+                      : `Incassi: ${formatEuro(breakEven.incassi)} · Mancano ${formatEuro(Math.abs(breakEven.sopraSottoPareggio))} per andare in pari`
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-apple-gray italic mt-3">
+              ℹ️ Il break-even è il fatturato minimo per coprire i costi fissi del periodo.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* KPI Operatori (Ricavo / Costo / Margine) */}
+      {kpiOperatori && kpiOperatori.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
+            💼 KPI Operatori
+          </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {kpiOperatori.map((op) => {
+              const positivo = op.margine >= 0;
+              return (
+                <div key={op.operatore_id} className="bg-white rounded-apple shadow-apple p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-bold text-apple-darkgray">
+                      👤 {op.operatore_label}
+                    </h4>
+                    <span className={`text-[10px] px-2 py-1 rounded font-semibold ${
+                      positivo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {positivo ? '✅ Margine positivo' : '⚠️ Margine negativo'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    <div>
+                      <p className="text-[10px] text-apple-gray uppercase">Ricavo</p>
+                      <p className="text-sm font-bold text-green-700">{formatEuro(op.ricavo)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-apple-gray uppercase">Costo</p>
+                      <p className="text-sm font-bold text-red-600">{formatEuro(op.costo)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-apple-gray uppercase">Margine</p>
+                      <p className={`text-sm font-bold ${positivo ? 'text-purple-700' : 'text-red-700'}`}>
+                        {formatEuro(op.margine)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-100">
+                    <div>
+                      <p className="text-[10px] text-apple-gray uppercase">Ore lavorate</p>
+                      <p className="text-xs font-semibold text-apple-darkgray">{op.ore_lavorate}h</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-apple-gray uppercase">Costo/h</p>
+                      <p className="text-xs font-semibold text-red-600">{formatEuro(op.costo_orario)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-apple-gray uppercase">Ricavo/h</p>
+                      <p className="text-xs font-semibold text-green-700">{formatEuro(op.ricavo_orario)}</p>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-apple-gray italic mt-2">
+                    {op.num_appuntamenti} appuntamenti · Margine/h: {formatEuro(op.margine_orario)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+        </div>
+      )}
+
       {tab === 'iva' && <TabIvaConfronto />}
 
       {toast && (
@@ -1090,153 +1302,6 @@ function ReportAggregatoView({
         )}
       </div>
 
-      {/* KPI Economia - Margine Lordo */}
-      <div>
-        <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
-          💰 Economia
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <KpiCard
-            label="Incassi"
-            value={formatEuro(report.spesaTotale ?? 0)}
-            icon="📈"
-            colore="green"
-          />
-          <KpiCard
-            label="Spese"
-            value={formatEuro(report.totaleSpese ?? 0)}
-            icon="📉"
-            colore="orange"
-          />
-          <KpiCard
-            label="Margine Lordo"
-            value={`${formatEuro(report.margineLordo ?? 0)} (${report.margineLordoPct ?? 0}%)`}
-            icon="💰"
-            colore={report.margineLordo >= 0 ? 'purple' : 'orange'}
-          />
-        </div>
-      </div>
-
-      {/* Break-Even Point */}
-      {breakEven && (
-        <div>
-          <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
-            🎯 Break-Even Point
-          </h3>
-          <div className="bg-white rounded-apple shadow-apple p-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              <div>
-                <p className="text-[10px] text-apple-gray uppercase">Costi Fissi</p>
-                <p className="text-lg font-bold text-red-600">{formatEuro(breakEven.costiFissi)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-apple-gray uppercase">Costi Variabili</p>
-                <p className="text-lg font-bold text-orange-600">{formatEuro(breakEven.costiVariabili)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-apple-gray uppercase">Margine Contribuzione</p>
-                <p className="text-lg font-bold text-blue-700">{breakEven.margineContribuzione}%</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-apple-gray uppercase">Break-Even</p>
-                <p className="text-lg font-bold text-purple-700">{formatEuro(breakEven.breakEven)}</p>
-              </div>
-            </div>
-
-            <div className={`p-4 rounded-apple border-2 ${
-              breakEven.inPareggio
-                ? 'bg-green-50 border-green-200'
-                : 'bg-red-50 border-red-200'
-            }`}>
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <p className={`text-sm font-bold ${
-                    breakEven.inPareggio ? 'text-green-900' : 'text-red-900'
-                  }`}>
-                    {breakEven.inPareggio ? '✅ Sopra il pareggio' : '⚠️ Sotto il pareggio'}
-                  </p>
-                  <p className={`text-xs mt-1 ${
-                    breakEven.inPareggio ? 'text-green-700' : 'text-red-700'
-                  }`}>
-                    {breakEven.inPareggio
-                      ? `Incassi: ${formatEuro(breakEven.incassi)} · Sopra break-even di ${formatEuro(breakEven.sopraSottoPareggio)}`
-                      : `Incassi: ${formatEuro(breakEven.incassi)} · Mancano ${formatEuro(Math.abs(breakEven.sopraSottoPareggio))} per andare in pari`
-                    }
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <p className="text-[10px] text-apple-gray italic mt-3">
-              ℹ️ Il break-even è il fatturato minimo per coprire i costi fissi del periodo.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* KPI Operatori (Ricavo / Costo / Margine) */}
-      {kpiOperatori && kpiOperatori.length > 0 && (
-        <div>
-          <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-2 mt-2">
-            💼 KPI Operatori
-          </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {kpiOperatori.map((op) => {
-              const positivo = op.margine >= 0;
-              return (
-                <div key={op.operatore_id} className="bg-white rounded-apple shadow-apple p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-bold text-apple-darkgray">
-                      👤 {op.operatore_label}
-                    </h4>
-                    <span className={`text-[10px] px-2 py-1 rounded font-semibold ${
-                      positivo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                      {positivo ? '✅ Margine positivo' : '⚠️ Margine negativo'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <div>
-                      <p className="text-[10px] text-apple-gray uppercase">Ricavo</p>
-                      <p className="text-sm font-bold text-green-700">{formatEuro(op.ricavo)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-apple-gray uppercase">Costo</p>
-                      <p className="text-sm font-bold text-red-600">{formatEuro(op.costo)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-apple-gray uppercase">Margine</p>
-                      <p className={`text-sm font-bold ${positivo ? 'text-purple-700' : 'text-red-700'}`}>
-                        {formatEuro(op.margine)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-100">
-                    <div>
-                      <p className="text-[10px] text-apple-gray uppercase">Ore lavorate</p>
-                      <p className="text-xs font-semibold text-apple-darkgray">{op.ore_lavorate}h</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-apple-gray uppercase">Costo/h</p>
-                      <p className="text-xs font-semibold text-red-600">{formatEuro(op.costo_orario)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-apple-gray uppercase">Ricavo/h</p>
-                      <p className="text-xs font-semibold text-green-700">{formatEuro(op.ricavo_orario)}</p>
-                    </div>
-                  </div>
-
-                  <p className="text-[10px] text-apple-gray italic mt-2">
-                    {op.num_appuntamenti} appuntamenti · Margine/h: {formatEuro(op.margine_orario)}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 {/* Ripartizione */}
       <div className="bg-white rounded-apple shadow-apple p-4 sm:p-6">
         <h3 className="text-xs font-semibold text-apple-gray uppercase tracking-wide mb-3">
