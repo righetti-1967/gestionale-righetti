@@ -16,6 +16,7 @@ import { formatEuro } from '../lib/fatture';
 import { Toast, type ToastTipo } from '../components/Toast';
 import { supabase } from '../lib/supabase';
 import { ModaleInviaTemplate } from '../components/ModaleInviaTemplate';
+import { caricaEconomia, calcolaKpiOperatori, type KpiOperatore, type ConfigEconomia } from '../lib/economia';
 
 // ============================================================
 // HELPER: formattazione date in italiano
@@ -78,6 +79,9 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
   const [dataInizioClienti, setDataInizioClienti] = useState('');
   const [dataFineClienti, setDataFineClienti] = useState('');
   const [reportClientiPeriodo, setReportClientiPeriodo] = useState<any>(null);
+  const [kpiOperatori, setKpiOperatori] = useState<KpiOperatore[]>([]);
+  const [configEconomia, setConfigEconomia] = useState<ConfigEconomia | null>(null);
+  const [caricandoKpiOp, setCaricandoKpiOp] = useState(false);
 
   // Singolo cliente
   const [clienti, setClienti] = useState<Cliente[]>([]);
@@ -257,6 +261,28 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
     carica();
     return () => { annullato = true; };
   }, [periodoClienti, dataInizioClienti, dataFineClienti, soglieDebounced]);
+
+    // Carica KPI operatori (ricavo/costo/margine)
+  useEffect(() => {
+    if (!dataInizio || !dataFine) return;
+    let annullato = false;
+    async function caricaKpiOperatori() {
+      setCaricandoKpiOp(true);
+      try {
+        const config = await caricaEconomia();
+        if (!annullato) setConfigEconomia(config);
+        
+        const kpi = await calcolaKpiOperatori(config, dataInizio, dataFine);
+        if (!annullato) setKpiOperatori(kpi);
+      } catch (e) {
+        console.error('Errore KPI operatori:', e);
+      } finally {
+        if (!annullato) setCaricandoKpiOp(false);
+      }
+    }
+    caricaKpiOperatori();
+    return () => { annullato = true; };
+  }, [dataInizio, dataFine]);
 
   // Carica report per ogni operatore
   useEffect(() => {
@@ -521,6 +547,7 @@ export function Analytics({ onNavigate }: AnalyticsProps) {
               setDataFineClienti={setDataFineClienti}
               reportClientiPeriodo={reportClientiPeriodo}
               calcolaDatePeriodoClienti={calcolaDatePeriodoClienti}
+              kpiOperatori={kpiOperatori}
             />
           ) : null}
         </div>
@@ -708,6 +735,7 @@ function ReportAggregatoView({
   setDataFineClienti,
   reportClientiPeriodo,
   calcolaDatePeriodoClienti,
+  kpiOperatori,
 }: {
   report: ReportAggregato;
   onEsportaPdf: () => void;
@@ -736,6 +764,7 @@ function ReportAggregatoView({
   setDataFineClienti: (v: string) => void;
   reportClientiPeriodo: any;
   calcolaDatePeriodoClienti: (periodo: string) => { inizio: string; fine: string };
+  kpiOperatori: KpiOperatore[];
 }) {
 
   // Funzione per aprire modale clienti filtrati
